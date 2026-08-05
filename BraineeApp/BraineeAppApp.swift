@@ -2,8 +2,6 @@
 //  BraineeAppApp.swift
 //  BraineeApp
 //
-//  Created by Valera Valera on 05.08.2026.
-//
 
 import SwiftUI
 import SwiftData
@@ -12,7 +10,8 @@ import SwiftData
 struct BraineeAppApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
-            Item.self,
+            TaskItem.self,
+            UserProfile.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
@@ -25,7 +24,7 @@ struct BraineeAppApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            MainTabView()
         }
         .modelContainer(sharedModelContainer)
     }
