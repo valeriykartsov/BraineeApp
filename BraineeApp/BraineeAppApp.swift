@@ -11,6 +11,8 @@ struct BraineeAppApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             TaskItem.self,
+            TaskGroup.self,
+            TaskTag.self,
             UserProfile.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)

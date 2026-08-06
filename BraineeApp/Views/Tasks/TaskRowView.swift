@@ -25,6 +25,13 @@ struct TaskRowView: View {
                     .strikethrough(task.isCompleted)
                     .foregroundStyle(task.isCompleted ? .secondary : .primary)
 
+                if !task.taskDetails.isEmpty {
+                    Text(task.taskDetails)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+
                 HStack(spacing: 8) {
                     if let deadline = task.deadline {
                         Label(deadline.formatted(date: .abbreviated, time: .omitted), systemImage: "calendar")
@@ -33,6 +40,14 @@ struct TaskRowView: View {
                     }
 
                     PriorityBadge(priority: task.priority)
+                }
+
+                if !task.tags.isEmpty {
+                    TagFlowLayout(spacing: 6) {
+                        ForEach(task.tags, id: \.persistentModelID) { tag in
+                            TagChipView(name: tag.name)
+                        }
+                    }
                 }
             }
 
