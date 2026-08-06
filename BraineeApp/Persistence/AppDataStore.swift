@@ -38,18 +38,21 @@ enum AppDataStore {
         let keychainDocument = loadTasksFromKeychain()
 
         let resolved = pickNewestTasksDocument(fileDocument, keychainDocument)
-        var document = resolved ?? .empty
+        guard var document = resolved else {
+            return .empty
+        }
+
         document.normalizeRecords()
 
-        if resolved != nil {
-            try saveTasks(document)
+        if fileDocument == nil, keychainDocument != nil {
+            try saveTasks(document, syncKeychain: false)
         }
 
         return document
     }
 
     static func saveTasks(_ document: MyTasksDocument, syncKeychain: Bool = true) throws {
-        try prepareStorage()
+        try FileManager.default.createDirectory(at: storageDirectory, withIntermediateDirectories: true)
 
         var normalized = document
         normalized.normalizeRecords()
@@ -61,7 +64,11 @@ enum AppDataStore {
         try data.write(to: url, options: .atomic)
 
         if syncKeychain {
-            try KeychainStorage.save(data, account: tasksFileName)
+            do {
+                try KeychainStorage.save(data, account: tasksFileName)
+            } catch {
+                print("Keychain tasks backup failed: \(error)")
+            }
         }
     }
 
@@ -122,15 +129,16 @@ enum AppDataStore {
 
     private static func reconcileTasksBackupIfNeeded() throws {
         let url = storageDirectory.appendingPathComponent(tasksFileName)
-        let fileDocument = loadTasksFromFile()
-        let keychainDocument = loadTasksFromKeychain()
-
-        guard fileDocument == nil, let keychainDocument else { return }
-
-        try saveTasks(keychainDocument, syncKeychain: false)
-        if !FileManager.default.fileExists(atPath: url.path) {
-            let data = try encoder.encode(keychainDocument)
-            try data.write(to: url, options: .atomic)
+        guard !FileManager.default.fileExists(atPath: url.path),
+              var keychainDocument = loadTasksFromKeychain() else {
+            return
         }
+
+        keychainDocument.normalizeRecords()
+        keychainDocument.lastSavedAt = .now
+        keychainDocument.version = MyTasksDocument.currentVersion
+
+        let data = try encoder.encode(keychainDocument)
+        try data.write(to: url, options: .atomic)
     }
 }
