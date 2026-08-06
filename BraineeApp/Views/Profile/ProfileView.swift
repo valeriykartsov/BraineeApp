@@ -39,6 +39,7 @@ struct ProfileView: View {
                                 .multilineTextAlignment(.center)
                                 .onChange(of: displayName) { _, newValue in
                                     profile?.displayName = newValue
+                                    modelContext.persistToJSON()
                                 }
                         }
                         Spacer()
@@ -49,7 +50,10 @@ struct ProfileView: View {
                 Section("Тема оформления") {
                     Picker("Тема", selection: Binding(
                         get: { appTheme },
-                        set: { appThemeRaw = $0.rawValue }
+                        set: {
+                            appThemeRaw = $0.rawValue
+                            modelContext.persistToJSON()
+                        }
                     )) {
                         ForEach(AppTheme.allCases) { theme in
                             Text(theme.title).tag(theme)
@@ -59,6 +63,15 @@ struct ProfileView: View {
                 }
 
                 TagLibraryView()
+
+                Section {
+                    LabeledContent("Папка", value: AppDataStore.folderName)
+                    Text("Данные хранятся локально в Documents/BraineeApp (mytasks.json, profile.json). Резервная копия сохраняется в Keychain и восстанавливается после переустановки приложения.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } header: {
+                    Text("Хранение данных")
+                }
             }
             .navigationTitle("Профиль")
             .onAppear {
@@ -100,6 +113,7 @@ struct ProfileView: View {
         guard profiles.isEmpty else { return }
         let newProfile = UserProfile(displayName: "")
         modelContext.insert(newProfile)
+        modelContext.persistToJSON()
     }
 
     private func loadPhoto(from item: PhotosPickerItem?) async {
@@ -109,6 +123,7 @@ struct ProfileView: View {
         await MainActor.run {
             ensureProfile()
             profile?.avatarData = data
+            modelContext.persistToJSON()
         }
     }
 }

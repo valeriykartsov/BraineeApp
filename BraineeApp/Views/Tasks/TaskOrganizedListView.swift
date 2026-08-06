@@ -157,6 +157,7 @@ struct TaskOrganizedListView: View {
             $0.group?.persistentModelID == group?.persistentModelID && $0.persistentModelID != dropped.persistentModelID
         }
         dropped.sortOrder = (targetTasks.map(\.sortOrder).max() ?? -1) + 1
+        modelContext.persistToJSON()
         return true
     }
 
@@ -167,6 +168,7 @@ struct TaskOrganizedListView: View {
             task.sortOrder = index
             task.group = group
         }
+        modelContext.persistToJSON()
     }
 
     private func moveGroups(from source: IndexSet, to destination: Int) {
@@ -175,5 +177,6 @@ struct TaskOrganizedListView: View {
         for (index, group) in reordered.enumerated() {
             group.sortOrder = index
         }
+        modelContext.persistToJSON()
     }
 }
