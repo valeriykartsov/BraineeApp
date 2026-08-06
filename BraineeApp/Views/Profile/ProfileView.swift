@@ -62,6 +62,16 @@ struct ProfileView: View {
                     .pickerStyle(.segmented)
                 }
 
+                TaskDashboardView()
+
+                Section {
+                    NavigationLink {
+                        DeletedTasksFolderView()
+                    } label: {
+                        Label("Удалённые задачи", systemImage: "trash")
+                    }
+                }
+
                 TagLibraryView()
 
                 Section {

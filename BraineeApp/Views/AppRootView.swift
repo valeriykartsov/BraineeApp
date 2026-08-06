@@ -9,21 +9,26 @@ import SwiftData
 struct AppRootView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var isReady = false
+    @State private var showLaunch = true
     @State private var loadError: String?
 
     var body: some View {
-        Group {
+        ZStack {
             if isReady {
-                MainTabView()
+                AnimatedMainTabView()
                     .persistOnBackground()
+                    .opacity(showLaunch ? 0 : 1)
             } else if let loadError {
                 ContentUnavailableView {
                     Label("Ошибка загрузки", systemImage: "exclamationmark.triangle")
                 } description: {
                     Text(loadError)
                 }
-            } else {
-                ProgressView("Загрузка данных…")
+            }
+
+            if showLaunch || !isReady {
+                LaunchScreenView()
+                    .transition(.opacity)
             }
         }
         .task {
@@ -32,6 +37,14 @@ struct AppRootView: View {
                 isReady = true
             } catch {
                 loadError = error.localizedDescription
+            }
+
+            try? await Task.sleep(for: .seconds(1.2))
+
+            if isReady {
+                withAnimation(.easeOut(duration: 0.35)) {
+                    showLaunch = false
+                }
             }
         }
     }
