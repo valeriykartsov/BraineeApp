@@ -19,40 +19,38 @@ struct TaskSectionView: View {
     let category: TaskCategory
 
     @Query private var tasks: [TaskItem]
+    @Query private var groups: [TaskGroup]
 
     @State private var viewMode: TaskViewMode = .byDate
     @State private var showingAddTask = false
     @State private var editingTask: TaskItem?
+    @State private var showingCreateGroup = false
+    @State private var newGroupName = ""
 
     init(category: TaskCategory) {
         self.category = category
         let categoryRaw = category.rawValue
         _tasks = Query(
             filter: #Predicate<TaskItem> { $0.categoryRaw == categoryRaw },
-            sort: [SortDescriptor(\TaskItem.createdAt, order: .reverse)]
+            sort: [SortDescriptor(\TaskItem.sortOrder)]
+        )
+        _groups = Query(
+            filter: #Predicate<TaskGroup> { $0.categoryRaw == categoryRaw },
+            sort: [SortDescriptor(\TaskGroup.sortOrder)]
         )
     }
 
     var body: some View {
         NavigationStack {
-            Group {
-                switch viewMode {
-                case .byDate:
-                    TaskListByDateView(
-                        tasks: tasks,
-                        onToggle: toggleTask,
-                        onDelete: deleteTasks,
-                        onEdit: { editingTask = $0 }
-                    )
-                case .dayPlan:
-                    TaskDayPlanView(
-                        tasks: tasks,
-                        onToggle: toggleTask,
-                        onDelete: deleteTasks,
-                        onEdit: { editingTask = $0 }
-                    )
-                }
-            }
+            TaskOrganizedListView(
+                groups: groups,
+                tasks: tasks,
+                viewMode: viewMode,
+                onToggle: toggleTask,
+                onDelete: deleteTask,
+                onEdit: { editingTask = $0 },
+                onDeleteGroup: deleteGroup
+            )
             .navigationTitle(category.title)
             .toolbar {
 #if os(iOS)
@@ -60,7 +58,8 @@ struct TaskSectionView: View {
                     viewModePicker
                 }
 
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    createGroupButton
                     addButton
                 }
 #else
@@ -68,20 +67,32 @@ struct TaskSectionView: View {
                     viewModePicker
                 }
 
-                ToolbarItem(placement: .primaryAction) {
+                ToolbarItemGroup(placement: .primaryAction) {
+                    createGroupButton
                     addButton
                 }
 #endif
             }
             .sheet(isPresented: $showingAddTask) {
-                AddEditTaskView(category: category) { title, deadline, priority in
-                    addTask(title: title, deadline: deadline, priority: priority)
+                AddEditTaskView(creationCategory: category) { formData in
+                    addTask(formData)
                 }
             }
             .sheet(item: $editingTask) { task in
-                AddEditTaskView(category: category, task: task) { title, deadline, priority in
-                    updateTask(task, title: title, deadline: deadline, priority: priority)
+                AddEditTaskView(creationCategory: category, task: task) { formData in
+                    updateTask(task, formData: formData)
                 }
+            }
+            .alert("Новая группа", isPresented: $showingCreateGroup) {
+                TextField("Название группы", text: $newGroupName)
+                Button("Отмена", role: .cancel) {
+                    newGroupName = ""
+                }
+                Button("Создать") {
+                    createGroup()
+                }
+            } message: {
+                Text("Группа будет создана в разделе «\(category.title)»")
             }
         }
     }
@@ -104,20 +115,35 @@ struct TaskSectionView: View {
         }
     }
 
-    private func addTask(title: String, deadline: Date?, priority: TaskPriority) {
+    private var createGroupButton: some View {
+        Button {
+            showingCreateGroup = true
+        } label: {
+            Image(systemName: "folder.badge.plus")
+        }
+    }
+
+    private func addTask(_ formData: TaskFormData) {
+        let nextOrder = (tasks.map(\.sortOrder).max() ?? -1) + 1
         let task = TaskItem(
-            title: title,
-            deadline: deadline,
-            priority: priority,
-            category: category
+            title: formData.title,
+            deadline: formData.deadline,
+            priority: formData.priority,
+            category: formData.category,
+            taskDetails: formData.taskDetails,
+            sortOrder: nextOrder,
+            tags: formData.selectedTags
         )
         modelContext.insert(task)
     }
 
-    private func updateTask(_ task: TaskItem, title: String, deadline: Date?, priority: TaskPriority) {
-        task.title = title
-        task.deadline = deadline
-        task.priority = priority
+    private func updateTask(_ task: TaskItem, formData: TaskFormData) {
+        task.title = formData.title
+        task.deadline = formData.deadline
+        task.priority = formData.priority
+        task.category = formData.category
+        task.taskDetails = formData.taskDetails
+        task.tags = formData.selectedTags
     }
 
     private func toggleTask(_ task: TaskItem) {
@@ -129,16 +155,32 @@ struct TaskSectionView: View {
         }
     }
 
-    private func deleteTasks(at offsets: IndexSet, in sectionTasks: [TaskItem]) {
+    private func deleteTask(_ task: TaskItem) {
         withAnimation {
-            for index in offsets {
-                modelContext.delete(sectionTasks[index])
-            }
+            modelContext.delete(task)
         }
+    }
+
+    private func deleteGroup(_ group: TaskGroup) {
+        withAnimation {
+            for task in tasks where task.group?.persistentModelID == group.persistentModelID {
+                task.group = nil
+            }
+            modelContext.delete(group)
+        }
+    }
+
+    private func createGroup() {
+        let trimmed = newGroupName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let nextOrder = (groups.map(\.sortOrder).max() ?? -1) + 1
+        let group = TaskGroup(name: trimmed, category: category, sortOrder: nextOrder)
+        modelContext.insert(group)
+        newGroupName = ""
     }
 }
 
 #Preview {
     TaskSectionView(category: .career)
-        .modelContainer(for: TaskItem.self, inMemory: true)
+        .modelContainer(for: [TaskItem.self, TaskGroup.self, TaskTag.self], inMemory: true)
 }

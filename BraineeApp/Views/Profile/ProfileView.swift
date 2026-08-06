@@ -11,32 +11,54 @@ struct ProfileView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var profiles: [UserProfile]
 
+    @AppStorage("appTheme") private var appThemeRaw = AppTheme.system.rawValue
+
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var displayName = ""
 
     private var profile: UserProfile? { profiles.first }
 
+    private var appTheme: AppTheme {
+        AppTheme(rawValue: appThemeRaw) ?? .system
+    }
+
     var body: some View {
         NavigationStack {
-            VStack(spacing: 24) {
-                Spacer()
+            Form {
+                Section {
+                    HStack {
+                        Spacer()
+                        VStack(spacing: 16) {
+                            PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                                avatarView
+                            }
+                            .buttonStyle(.plain)
 
-                PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                    avatarView
-                }
-                .buttonStyle(.plain)
-
-                TextField("Ваше имя", text: $displayName)
-                    .font(.title2.weight(.semibold))
-                    .multilineTextAlignment(.center)
-                    .textFieldStyle(.roundedBorder)
-                    .padding(.horizontal, 40)
-                    .onChange(of: displayName) { _, newValue in
-                        profile?.displayName = newValue
+                            TextField("Ваше имя", text: $displayName)
+                                .font(.title3.weight(.semibold))
+                                .multilineTextAlignment(.center)
+                                .onChange(of: displayName) { _, newValue in
+                                    profile?.displayName = newValue
+                                }
+                        }
+                        Spacer()
                     }
+                    .listRowBackground(Color.clear)
+                }
 
-                Spacer()
-                Spacer()
+                Section("Тема оформления") {
+                    Picker("Тема", selection: Binding(
+                        get: { appTheme },
+                        set: { appThemeRaw = $0.rawValue }
+                    )) {
+                        ForEach(AppTheme.allCases) { theme in
+                            Text(theme.title).tag(theme)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                }
+
+                TagLibraryView()
             }
             .navigationTitle("Профиль")
             .onAppear {
@@ -55,7 +77,7 @@ struct ProfileView: View {
     private var avatarView: some View {
         if let data = profile?.avatarData, let uiImage = platformImage(from: data) {
             platformImageView(uiImage)
-                .frame(width: 120, height: 120)
+                .frame(width: 100, height: 100)
                 .clipShape(Circle())
                 .overlay {
                     Circle()
@@ -65,10 +87,10 @@ struct ProfileView: View {
             ZStack {
                 Circle()
                     .fill(.quaternary)
-                    .frame(width: 120, height: 120)
+                    .frame(width: 100, height: 100)
 
                 Image(systemName: "person.crop.circle.badge.plus")
-                    .font(.system(size: 48))
+                    .font(.system(size: 40))
                     .foregroundStyle(.secondary)
             }
         }
@@ -119,5 +141,5 @@ private func platformImageView(_ image: NSImage) -> some View {
 
 #Preview {
     ProfileView()
-        .modelContainer(for: UserProfile.self, inMemory: true)
+        .modelContainer(for: [UserProfile.self, TaskTag.self], inMemory: true)
 }
