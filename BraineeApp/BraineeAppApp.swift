@@ -15,7 +15,7 @@ struct BraineeAppApp: App {
             TaskTag.self,
             UserProfile.self,
         ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
 
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
@@ -26,7 +26,7 @@ struct BraineeAppApp: App {
 
     var body: some Scene {
         WindowGroup {
-            MainTabView()
+            AppRootView()
         }
         .modelContainer(sharedModelContainer)
     }

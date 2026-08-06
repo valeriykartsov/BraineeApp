@@ -61,12 +61,14 @@ struct TagLibraryView: View {
         }
         modelContext.insert(TaskTag(name: trimmed))
         newTagName = ""
+        modelContext.persistToJSON()
     }
 
     private func deleteTags(at offsets: IndexSet) {
         for index in offsets {
             modelContext.delete(tags[index])
         }
+        modelContext.persistToJSON()
     }
 }
 

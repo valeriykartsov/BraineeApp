@@ -12,14 +12,22 @@ final class TaskGroup {
     var categoryRaw: String
     var sortOrder: Int
     var createdAt: Date
+    var uuid: UUID
 
     @Relationship(deleteRule: .nullify, inverse: \TaskItem.group)
     var tasks: [TaskItem]?
 
-    init(name: String, category: TaskCategory, sortOrder: Int = 0, createdAt: Date = .now) {
+    init(
+        name: String,
+        category: TaskCategory,
+        sortOrder: Int = 0,
+        uuid: UUID = UUID(),
+        createdAt: Date = .now
+    ) {
         self.name = name
         self.categoryRaw = category.rawValue
         self.sortOrder = sortOrder
+        self.uuid = uuid
         self.createdAt = createdAt
     }
 

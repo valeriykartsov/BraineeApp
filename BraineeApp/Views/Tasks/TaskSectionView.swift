@@ -135,6 +135,7 @@ struct TaskSectionView: View {
             tags: formData.selectedTags
         )
         modelContext.insert(task)
+        modelContext.persistToJSON()
     }
 
     private func updateTask(_ task: TaskItem, formData: TaskFormData) {
@@ -144,6 +145,7 @@ struct TaskSectionView: View {
         task.category = formData.category
         task.taskDetails = formData.taskDetails
         task.tags = formData.selectedTags
+        modelContext.persistToJSON()
     }
 
     private func toggleTask(_ task: TaskItem) {
@@ -152,12 +154,14 @@ struct TaskSectionView: View {
             if task.isCompleted {
                 HapticFeedback.success()
             }
+            modelContext.persistToJSON()
         }
     }
 
     private func deleteTask(_ task: TaskItem) {
         withAnimation {
             modelContext.delete(task)
+            modelContext.persistToJSON()
         }
     }
 
@@ -167,6 +171,7 @@ struct TaskSectionView: View {
                 task.group = nil
             }
             modelContext.delete(group)
+            modelContext.persistToJSON()
         }
     }
 
@@ -177,6 +182,7 @@ struct TaskSectionView: View {
         let group = TaskGroup(name: trimmed, category: category, sortOrder: nextOrder)
         modelContext.insert(group)
         newGroupName = ""
+        modelContext.persistToJSON()
     }
 }
 

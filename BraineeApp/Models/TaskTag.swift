@@ -10,12 +10,14 @@ import SwiftData
 final class TaskTag {
     var name: String
     var createdAt: Date
+    var uuid: UUID
 
     @Relationship(inverse: \TaskItem.tags)
     var tasks: [TaskItem]?
 
-    init(name: String, createdAt: Date = .now) {
+    init(name: String, uuid: UUID = UUID(), createdAt: Date = .now) {
         self.name = name
+        self.uuid = uuid
         self.createdAt = createdAt
     }
 }
