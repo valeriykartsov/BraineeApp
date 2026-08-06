@@ -31,7 +31,7 @@ struct TaskSectionView: View {
         self.category = category
         let categoryRaw = category.rawValue
         _tasks = Query(
-            filter: #Predicate<TaskItem> { $0.categoryRaw == categoryRaw },
+            filter: #Predicate<TaskItem> { $0.categoryRaw == categoryRaw && !$0.isDeleted },
             sort: [SortDescriptor(\TaskItem.sortOrder)]
         )
         _groups = Query(
@@ -79,9 +79,17 @@ struct TaskSectionView: View {
                 }
             }
             .sheet(item: $editingTask) { task in
-                AddEditTaskView(creationCategory: category, task: task) { formData in
-                    updateTask(task, formData: formData)
-                }
+                AddEditTaskView(
+                    creationCategory: category,
+                    task: task,
+                    onSave: { formData in
+                        updateTask(task, formData: formData)
+                    },
+                    onDelete: { taskToDelete in
+                        deleteTask(taskToDelete)
+                        editingTask = nil
+                    }
+                )
             }
             .alert("Новая группа", isPresented: $showingCreateGroup) {
                 TextField("Название группы", text: $newGroupName)
@@ -160,7 +168,9 @@ struct TaskSectionView: View {
 
     private func deleteTask(_ task: TaskItem) {
         withAnimation {
-            modelContext.delete(task)
+            task.isDeleted = true
+            task.deletedAt = .now
+            try? modelContext.save()
             modelContext.persistToJSON()
         }
     }

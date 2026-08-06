@@ -27,8 +27,9 @@ enum AppDataPersistence {
     }
 
     static func export(from context: ModelContext) {
+        try? context.save()
+
         do {
-            try context.save()
             try AppDataStore.saveTasks(exportTasks(from: context))
             try AppDataStore.saveProfile(exportProfile(from: context))
         } catch {
@@ -76,6 +77,8 @@ enum AppDataPersistence {
                 taskDetails: record.taskDetails,
                 sortOrder: record.sortOrder,
                 uuid: record.id,
+                isDeleted: record.isDeleted,
+                deletedAt: record.deletedAt ?? (record.isDeleted ? record.createdAt : nil),
                 group: record.groupID.flatMap { groupByID[$0] },
                 tags: tags
             )
@@ -99,7 +102,8 @@ enum AppDataPersistence {
         let tasks = (try? context.fetch(FetchDescriptor<TaskItem>())) ?? []
 
         return MyTasksDocument(
-            version: 1,
+            version: MyTasksDocument.currentVersion,
+            lastSavedAt: .now,
             tags: tags.map { TagRecord(id: $0.uuid, name: $0.name, createdAt: $0.createdAt) },
             groups: groups.map {
                 GroupRecord(
@@ -122,7 +126,9 @@ enum AppDataPersistence {
                     taskDetails: $0.taskDetails,
                     sortOrder: $0.sortOrder,
                     groupID: $0.group?.uuid,
-                    tagIDs: $0.tags.map(\.uuid)
+                    tagIDs: $0.tags.map(\.uuid),
+                    isDeleted: $0.isDeleted,
+                    deletedAt: $0.isDeleted ? ($0.deletedAt ?? .now) : nil
                 )
             }
         )

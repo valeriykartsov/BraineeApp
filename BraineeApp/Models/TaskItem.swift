@@ -17,6 +17,8 @@ final class TaskItem {
     var taskDetails: String
     var sortOrder: Int
     var uuid: UUID
+    var isDeleted: Bool
+    var deletedAt: Date?
 
     var group: TaskGroup?
 
@@ -33,6 +35,8 @@ final class TaskItem {
         taskDetails: String = "",
         sortOrder: Int = 0,
         uuid: UUID = UUID(),
+        isDeleted: Bool = false,
+        deletedAt: Date? = nil,
         group: TaskGroup? = nil,
         tags: [TaskTag] = []
     ) {
@@ -45,6 +49,8 @@ final class TaskItem {
         self.taskDetails = taskDetails
         self.sortOrder = sortOrder
         self.uuid = uuid
+        self.isDeleted = isDeleted
+        self.deletedAt = deletedAt
         self.group = group
         self.tags = tags
     }

@@ -13,6 +13,7 @@ struct AddEditTaskView: View {
     let creationCategory: TaskCategory
     var task: TaskItem?
     var onSave: (TaskFormData) -> Void
+    var onDelete: ((TaskItem) -> Void)?
 
     @State private var title = ""
     @State private var hasDeadline = false
@@ -21,6 +22,7 @@ struct AddEditTaskView: View {
     @State private var category: TaskCategory = .career
     @State private var taskDetails = ""
     @State private var selectedTagIDs: Set<PersistentIdentifier> = []
+    @State private var showingDeleteConfirm = false
 
     private var isEditing: Bool { task != nil }
     private var detailsLimit: Int { 200 }
@@ -102,6 +104,14 @@ struct AddEditTaskView: View {
                         }
                     }
                 }
+
+                if isEditing {
+                    Section {
+                        Button("Удалить задачу", role: .destructive) {
+                            showingDeleteConfirm = true
+                        }
+                    }
+                }
             }
             .navigationTitle(isEditing ? "Редактировать" : "Новая задача")
 #if os(iOS)
@@ -115,6 +125,16 @@ struct AddEditTaskView: View {
                     Button("Сохранить") { save() }
                         .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
+            }
+            .alert("Удалить задачу?", isPresented: $showingDeleteConfirm) {
+                Button("Отмена", role: .cancel) {}
+                Button("Удалить", role: .destructive) {
+                    guard let task else { return }
+                    onDelete?(task)
+                    dismiss()
+                }
+            } message: {
+                Text("Задача будет перемещена в «Удалённые задачи» в профиле.")
             }
             .onAppear {
                 category = creationCategory
