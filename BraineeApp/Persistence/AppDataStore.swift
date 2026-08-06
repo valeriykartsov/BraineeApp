@@ -30,32 +30,18 @@ enum AppDataStore {
 
     static func prepareStorage() throws {
         try FileManager.default.createDirectory(at: storageDirectory, withIntermediateDirectories: true)
-        try restoreTasksFileFromKeychainIfNeeded()
+        try reconcileTasksBackupIfNeeded()
     }
 
     static func loadTasks() throws -> MyTasksDocument {
         let fileDocument = loadTasksFromFile()
         let keychainDocument = loadTasksFromKeychain()
 
-        let resolved: MyTasksDocument?
-        switch (fileDocument, keychainDocument) {
-        case (nil, nil):
-            resolved = nil
-        case (let file?, nil):
-            resolved = file
-        case (nil, let keychain?):
-            resolved = keychain
-        case (let file?, let keychain?):
-            resolved = mergeTasksDocuments(primary: file, secondary: keychain)
-        }
-
-        guard var document = resolved else {
-            return .empty
-        }
-
+        let resolved = pickNewestTasksDocument(fileDocument, keychainDocument)
+        var document = resolved ?? .empty
         document.normalizeRecords()
 
-        if fileDocument == nil, keychainDocument != nil {
+        if resolved != nil {
             try saveTasks(document)
         }
 
@@ -75,11 +61,7 @@ enum AppDataStore {
         try data.write(to: url, options: .atomic)
 
         if syncKeychain {
-            do {
-                try KeychainStorage.save(data, account: tasksFileName)
-            } catch {
-                print("Keychain tasks backup failed: \(error)")
-            }
+            try KeychainStorage.save(data, account: tasksFileName)
         }
     }
 
@@ -125,49 +107,30 @@ enum AppDataStore {
         return document
     }
 
-    private static func mergeTasksDocuments(primary: MyTasksDocument, secondary: MyTasksDocument) -> MyTasksDocument {
-        var merged = primary
-        let tasksByID = Dictionary(uniqueKeysWithValues: merged.tasks.map { ($0.id, $0) })
-        var resolvedTasks = tasksByID
-
-        for task in secondary.tasks {
-            if let existing = resolvedTasks[task.id] {
-                if task.isDeleted && !existing.isDeleted {
-                    var updated = existing
-                    updated.isDeleted = true
-                    updated.deletedAt = task.deletedAt ?? existing.deletedAt ?? existing.createdAt
-                    resolvedTasks[task.id] = updated
-                }
-            } else {
-                resolvedTasks[task.id] = task
-            }
-        }
-
-        merged.tasks = Array(resolvedTasks.values)
-        merged.lastSavedAt = maxTimestamp(primary.lastSavedAt, secondary.lastSavedAt)
-        return merged
-    }
-
-    private static func maxTimestamp(_ lhs: Date?, _ rhs: Date?) -> Date? {
-        switch (lhs, rhs) {
+    private static func pickNewestTasksDocument(_ file: MyTasksDocument?, _ keychain: MyTasksDocument?) -> MyTasksDocument? {
+        switch (file, keychain) {
         case (nil, nil):
             return nil
-        case (let lhs?, nil):
-            return lhs
-        case (nil, let rhs?):
-            return rhs
-        case (let lhs?, let rhs?):
-            return max(lhs, rhs)
+        case (let file?, nil):
+            return file
+        case (nil, let keychain?):
+            return keychain
+        case (let file?, let keychain?):
+            return file.contentTimestamp >= keychain.contentTimestamp ? file : keychain
         }
     }
 
-    private static func restoreTasksFileFromKeychainIfNeeded() throws {
+    private static func reconcileTasksBackupIfNeeded() throws {
         let url = storageDirectory.appendingPathComponent(tasksFileName)
-        guard !FileManager.default.fileExists(atPath: url.path),
-              let keychainDocument = loadTasksFromKeychain() else {
-            return
-        }
+        let fileDocument = loadTasksFromFile()
+        let keychainDocument = loadTasksFromKeychain()
+
+        guard fileDocument == nil, let keychainDocument else { return }
 
         try saveTasks(keychainDocument, syncKeychain: false)
+        if !FileManager.default.fileExists(atPath: url.path) {
+            let data = try encoder.encode(keychainDocument)
+            try data.write(to: url, options: .atomic)
+        }
     }
 }

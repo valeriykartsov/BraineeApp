@@ -27,7 +27,6 @@ enum AppDataPersistence {
     }
 
     static func export(from context: ModelContext) {
-        context.processPendingChanges()
         try? context.save()
 
         do {
@@ -162,7 +161,7 @@ struct JSONPersistenceModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .onChange(of: scenePhase) { _, phase in
-                if phase == .inactive || phase == .background {
+                if phase == .background || phase == .inactive {
                     modelContext.persistToJSON()
                 }
             }
