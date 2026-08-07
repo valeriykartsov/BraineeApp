@@ -26,7 +26,7 @@ struct AddEditTaskView: View {
     @State private var showingDeleteConfirm = false
 
     private var isEditing: Bool { task != nil }
-    private var detailsLimit: Int { 200 }
+    private var detailsLimit: Int { TaskInputValidation.detailsMaxLength }
 
     var body: some View {
         NavigationStack {
@@ -124,7 +124,7 @@ struct AddEditTaskView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Сохранить") { save() }
-                        .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .disabled(!TaskInputValidation.canSaveTitle(title))
                 }
             }
             .alert("Удалить задачу?", isPresented: $showingDeleteConfirm) {
@@ -163,16 +163,15 @@ struct AddEditTaskView: View {
     }
 
     private func save() {
-        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedTitle.isEmpty else { return }
+        guard TaskInputValidation.canSaveTitle(title) else { return }
 
         let selectedTags = allTags.filter { selectedTagIDs.contains($0.persistentModelID) }
         let formData = TaskFormData(
-            title: trimmedTitle,
+            title: TaskInputValidation.normalizedTitle(title),
             deadline: hasDeadline ? deadline : nil,
             priority: priority,
             category: isEditing ? category : creationCategory,
-            taskDetails: taskDetails.trimmingCharacters(in: .whitespacesAndNewlines),
+            taskDetails: TaskInputValidation.clampedDetails(taskDetails),
             selectedTags: selectedTags
         )
         onSave(formData)
