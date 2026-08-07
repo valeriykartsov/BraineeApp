@@ -150,10 +150,14 @@ struct DeletedTasksFolderView: View {
 
     private func restore(_ task: TaskItem) {
         withAnimation {
+            let uuid = task.uuid
             task.isSoftDeleted = false
             task.deletedAt = nil
             try? modelContext.save()
             modelContext.persistToJSON()
+            // Сразу убираем карточку из списка (не ждём только fetch).
+            deletedTasks.removeAll { $0.uuid == uuid }
+            selectedIDs.remove(uuid)
             reloadDeletedTasks()
         }
     }
