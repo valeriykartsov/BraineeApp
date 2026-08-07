@@ -2,20 +2,23 @@
 //  ProfileView.swift
 //  BraineeApp
 //
-//  Профиль в палитре и типографике дизайн-системы.
+//  Профиль: пользователь, тема, дашборд, теги, хранение.
 
 import SwiftUI
 import SwiftData
-import PhotosUI
 
 struct ProfileView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var profiles: [UserProfile]
 
     @AppStorage("appTheme") private var appThemeRaw = AppTheme.system.rawValue
+    @AppStorage(AccentPalette.storageKey) private var accentPaletteRaw = AccentPalette.orange.rawValue
 
-    @State private var selectedPhoto: PhotosPickerItem?
-    @State private var displayName = ""
+    @State private var searchText = ""
+    @State private var isSearchExpanded = false
+    @State private var showingEditProfile = false
+    @State private var showingAccentPicker = false
+    @FocusState private var isSearchFocused: Bool
 
     private var profile: UserProfile? { profiles.first }
 
@@ -23,97 +26,304 @@ struct ProfileView: View {
         AppTheme.resolved(from: appThemeRaw)
     }
 
+    private var accentPalette: AccentPalette {
+        AccentPalette.resolved(from: accentPaletteRaw)
+    }
+
+    private var query: String {
+        searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private func matches(_ keywords: String...) -> Bool {
+        guard !query.isEmpty else { return true }
+        return keywords.contains { $0.lowercased().contains(query) }
+    }
+
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    HStack {
-                        Spacer()
-                        VStack(spacing: DesignSystem.Space.x4) {
-                            PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                                AvatarImageView(avatarData: profile?.avatarData)
-                            }
-                            .buttonStyle(.plain)
-
-                            TextField("Ваше имя", text: $displayName)
-                                .font(DesignSystem.Typography.title(18))
-                                .foregroundStyle(DesignSystem.Colors.textPrimary)
-                                .multilineTextAlignment(.center)
-                                .onChange(of: displayName) { _, newValue in
-                                    profile?.displayName = newValue
-                                    modelContext.persistToJSON()
-                                }
-                        }
-                        Spacer()
+            ScrollView {
+                VStack(spacing: DesignSystem.Space.sectionGap) {
+                    if isSearchExpanded {
+                        GroupedSearchField(
+                            text: $searchText,
+                            placeholder: "Поиск настроек..."
+                        )
+                        .focused($isSearchFocused)
+                        .transition(.move(edge: .top).combined(with: .opacity))
                     }
-                    .listRowBackground(Color.clear)
-                }
 
-                Section {
-                    Picker("Тема", selection: Binding(
-                        get: { appTheme },
-                        set: {
-                            appThemeRaw = $0.rawValue
-                            modelContext.persistToJSON()
-                        }
-                    )) {
-                        ForEach(AppTheme.allCases) { theme in
-                            Text(theme.title).tag(theme)
-                        }
+                    if matches("пользователь", "профиль", "имя", "аватар", "возраст", "пол") {
+                        userSection
                     }
-                    .pickerStyle(.segmented)
-                    .listRowBackground(DesignSystem.Colors.surface)
-                } header: {
-                    Text("Тема оформления")
-                        .font(DesignSystem.Typography.caption())
-                        .foregroundStyle(DesignSystem.Colors.textSecondary)
-                        .textCase(nil)
-                }
 
-                TaskDashboardView()
-
-                Section {
-                    NavigationLink {
-                        DeletedTasksFolderView()
-                    } label: {
-                        Label("Удалённые задачи", systemImage: DesignSystem.Icon.trash)
-                            .font(DesignSystem.Typography.body())
-                            .foregroundStyle(DesignSystem.Colors.textPrimary)
+                    if matches(
+                        "тема", "оформление", "светлая", "тёмная",
+                        "акцент", "цвет", "оранжевый", "зелёный", "синий"
+                    ) {
+                        themeSection
                     }
-                    .listRowBackground(DesignSystem.Colors.surface)
-                }
 
-                TagLibraryView()
+                    if matches("дашборд", "статистика", "карьера", "спорт", "ментальное", "прогресс") {
+                        TaskDashboardView()
+                    }
 
-                Section {
-                    LabeledContent("Папка", value: AppDataStore.folderName)
-                        .font(DesignSystem.Typography.body())
-                        .foregroundStyle(DesignSystem.Colors.textPrimary)
-                    Text("Данные хранятся локально в Documents/BraineeApp (mytasks.json, profile.json). Резервная копия сохраняется в Keychain и восстанавливается после переустановки приложения.")
-                        .font(DesignSystem.Typography.caption())
-                        .foregroundStyle(DesignSystem.Colors.textSecondary)
-                } header: {
-                    Text("Хранение данных")
-                        .font(DesignSystem.Typography.caption())
-                        .foregroundStyle(DesignSystem.Colors.textSecondary)
-                        .textCase(nil)
+                    if matches("удалённые", "удалить", "корзина") {
+                        deletedSection
+                    }
+
+                    if matches("тег", "теги", "библиотека") {
+                        TagLibraryView()
+                    }
+
+                    if matches("хранение", "данные", "json", "папка") {
+                        storageSection
+                    }
                 }
-                .listRowBackground(DesignSystem.Colors.surface)
+                .groupedScreenPadding()
+                .padding(.top, DesignSystem.Space.x2)
+                .padding(.bottom, DesignSystem.Space.x4)
             }
-            .scrollContentBackground(.hidden)
-            .background(DesignSystem.Colors.background)
-            .tint(DesignSystem.Colors.accent)
-            .navigationTitle("Профиль")
-            .pankinSectionChrome()
+            .appScreenBackground()
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Text("Профиль")
+                        .font(DesignSystem.Typography.title(24))
+                        .foregroundStyle(DesignSystem.Colors.textPrimary)
+                        .accessibilityAddTraits(.isHeader)
+                }
+#if os(iOS)
+                ToolbarItem(placement: .topBarTrailing) {
+                    searchToggleButton
+                }
+#else
+                ToolbarItem(placement: .primaryAction) {
+                    searchToggleButton
+                }
+#endif
+            }
+            .toolbarBackground(DesignSystem.Colors.background, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .onAppear {
                 ensureProfile()
-                displayName = profile?.displayName ?? ""
             }
-            .onChange(of: selectedPhoto) { _, newItem in
-                Task {
-                    await loadPhoto(from: newItem)
+            .sheet(isPresented: $showingEditProfile) {
+                EditProfileView(
+                    initialName: profile?.displayName ?? "",
+                    initialAge: profile?.age,
+                    initialGender: profile?.gender ?? .unspecified,
+                    initialAvatarData: profile?.avatarData
+                ) { name, age, gender, avatarData in
+                    saveProfile(name: name, age: age, gender: gender, avatarData: avatarData)
                 }
             }
+            .sheet(isPresented: $showingAccentPicker) {
+                AccentPalettePickerView(current: accentPalette) { selected in
+                    applyAccent(selected)
+                }
+            }
+        }
+        .tint(accentPalette.color)
+    }
+
+    private func applyAccent(_ selected: AccentPalette) {
+        let previous = accentPalette
+        accentPaletteRaw = selected.rawValue
+        AppNavigationChrome.apply()
+        modelContext.persistToJSON()
+
+        guard selected != previous else { return }
+
+        // Системный алерт iOS про смену иконки оставляем; своё окно не показываем.
+        Task { @MainActor in
+            AppIconSwitcher.apply(for: selected) { _ in }
+        }
+    }
+
+    private var searchToggleButton: some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.22)) {
+                isSearchExpanded.toggle()
+                if isSearchExpanded {
+                    isSearchFocused = true
+                } else {
+                    searchText = ""
+                    isSearchFocused = false
+                }
+            }
+        } label: {
+            Image(systemName: isSearchExpanded ? "xmark" : "magnifyingglass")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(accentPalette.color)
+        }
+        .accessibilityLabel(isSearchExpanded ? "Закрыть поиск" : "Поиск")
+    }
+
+    private var userSection: some View {
+        GroupedSection(title: "Пользователь") {
+            VStack(alignment: .leading, spacing: DesignSystem.Space.x3) {
+                HStack(alignment: .top, spacing: DesignSystem.Space.x3) {
+                    AvatarImageView(
+                        avatarData: profile?.avatarData,
+                        size: DesignSystem.Space.grid(18)
+                    )
+
+                    VStack(alignment: .leading, spacing: DesignSystem.Space.x2) {
+                        Text(displayNameText)
+                            .font(DesignSystem.Typography.headline())
+                            .foregroundStyle(DesignSystem.Colors.textPrimary)
+
+                        HStack(alignment: .top, spacing: DesignSystem.Space.x3) {
+                            labeledValue(title: "Возраст", value: ageText)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            labeledValue(
+                                title: "Пол",
+                                value: profile?.gender.title ?? UserGender.unspecified.title
+                            )
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+
+                    Spacer(minLength: 0)
+                }
+
+                Button {
+                    showingEditProfile = true
+                } label: {
+                    Text("Редактировать")
+                        .font(DesignSystem.Typography.bodyBold(15))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, DesignSystem.Space.x3)
+                        .background(
+                            RoundedRectangle(cornerRadius: DesignSystem.Radius.card, style: .continuous)
+                                .fill(accentPalette.color)
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(DesignSystem.Space.x3)
+        }
+    }
+
+    private var displayNameText: String {
+        let name = profile?.displayName.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return name.isEmpty ? "Без имени" : name
+    }
+
+    private var ageText: String {
+        guard let age = profile?.age else { return "Не указан" }
+        return "\(age)"
+    }
+
+    private func labeledValue(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(DesignSystem.Typography.caption(12))
+                .foregroundStyle(DesignSystem.Colors.textSecondary)
+            Text(value)
+                .font(DesignSystem.Typography.body(15))
+                .foregroundStyle(DesignSystem.Colors.textPrimary)
+        }
+    }
+
+    private var themeSection: some View {
+        GroupedSection(title: "Тема оформления") {
+            VStack(alignment: .leading, spacing: DesignSystem.Space.x3) {
+                HStack(spacing: DesignSystem.Space.x3) {
+                    Image(systemName: DesignSystem.Icon.paintbrush)
+                        .font(.system(size: 18, weight: .regular))
+                        .foregroundStyle(accentPalette.color)
+                        .frame(width: DesignSystem.Space.x6, height: DesignSystem.Space.x6)
+                    Text("Тема")
+                        .font(DesignSystem.Typography.body())
+                        .foregroundStyle(DesignSystem.Colors.textPrimary)
+                    Spacer()
+                }
+
+                Picker("Тема", selection: Binding(
+                    get: { appTheme },
+                    set: {
+                        appThemeRaw = $0.rawValue
+                        modelContext.persistToJSON()
+                    }
+                )) {
+                    ForEach(AppTheme.allCases) { theme in
+                        Text(theme.title).tag(theme)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                Button {
+                    showingAccentPicker = true
+                } label: {
+                    HStack(spacing: DesignSystem.Space.x3) {
+                        Circle()
+                            .fill(accentPalette.color)
+                            .frame(width: DesignSystem.Space.x5, height: DesignSystem.Space.x5)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Акцентный цвет")
+                                .font(DesignSystem.Typography.caption(12))
+                                .foregroundStyle(DesignSystem.Colors.textSecondary)
+                            Text(accentPalette.title)
+                                .font(DesignSystem.Typography.body())
+                                .foregroundStyle(DesignSystem.Colors.textPrimary)
+                        }
+
+                        Spacer()
+
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(DesignSystem.Colors.textSecondary)
+                    }
+                    .padding(.horizontal, DesignSystem.Space.x3)
+                    .padding(.vertical, DesignSystem.Space.x3)
+                    .background(
+                        RoundedRectangle(cornerRadius: DesignSystem.Radius.card, style: .continuous)
+                            .fill(DesignSystem.Colors.chip)
+                    )
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Выбрать акцентный цвет")
+            }
+            .padding(DesignSystem.Space.x3)
+        }
+    }
+
+    private var deletedSection: some View {
+        GroupedSection(title: "Ещё") {
+            NavigationLink {
+                DeletedTasksFolderView()
+            } label: {
+                GroupedNavRow(title: "Удалённые задачи", systemImage: DesignSystem.Icon.trash)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private var storageSection: some View {
+        GroupedSection(title: "Хранение данных") {
+            VStack(alignment: .leading, spacing: DesignSystem.Space.x3) {
+                HStack(spacing: DesignSystem.Space.x2) {
+                    Image(systemName: DesignSystem.Icon.storage)
+                        .font(.system(size: 16, weight: .regular))
+                        .foregroundStyle(accentPalette.color)
+                        .frame(width: DesignSystem.Space.x5, height: DesignSystem.Space.x5)
+                    Text("Папка")
+                        .font(DesignSystem.Typography.body(16))
+                        .foregroundStyle(DesignSystem.Colors.textPrimary)
+                    Spacer()
+                    Text(AppDataStore.folderName)
+                        .font(DesignSystem.Typography.caption())
+                        .foregroundStyle(DesignSystem.Colors.textSecondary)
+                }
+
+                Text("Данные хранятся локально в Documents/BraineeApp (mytasks.json, profile.json). Резервная копия — в Keychain.")
+                    .font(DesignSystem.Typography.caption())
+                    .foregroundStyle(DesignSystem.Colors.textSecondary)
+            }
+            .padding(DesignSystem.Space.x3)
         }
     }
 
@@ -124,15 +334,14 @@ struct ProfileView: View {
         modelContext.persistToJSON()
     }
 
-    private func loadPhoto(from item: PhotosPickerItem?) async {
-        guard let item,
-              let data = try? await item.loadTransferable(type: Data.self) else { return }
-
-        await MainActor.run {
-            ensureProfile()
-            profile?.avatarData = data
-            modelContext.persistToJSON()
-        }
+    private func saveProfile(name: String, age: Int?, gender: UserGender, avatarData: Data?) {
+        ensureProfile()
+        guard let profile else { return }
+        profile.displayName = name
+        profile.age = age
+        profile.gender = gender
+        profile.avatarData = avatarData
+        modelContext.persistToJSON()
     }
 }
 

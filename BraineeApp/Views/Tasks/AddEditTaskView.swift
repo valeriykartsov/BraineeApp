@@ -31,8 +31,9 @@ struct AddEditTaskView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Задача") {
+                Section {
                     TextField("Название", text: $title)
+                        .font(DesignSystem.Typography.body())
 
                     if isEditing {
                         Picker("Тип", selection: $category) {
@@ -42,10 +43,16 @@ struct AddEditTaskView: View {
                             }
                         }
                     }
+                } header: {
+                    Text("Задача")
+                        .foregroundStyle(DesignSystem.Colors.textSecondary)
+                        .textCase(nil)
                 }
+                .listRowBackground(DesignSystem.Colors.surface)
 
                 Section {
                     TextField("Описание", text: $taskDetails, axis: .vertical)
+                        .font(DesignSystem.Typography.body())
                         .lineLimit(3...6)
                         .onChange(of: taskDetails) { _, newValue in
                             if newValue.count > detailsLimit {
@@ -56,7 +63,7 @@ struct AddEditTaskView: View {
                     HStack {
                         Spacer()
                         Text("\(taskDetails.count)/\(detailsLimit)")
-                            .font(DesignSystem.Typography.data(12))
+                            .font(DesignSystem.Typography.caption())
                             .foregroundStyle(
                                 taskDetails.count >= detailsLimit
                                     ? DesignSystem.Colors.danger
@@ -65,10 +72,14 @@ struct AddEditTaskView: View {
                     }
                 } header: {
                     Text("Описание")
+                        .foregroundStyle(DesignSystem.Colors.textSecondary)
+                        .textCase(nil)
                 }
+                .listRowBackground(DesignSystem.Colors.surface)
 
-                Section("Дедлайн") {
+                Section {
                     Toggle("Указать дату", isOn: $hasDeadline)
+                        .tint(DesignSystem.Colors.accent)
 
                     if hasDeadline {
                         DatePicker(
@@ -76,14 +87,20 @@ struct AddEditTaskView: View {
                             selection: $deadline,
                             displayedComponents: .date
                         )
+                        .tint(DesignSystem.Colors.accent)
                     }
+                } header: {
+                    Text("Дедлайн")
+                        .foregroundStyle(DesignSystem.Colors.textSecondary)
+                        .textCase(nil)
                 }
+                .listRowBackground(DesignSystem.Colors.surface)
 
-                Section("Приоритет") {
+                Section {
                     Picker("Приоритет", selection: $priority) {
                         ForEach(TaskPriority.allCases) { level in
                             HStack {
-                                Rectangle()
+                                Circle()
                                     .fill(PriorityStyle.color(for: level))
                                     .frame(width: DesignSystem.Space.x2, height: DesignSystem.Space.x2)
                                 Text(level.title)
@@ -93,21 +110,49 @@ struct AddEditTaskView: View {
                     }
                     .pickerStyle(.inline)
                     .labelsHidden()
+                } header: {
+                    Text("Приоритет")
+                        .foregroundStyle(DesignSystem.Colors.textSecondary)
+                        .textCase(nil)
                 }
+                .listRowBackground(DesignSystem.Colors.surface)
 
-                if !allTags.isEmpty {
-                    Section("Теги") {
-                        TagFlowLayout(spacing: DesignSystem.Space.x2) {
-                            ForEach(allTags) { tag in
-                                TagChipView(
-                                    name: tag.name,
-                                    isSelected: selectedTagIDs.contains(tag.persistentModelID)
-                                ) {
-                                    toggleTag(tag)
+                Section {
+                    if allTags.isEmpty {
+                        Text("В библиотеке пока нет тегов. Добавьте их в Профиле.")
+                            .font(DesignSystem.Typography.caption())
+                            .foregroundStyle(DesignSystem.Colors.textSecondary)
+                    } else {
+                        ForEach(allTags) { tag in
+                            let isSelected = selectedTagIDs.contains(tag.persistentModelID)
+                            Button {
+                                toggleTag(tag)
+                            } label: {
+                                HStack(spacing: DesignSystem.Space.x3) {
+                                    Image(systemName: DesignSystem.Icon.tag)
+                                        .foregroundStyle(DesignSystem.Colors.accent)
+                                    Text(tag.name)
+                                        .font(DesignSystem.Typography.body())
+                                        .foregroundStyle(DesignSystem.Colors.textPrimary)
+                                    Spacer()
+                                    if isSelected {
+                                        Image(systemName: "checkmark")
+                                            .font(.system(size: 15, weight: .semibold))
+                                            .foregroundStyle(DesignSystem.Colors.accent)
+                                    }
                                 }
                             }
+                            .listRowBackground(DesignSystem.Colors.surface)
                         }
                     }
+                } header: {
+                    Text("Теги")
+                        .foregroundStyle(DesignSystem.Colors.textSecondary)
+                        .textCase(nil)
+                } footer: {
+                    Text("Нажмите тег в списке, чтобы добавить или убрать его с задачи.")
+                        .font(DesignSystem.Typography.caption())
+                        .foregroundStyle(DesignSystem.Colors.textSecondary)
                 }
 
                 if isEditing {
@@ -116,8 +161,12 @@ struct AddEditTaskView: View {
                             showingDeleteConfirm = true
                         }
                     }
+                    .listRowBackground(DesignSystem.Colors.surface)
                 }
             }
+#if os(iOS)
+            .listStyle(.insetGrouped)
+#endif
             .scrollContentBackground(.hidden)
             .background(DesignSystem.Colors.background)
             .tint(DesignSystem.Colors.accent)

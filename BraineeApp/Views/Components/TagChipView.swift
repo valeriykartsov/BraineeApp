@@ -2,7 +2,7 @@
 //  TagChipView.swift
 //  BraineeApp
 //
-//  Компактный чип тега: chip-подложка, чтобы не сливаться с карточкой.
+//  Чип тега: мягкая капсула без жёсткой обводки.
 
 import SwiftUI
 
@@ -26,19 +26,23 @@ struct TagChipView: View {
 
     private var chipLabel: some View {
         Text(name)
-            .font(DesignSystem.Typography.caption(11))
+            .font(DesignSystem.Typography.caption(13))
             .fontWeight(.medium)
-            .padding(.horizontal, DesignSystem.Space.x2)
-            .padding(.vertical, DesignSystem.Space.x1)
-            .background(isSelected ? DesignSystem.Colors.accent.opacity(0.12) : DesignSystem.Colors.chip)
-            .foregroundStyle(isSelected ? DesignSystem.Colors.accent : DesignSystem.Colors.textPrimary)
-            .overlay {
-                RoundedRectangle(cornerRadius: DesignSystem.Radius.card, style: .circular)
-                    .strokeBorder(
-                        isSelected ? DesignSystem.Colors.accent : DesignSystem.Colors.divider,
-                        lineWidth: DesignSystem.Stroke.hairline
+            .padding(.horizontal, DesignSystem.Space.x3)
+            .padding(.vertical, DesignSystem.Space.x2)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(
+                        isSelected
+                            ? DesignSystem.Colors.accent.opacity(0.18)
+                            : DesignSystem.Colors.chip
                     )
-            }
+            )
+            .foregroundStyle(
+                isSelected
+                    ? DesignSystem.Colors.accent
+                    : DesignSystem.Colors.textPrimary
+            )
     }
 }
 

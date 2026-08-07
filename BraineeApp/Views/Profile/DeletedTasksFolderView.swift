@@ -18,53 +18,63 @@ struct DeletedTasksFolderView: View {
     var body: some View {
         Group {
             if deletedTasks.isEmpty {
-                VStack(alignment: .leading, spacing: DesignSystem.Space.x3) {
-                    Text("Папка пуста")
-                        .font(DesignSystem.Typography.title(22))
-                        .foregroundStyle(DesignSystem.Colors.textPrimary)
-                    Text("Удалённые задачи появятся здесь")
-                        .font(DesignSystem.Typography.body())
-                        .foregroundStyle(DesignSystem.Colors.textSecondary)
-                    PankinDivider()
+                VStack(alignment: .leading, spacing: DesignSystem.Space.x6) {
+                    GroupedSection(title: "Удалённые") {
+                        VStack(alignment: .leading, spacing: DesignSystem.Space.x2) {
+                            Text("Папка пуста")
+                                .font(DesignSystem.Typography.headline())
+                                .foregroundStyle(DesignSystem.Colors.textPrimary)
+                            Text("Удалённые задачи появятся здесь")
+                                .font(DesignSystem.Typography.caption())
+                                .foregroundStyle(DesignSystem.Colors.textSecondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(DesignSystem.Space.x4)
+                    }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .padding(DesignSystem.Space.x4)
+                .groupedScreenPadding()
+                .padding(.vertical, DesignSystem.Space.x4)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             } else {
                 List {
-                    ForEach(deletedTasks, id: \.uuid) { task in
-                        if isSelecting {
-                            deletedRow(task)
-                                .contentShape(Rectangle())
-                                .onTapGesture { toggleSelection(task) }
-                                .listRowBackground(DesignSystem.Colors.surface)
-                        } else {
-                            NavigationLink {
-                                DeletedTaskDetailView(task: task) {
-                                    restore(task)
-                                }
-                            } label: {
+                    Section {
+                        ForEach(deletedTasks, id: \.uuid) { task in
+                            if isSelecting {
                                 deletedRow(task)
-                            }
-                            .listRowBackground(DesignSystem.Colors.surface)
-                            .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                                Button {
-                                    restore(task)
+                                    .contentShape(Rectangle())
+                                    .onTapGesture { toggleSelection(task) }
+                                    .listRowBackground(DesignSystem.Colors.surface)
+                            } else {
+                                NavigationLink {
+                                    DeletedTaskDetailView(task: task) {
+                                        restore(task)
+                                    }
                                 } label: {
-                                    Label("Восстановить", systemImage: "arrow.uturn.backward")
+                                    deletedRow(task)
                                 }
-                                .tint(DesignSystem.Colors.accent)
-                            }
-                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                Button(role: .destructive) {
-                                    permanentlyDelete(task)
-                                } label: {
-                                    Label("Удалить", systemImage: DesignSystem.Icon.trash)
+                                .listRowBackground(DesignSystem.Colors.surface)
+                                .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                                    Button {
+                                        restore(task)
+                                    } label: {
+                                        Label("Восстановить", systemImage: "arrow.uturn.backward")
+                                    }
+                                    .tint(DesignSystem.Colors.accent)
+                                }
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                    Button(role: .destructive) {
+                                        permanentlyDelete(task)
+                                    } label: {
+                                        Label("Удалить", systemImage: DesignSystem.Icon.trash)
+                                    }
                                 }
                             }
                         }
                     }
                 }
-                .listStyle(.plain)
+#if os(iOS)
+                .listStyle(.insetGrouped)
+#endif
                 .scrollContentBackground(.hidden)
             }
         }

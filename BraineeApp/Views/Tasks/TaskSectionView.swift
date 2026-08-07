@@ -7,10 +7,10 @@
 import SwiftUI
 import SwiftData
 
-/// Режим отображения: все задачи по дате или только план на сегодня.
+/// Режим отображения: все задачи или только на сегодня.
 enum TaskViewMode: String, CaseIterable, Identifiable {
-    case byDate = "По дате"
-    case dayPlan = "План на день"
+    case byDate = "Задачи"
+    case dayPlan = "Сегодня"
 
     var id: String { rawValue }
 }
@@ -27,7 +27,9 @@ struct TaskSectionView: View {
     @State private var showingAddTask = false
     @State private var editingTask: TaskItem?
     @State private var showingCreateGroup = false
+    @State private var showingDisplaySettings = false
     @State private var newGroupName = ""
+    @State private var displaySettings = TaskListDisplaySettings.load()
 
     init(category: TaskCategory) {
         self.category = category
@@ -44,37 +46,32 @@ struct TaskSectionView: View {
 
     var body: some View {
         NavigationStack {
-            TaskOrganizedListView(
-                groups: groups,
-                tasks: tasks,
-                viewMode: viewMode,
-                onToggle: toggleTask,
-                onDelete: deleteTask,
-                onEdit: { editingTask = $0 },
-                onDeleteGroup: deleteGroup
-            )
-            .navigationTitle(category.title)
-            .pankinSectionChrome()
-            .tint(DesignSystem.Colors.accent)
-            .toolbar {
-#if os(iOS)
-                ToolbarItem(placement: .topBarLeading) {
-                    viewModeSwitcher
-                }
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    createGroupButton
-                    addButton
-                }
-#else
-                ToolbarItem(placement: .automatic) {
-                    viewModeSwitcher
-                }
-                ToolbarItemGroup(placement: .primaryAction) {
-                    createGroupButton
-                    addButton
-                }
-#endif
+            VStack(spacing: 0) {
+                Text(category.title)
+                    .font(DesignSystem.Typography.title(24))
+                    .foregroundStyle(DesignSystem.Colors.textPrimary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, DesignSystem.Space.screenInset)
+                    .padding(.top, DesignSystem.Space.x1)
+                    .padding(.bottom, DesignSystem.Space.x2)
+
+                sectionControlsBar
+                    .padding(.bottom, DesignSystem.Space.x2)
+
+                TaskOrganizedListView(
+                    groups: groups,
+                    tasks: tasks,
+                    viewMode: viewMode,
+                    displaySettings: displaySettings,
+                    onToggle: toggleTask,
+                    onDelete: deleteTask,
+                    onEdit: { editingTask = $0 },
+                    onDeleteGroup: deleteGroup
+                )
             }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar(.hidden, for: .navigationBar)
+            .tint(DesignSystem.Colors.accent)
             .sheet(isPresented: $showingAddTask) {
                 AddEditTaskView(creationCategory: category) { formData in
                     addTask(formData)
@@ -93,6 +90,9 @@ struct TaskSectionView: View {
                     }
                 )
             }
+            .sheet(isPresented: $showingDisplaySettings) {
+                TaskListDisplaySettingsView(settings: $displaySettings)
+            }
             .alert("Новая группа", isPresented: $showingCreateGroup) {
                 TextField("Название группы", text: $newGroupName)
                 Button("Отмена", role: .cancel) {
@@ -104,33 +104,61 @@ struct TaskSectionView: View {
             } message: {
                 Text("Группа будет создана в разделе «\(category.title)»")
             }
+            .onAppear {
+                displaySettings = TaskListDisplaySettings.load()
+            }
         }
     }
 
-    /// Компактный свитчер — примерно как прежний segmented (до ~240pt).
-    private var viewModeSwitcher: some View {
-        PankinSegmentedControl(
-            selection: $viewMode,
-            options: TaskViewMode.allCases,
-            title: { $0.rawValue }
-        )
-        .frame(width: 240)
+    private var sectionControlsBar: some View {
+        HStack(spacing: DesignSystem.Space.x2) {
+            AppSegmentedControl(
+                selection: $viewMode,
+                options: TaskViewMode.allCases,
+                title: { $0.rawValue }
+            )
+            .frame(maxWidth: .infinity)
+
+            // Три кнопки одной ширины: настройки → группа → задача.
+            HStack(spacing: DesignSystem.Space.x1) {
+                toolbarIconButton(
+                    systemName: "slider.horizontal.3",
+                    label: "Настройка отображения"
+                ) {
+                    showingDisplaySettings = true
+                }
+
+                toolbarIconButton(
+                    systemName: "folder.badge.plus",
+                    label: "Создать группу"
+                ) {
+                    showingCreateGroup = true
+                }
+
+                toolbarIconButton(
+                    systemName: "plus",
+                    label: "Добавить задачу"
+                ) {
+                    showingAddTask = true
+                }
+            }
+        }
+        .foregroundStyle(DesignSystem.Colors.accent)
+        .padding(.horizontal, DesignSystem.Space.screenInset)
     }
 
-    private var addButton: some View {
-        Button {
-            showingAddTask = true
-        } label: {
-            Image(systemName: "plus")
+    private func toolbarIconButton(
+        systemName: String,
+        label: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 17, weight: .medium))
+                .frame(width: DesignSystem.Space.x10, height: DesignSystem.Space.x10)
+                .contentShape(Rectangle())
         }
-    }
-
-    private var createGroupButton: some View {
-        Button {
-            showingCreateGroup = true
-        } label: {
-            Image(systemName: "folder.badge.plus")
-        }
+        .accessibilityLabel(label)
     }
 
     private func addTask(_ formData: TaskFormData) {
@@ -170,7 +198,6 @@ struct TaskSectionView: View {
 
     private func deleteTask(_ task: TaskItem) {
         withAnimation {
-            // Мягкое удаление: задача остаётся в JSON и попадает в «Удалённые».
             task.isSoftDeleted = true
             task.deletedAt = .now
             try? modelContext.save()

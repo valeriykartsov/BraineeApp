@@ -2,13 +2,14 @@
 //  TaskRowView.swift
 //  BraineeApp
 //
-//  Компактная строка задачи: контрастные дата/теги/приоритет на карточке.
+//  Строка задачи: название как у папки + опциональные поля по настройкам отображения.
 
 import SwiftUI
 import SwiftData
 
 struct TaskRowView: View {
     @Bindable var task: TaskItem
+    var displaySettings: TaskListDisplaySettings = .default
     var onToggle: () -> Void
 
     var body: some View {
@@ -21,96 +22,86 @@ struct TaskRowView: View {
                             ? DesignSystem.Colors.accent
                             : DesignSystem.Colors.textSecondary
                     )
-                    .frame(width: DesignSystem.Space.x8, height: DesignSystem.Space.x8)
+                    .frame(width: DesignSystem.Space.x5, height: DesignSystem.Space.x5)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .padding(.top, DesignSystem.Space.x1)
+            .padding(.top, 1)
 
             VStack(alignment: .leading, spacing: DesignSystem.Space.x1) {
+                // Шрифт как у названия папки (body 16).
                 Text(task.title)
-                    .font(DesignSystem.Typography.body(15))
+                    .font(DesignSystem.Typography.body(16))
                     .strikethrough(task.isCompleted)
                     .foregroundStyle(
                         task.isCompleted
                             ? DesignSystem.Colors.textSecondary
                             : DesignSystem.Colors.textPrimary
                     )
+                    .multilineTextAlignment(.leading)
 
-                if !task.taskDetails.isEmpty {
+                if displaySettings.showDetails, !task.taskDetails.isEmpty {
                     Text(task.taskDetails)
-                        .font(DesignSystem.Typography.caption(11))
+                        .font(DesignSystem.Typography.caption())
                         .foregroundStyle(DesignSystem.Colors.textSecondary)
-                        .lineLimit(1)
+                        .lineLimit(2)
                 }
 
-                HStack(spacing: DesignSystem.Space.x1) {
-                    if let deadline = task.deadline {
-                        HStack(spacing: DesignSystem.Space.x1) {
-                            Image(systemName: DesignSystem.Icon.calendar)
-                                .font(.system(size: 10, weight: .medium))
-                            Text(deadline.formatted(date: .abbreviated, time: .omitted))
-                                .font(DesignSystem.Typography.data(11))
-                        }
+                if displaySettings.showDeadline, let deadline = task.deadline {
+                    Text(deadline.formatted(date: .abbreviated, time: .omitted))
+                        .font(DesignSystem.Typography.caption())
                         .foregroundStyle(
                             task.isOverdue
                                 ? DesignSystem.Colors.danger
-                                : DesignSystem.Colors.textPrimary
+                                : DesignSystem.Colors.textSecondary
                         )
-                        .padding(.horizontal, DesignSystem.Space.x2)
-                        .padding(.vertical, DesignSystem.Space.x1)
-                        .background(DesignSystem.Colors.chip)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: DesignSystem.Radius.card, style: .circular)
-                                .strokeBorder(
-                                    task.isOverdue ? DesignSystem.Colors.danger : DesignSystem.Colors.divider,
-                                    lineWidth: DesignSystem.Stroke.hairline
-                                )
-                        }
-                    }
-
-                    PriorityBadge(priority: task.priority)
                 }
 
-                if !task.tags.isEmpty {
-                    TagFlowLayout(spacing: DesignSystem.Space.x1) {
-                        ForEach(task.tags, id: \.persistentModelID) { tag in
-                            TagChipView(name: tag.name)
-                        }
-                    }
+                if displaySettings.showPriority || displaySettings.showTags {
+                    trailingMeta
                 }
             }
 
-            Spacer(minLength: 0)
+            Spacer(minLength: DesignSystem.Space.x2)
         }
-        .opacity(task.isCompleted ? 0.65 : 1)
+        .opacity(task.isCompleted ? 0.55 : 1)
     }
-}
 
-/// Компактный бейдж приоритета на chip-подложке.
-struct PriorityBadge: View {
-    let priority: TaskPriority
-
-    var body: some View {
-        Text(priority.title)
-            .font(DesignSystem.Typography.data(10))
-            .padding(.horizontal, DesignSystem.Space.x2)
-            .padding(.vertical, DesignSystem.Space.x1)
-            .background(DesignSystem.Colors.chip)
-            .foregroundStyle(PriorityStyle.color(for: priority))
-            .overlay {
-                RoundedRectangle(cornerRadius: DesignSystem.Radius.card, style: .circular)
-                    .strokeBorder(PriorityStyle.color(for: priority), lineWidth: DesignSystem.Stroke.hairline)
+    @ViewBuilder
+    private var trailingMeta: some View {
+        HStack(spacing: DesignSystem.Space.x2) {
+            if displaySettings.showPriority {
+                Text(task.priority.title)
+                    .font(DesignSystem.Typography.caption(12))
+                    .fontWeight(.medium)
+                    .foregroundStyle(PriorityStyle.color(for: task.priority))
             }
+
+            if displaySettings.showTags, let firstTag = task.tags.first {
+                Text(firstTag.name)
+                    .font(DesignSystem.Typography.caption(12))
+                    .foregroundStyle(DesignSystem.Colors.textSecondary)
+                    .lineLimit(1)
+            }
+        }
     }
 }
 
 #Preview {
-    List {
+    GroupedCard {
         TaskRowView(
-            task: TaskItem(title: "Подготовить презентацию", deadline: .now, priority: .high, category: .career),
+            task: TaskItem(
+                title: "Подготовить презентацию",
+                deadline: .now,
+                priority: .highest,
+                category: .career,
+                taskDetails: "Слайды и тезисы"
+            ),
             onToggle: {}
         )
+        .padding(DesignSystem.Space.x4)
     }
+    .padding(DesignSystem.Space.x4)
+    .appScreenBackground()
     .modelContainer(for: TaskItem.self, inMemory: true)
 }

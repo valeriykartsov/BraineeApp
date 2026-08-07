@@ -77,7 +77,9 @@ struct DeletedTaskDetailView: View {
                 .listRowBackground(DesignSystem.Colors.surface)
             }
         }
-        .listStyle(.plain)
+#if os(iOS)
+        .listStyle(.insetGrouped)
+#endif
         .scrollContentBackground(.hidden)
         .background(DesignSystem.Colors.background)
         .tint(DesignSystem.Colors.accent)

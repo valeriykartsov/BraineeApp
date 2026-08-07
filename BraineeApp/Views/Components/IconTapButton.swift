@@ -10,16 +10,22 @@ struct IconTapButton: View {
     let systemName: String
     var role: ButtonRole? = nil
     var tint: Color? = nil
+    /// Компактная зона нажатия — ближе соседние кнопки (например, edit/delete у тега).
+    var compact: Bool = false
     let accessibilityLabel: String
     let action: () -> Void
+
+    private var hitSize: CGFloat {
+        compact ? DesignSystem.Space.x8 : DesignSystem.Space.x11
+    }
 
     var body: some View {
         Button(role: role, action: action) {
             Image(systemName: systemName)
-                .font(DesignSystem.Typography.body(16))
+                .font(DesignSystem.Typography.body(compact ? 15 : 16))
                 .fontWeight(.medium)
                 .foregroundStyle(resolvedTint)
-                .frame(minWidth: DesignSystem.Space.x11, minHeight: DesignSystem.Space.x11)
+                .frame(minWidth: hitSize, minHeight: hitSize)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.borderless)
@@ -28,7 +34,7 @@ struct IconTapButton: View {
 
     private var resolvedTint: Color {
         if let tint { return tint }
-        if role == .destructive { return DesignSystem.Colors.danger }
+        // Удаление тоже в акцентном цвете темы (не отдельный красный).
         return DesignSystem.Colors.accent
     }
 }

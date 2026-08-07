@@ -78,19 +78,24 @@ enum AppDataStore {
 
     static func loadProfile() throws -> ProfileDocument {
         let url = storageDirectory.appendingPathComponent(profileFileName)
-        guard FileManager.default.fileExists(atPath: url.path) else {
-            if let backup = KeychainStorage.load(account: profileFileName) {
-                return try decoder.decode(ProfileDocument.self, from: backup)
-            }
-            return .empty
+        var document: ProfileDocument
+        if FileManager.default.fileExists(atPath: url.path) {
+            let data = try Data(contentsOf: url)
+            document = try decoder.decode(ProfileDocument.self, from: data)
+        } else if let backup = KeychainStorage.load(account: profileFileName) {
+            document = try decoder.decode(ProfileDocument.self, from: backup)
+        } else {
+            document = .empty
         }
-        let data = try Data(contentsOf: url)
-        return try decoder.decode(ProfileDocument.self, from: data)
+        document.normalize()
+        return document
     }
 
     static func saveProfile(_ document: ProfileDocument) throws {
         try prepareStorage()
-        let data = try encoder.encode(document)
+        var normalized = document
+        normalized.normalize()
+        let data = try encoder.encode(normalized)
         let url = storageDirectory.appendingPathComponent(profileFileName)
         try data.write(to: url, options: .atomic)
         try KeychainStorage.save(data, account: profileFileName)

@@ -2,7 +2,7 @@
 //  TagLibraryView.swift
 //  BraineeApp
 //
-//  Библиотека тегов: линейные иконки, палитра дизайн-системы.
+//  Библиотека тегов в grouped-карточке.
 
 import SwiftUI
 import SwiftData
@@ -22,60 +22,38 @@ struct TagLibraryView: View {
     @State private var showingDeleteConfirm = false
 
     var body: some View {
-        Section {
-            if tags.isEmpty {
-                Text("Нет тегов")
-                    .font(DesignSystem.Typography.body())
-                    .foregroundStyle(DesignSystem.Colors.textSecondary)
-                    .listRowBackground(DesignSystem.Colors.surface)
-            } else {
-                ForEach(tags) { tag in
-                    HStack(spacing: DesignSystem.Space.x1) {
-                        TagChipView(name: tag.name)
-                        Spacer(minLength: DesignSystem.Space.x2)
-                        Text("\(tag.tasks?.count ?? 0)")
-                            .font(DesignSystem.Typography.data(12))
-                            .foregroundStyle(DesignSystem.Colors.accent)
-                            .frame(minWidth: DesignSystem.Space.x5, alignment: .trailing)
-
-                        IconTapButton(
-                            systemName: DesignSystem.Icon.pencil,
-                            tint: DesignSystem.Colors.accent,
-                            accessibilityLabel: "Редактировать тег"
-                        ) {
-                            beginEdit(tag)
-                        }
-
-                        IconTapButton(
-                            systemName: DesignSystem.Icon.trash,
-                            role: .destructive,
-                            accessibilityLabel: "Удалить тег"
-                        ) {
-                            askDelete(tag)
+        GroupedSection(title: "Библиотека тегов") {
+            VStack(spacing: 0) {
+                if tags.isEmpty {
+                    Text("Нет тегов")
+                        .font(DesignSystem.Typography.body())
+                        .foregroundStyle(DesignSystem.Colors.textSecondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(DesignSystem.Space.x4)
+                } else {
+                    ForEach(Array(tags.enumerated()), id: \.element.uuid) { index, tag in
+                        tagRow(tag)
+                        if index < tags.count - 1 {
+                            InsetDivider(leading: DesignSystem.Space.rowIconInset)
                         }
                     }
-                    .listRowBackground(DesignSystem.Colors.surface)
                 }
-                .onDelete(perform: requestDeleteFromSwipe)
-            }
 
-            Button {
-                showingAddTag = true
-            } label: {
-                Label("Добавить тег", systemImage: "plus")
-                    .font(DesignSystem.Typography.body())
-                    .foregroundStyle(DesignSystem.Colors.accent)
+                if !tags.isEmpty {
+                    InsetDivider(leading: DesignSystem.Space.rowIconInset)
+                }
+
+                Button {
+                    showingAddTag = true
+                } label: {
+                    GroupedNavRow(
+                        title: "Добавить тег",
+                        systemImage: "plus",
+                        showsChevron: false
+                    )
+                }
+                .buttonStyle(.plain)
             }
-            .listRowBackground(DesignSystem.Colors.surface)
-        } header: {
-            Text("Библиотека тегов")
-                .font(DesignSystem.Typography.caption())
-                .foregroundStyle(DesignSystem.Colors.textSecondary)
-                .textCase(nil)
-        } footer: {
-            Text("Теги можно назначать задачам при создании и редактировании.")
-                .font(DesignSystem.Typography.caption())
-                .foregroundStyle(DesignSystem.Colors.textSecondary)
         }
         .alert("Новый тег", isPresented: $showingAddTag) {
             TextField("Название", text: $newTagName)
@@ -115,6 +93,47 @@ struct TagLibraryView: View {
         }
     }
 
+    private func tagRow(_ tag: TaskTag) -> some View {
+        HStack(spacing: DesignSystem.Space.x2) {
+            Image(systemName: DesignSystem.Icon.tag)
+                .font(.system(size: 16, weight: .regular))
+                .foregroundStyle(DesignSystem.Colors.accent)
+                .frame(width: DesignSystem.Space.x5, height: DesignSystem.Space.x5)
+
+            Text(tag.name)
+                .font(DesignSystem.Typography.body(16))
+                .foregroundStyle(DesignSystem.Colors.textPrimary)
+
+            Spacer(minLength: DesignSystem.Space.x2)
+
+            Text("\(tag.tasks?.count ?? 0)")
+                .font(DesignSystem.Typography.caption())
+                .foregroundStyle(DesignSystem.Colors.textSecondary)
+
+            HStack(spacing: 0) {
+                IconTapButton(
+                    systemName: DesignSystem.Icon.pencil,
+                    tint: DesignSystem.Colors.accent,
+                    compact: true,
+                    accessibilityLabel: "Редактировать тег"
+                ) {
+                    beginEdit(tag)
+                }
+
+                IconTapButton(
+                    systemName: DesignSystem.Icon.trash,
+                    tint: DesignSystem.Colors.accent,
+                    compact: true,
+                    accessibilityLabel: "Удалить тег"
+                ) {
+                    askDelete(tag)
+                }
+            }
+        }
+        .padding(.horizontal, DesignSystem.Space.x3)
+        .padding(.vertical, DesignSystem.Space.x2 + 2)
+    }
+
     private func beginEdit(_ tag: TaskTag) {
         editingTag = tag
         editedTagName = tag.name
@@ -124,11 +143,6 @@ struct TagLibraryView: View {
     private func askDelete(_ tag: TaskTag) {
         tagPendingDeletion = tag
         showingDeleteConfirm = true
-    }
-
-    private func requestDeleteFromSwipe(at offsets: IndexSet) {
-        guard let index = offsets.first else { return }
-        askDelete(tags[index])
     }
 
     private func createTag() {
@@ -167,8 +181,10 @@ struct TagLibraryView: View {
 }
 
 #Preview {
-    Form {
+    ScrollView {
         TagLibraryView()
+            .groupedScreenPadding()
     }
+    .appScreenBackground()
     .modelContainer(for: TaskTag.self, inMemory: true)
 }

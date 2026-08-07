@@ -32,15 +32,15 @@ struct AppRootView: View {
                     Text(loadError)
                         .font(DesignSystem.Typography.body())
                         .foregroundStyle(DesignSystem.Colors.textSecondary)
-                    PankinDivider()
+                    AppDivider()
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .padding(DesignSystem.Space.x4)
-                .pankinScreenBackground()
+                .appScreenBackground()
             }
 
             if showLaunch || !isReady {
-                LaunchScreenView()
+                LaunchScreenView(playsLogoAnimation: true)
                     .transition(.opacity)
             }
         }
@@ -49,11 +49,14 @@ struct AppRootView: View {
             do {
                 try AppDataPersistence.bootstrap(into: modelContext)
                 isReady = true
+                // Подтянуть иконку Springboard под сохранённый акцент (без алерта).
+                AppIconSwitcher.syncWithCurrentAccent()
             } catch {
                 loadError = error.localizedDescription
             }
 
-            try? await Task.sleep(for: .seconds(1.2))
+            // Даём доиграть анимации полос логотипа.
+            try? await Task.sleep(for: .seconds(2.0))
 
             if isReady {
                 withAnimation(.easeOut(duration: 0.35)) {
