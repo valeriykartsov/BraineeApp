@@ -1,0 +1,169 @@
+# BraineeApp — правила для Cursor
+
+Ты работаешь над iOS-приложением BraineeApp. Заказчик — product owner, не разработчик.
+Пиши просто, объясняй решения, не усложняй без необходимости.
+
+---
+
+## Стек и архитектура
+
+| Слой | Технология |
+|------|------------|
+| UI | **SwiftUI** (UIKit только для платформенных helper'ов, например `UIImage`) |
+| Runtime-модели | **SwiftData** (`@Model`), контейнер **in-memory only** |
+| Постоянное хранение | **JSON** в `Documents/BraineeApp/` + резерв в **Keychain** |
+| Минимальная iOS | **18.2** |
+| Язык | **Swift 5** |
+| Зависимости | Только Apple SDK. **Без SPM/CocoaPods/Carthage** |
+
+### Как устроено приложение
+
+1. **Старт:** `BraineeAppApp` → `AppRootView` → `AppDataPersistence.bootstrap()` загружает JSON в SwiftData.
+2. **Работа:** экраны читают данные через `@Query` / `FetchDescriptor`, изменения пишут через `modelContext.persistToJSON()`.
+3. **Фон:** модификатор `.persistOnBackground()` сохраняет JSON при уходе приложения в фон.
+4. **Навигация:** кастомные табы (`AnimatedMainTabView`) — Карьера, Спорт, Ментальное, Профиль.
+
+Архитектура — **простой SwiftUI + SwiftData + слой Persistence**, без MVVM-фреймворков.
+Логику экрана держи во View или рядом; тяжёлую работу с файлами — в `Persistence/`.
+
+---
+
+## Структура папок
+
+```
+BraineeApp/
+├── BraineeAppApp.swift       # Точка входа (@main)
+├── Models/                   # SwiftData @Model, enum'ы, DTO (TaskFormData)
+├── Persistence/              # JSON, Keychain, import/export
+├── Views/
+│   ├── Tasks/                # Задачи и группы
+│   ├── Profile/              # Профиль, теги, удалённые, дашборд
+│   ├── Components/           # Переиспользуемые UI-компоненты
+│   └── …                     # Корневые экраны (AppRootView, LaunchScreenView)
+├── Utilities/                # Хелперы, стили, расширения View
+└── Assets.xcassets/          # Иконки, цвета, launch logo
+```
+
+Новые файлы клади в подходящую папку. Не создавай лишних уровней вложенности.
+
+---
+
+## Именование
+
+### Файлы и типы (следуй существующему стилю проекта)
+
+| Что | Правило | Примеры из проекта |
+|-----|---------|-------------------|
+| Экраны | `*View.swift`, struct `*View: View` | `TaskSectionView`, `ProfileView`, `DeletedTasksFolderView` |
+| SwiftData-сущности | имя сущности, **без** суффикса Model | `TaskItem`, `TaskGroup`, `TaskTag`, `UserProfile` |
+| JSON-записи | `*Record` | `TaskRecord`, `GroupRecord`, `TagRecord` |
+| JSON-документы | `*Document` | `MyTasksDocument`, `ProfileDocument` |
+| DTO форм | `*FormData` или описательное имя | `TaskFormData` |
+| Enum'ы домена | `TaskCategory`, `TaskPriority`, `AppTheme` | |
+| Persistence | `AppDataStore`, `AppDataPersistence`, `KeychainStorage` | enum со static-методами |
+| Хелперы | описательное имя | `TaskSortHelper`, `HapticFeedback`, `PriorityStyle` |
+| Расширения View | `Имя+Platform.swift` | `ListStyle+Platform.swift` |
+
+### Переменные и свойства
+
+- `camelCase` для свойств и функций.
+- Булевы: `isCompleted`, `isDeleted`, `hasDeadline`, `showingAddTask`.
+- Enum raw value для SwiftData: `categoryRaw`, `priorityRaw` (enum хранится как String/Int).
+- UUID моделей: поле `uuid` (не `id` в SwiftData-моделях).
+
+### UI-тексты
+
+- **Интерфейс на русском** (кнопки, заголовки, алерты, пустые состояния).
+- Код и комментарии — на русском или английском, единообразно в рамках файла.
+
+---
+
+## Хранение данных — обязательные правила
+
+1. **Источник правды — JSON**, не SwiftData. SwiftData — только оперативная копия на время сессии.
+2. **После любого изменения данных** вызывай `modelContext.persistToJSON()` (или `AppDataPersistence.export`).
+3. **Файлы:**
+   - `Documents/BraineeApp/mytasks.json` — задачи, группы, теги
+   - `Documents/BraineeApp/profile.json` — профиль
+4. **Keychain** — зеркало JSON для восстановления после переудаления. Не дублируй логику записи вручную — используй `AppDataStore`.
+5. **Мягкое удаление задач:** `isDeleted = true`, `deletedAt = Date()`. Не удаляй из SwiftData при обычном удалении пользователем.
+6. **Окончательное удаление** — только из папки «Удалённые» через `modelContext.delete(task)`.
+7. **Новые поля в JSON** — добавляй с backward-compatible decode (`decodeIfPresent` + значение по умолчанию) и обновляй `normalizeRecords()`.
+8. **Не вызывай `saveTasks` из `prepareStorage`/reconcile** — это приводило к рекурсии и крашу. Пиши файл напрямую или через один уровень абстракции.
+9. **iCloud не используется** (Personal Team). Не добавляй iCloud entitlements без явного запроса PO.
+
+---
+
+## SwiftUI и SwiftData — паттерны проекта
+
+- `@Query` с `#Predicate` для списков; фильтруй `!$0.isDeleted` в активных списках.
+- `@Environment(\.modelContext)` для insert/update/delete.
+- Дочерние view получают действия через closure: `onToggle`, `onDelete`, `onEdit`.
+- Формы редактирования — `.sheet` + `AddEditTaskView`.
+- Списки задач — `ScrollView` + карточки (не `List` для drag-and-drop групп).
+- Превью: `#Preview { … .modelContainer(for: [...], inMemory: true) }`.
+- Тема: `@AppStorage("appTheme")` + `AppTheme` enum.
+
+---
+
+## Стиль кода
+
+- **Простой и читаемый код** — PO учится по проекту.
+- **Минимальный diff** — меняй только то, что нужно для задачи.
+- **Комментарии** — к нетривиальной бизнес-логике и persistence (миграции, merge, edge cases). Не комментируй очевидное.
+- **Заголовок файла** — стандартный Xcode-блок `//  FileName.swift` / `//  BraineeApp`.
+- Без force unwrap (`!`) без крайней необходимости; без `fatalError` вне инициализации контейнера.
+- Ошибки persistence — `print` + graceful fallback, не падать молча с пустыми данными без сообщения PO.
+
+---
+
+## Запреты
+
+- **Не добавляй сторонние пакеты** (SPM, CocoaPods и т.д.) без явного запроса PO.
+- **Не меняй Bundle ID**, signing, entitlements без запроса.
+- **Не делай force push в main**.
+- **Не коммить** без явного запроса PO.
+- **Не создавай README/документацию** без запроса.
+- **Не рефакторь** несвязанный код «заодно».
+
+---
+
+## Git и версии
+
+- Основная ветка: `main`.
+- Фичи: `ver0.x` (например `ver0.42`).
+- Сообщения коммитов: `feat(ver0.x): …`, `fix(ver0.x): …` — кратко, на английском или русском, суть изменения.
+- Перед PR: проект должен собираться (`xcodebuild -scheme BraineeApp`).
+
+---
+
+## Общение с product owner
+
+1. **После создания или изменения файла** — одно-два предложения: что делает файл и зачем он нужен.
+2. Ответы **на русском**, простым языком, без лишнего жаргона.
+3. Если задача неоднозначна — уточни, не додумывай большие фичи.
+4. При багах с данными — проверяй цепочку: UI → SwiftData → `persistToJSON` → JSON → bootstrap при старте.
+
+---
+
+## Ключевые сущности (шпаргалка)
+
+| Сущность | Назначение |
+|----------|------------|
+| `TaskItem` | Задача (название, дедлайн, приоритет, описание, группа, теги, soft delete) |
+| `TaskGroup` | Папка/группа задач внутри раздела |
+| `TaskTag` | Тег из библиотеки в профиле |
+| `UserProfile` | Имя и аватар пользователя |
+| `TaskCategory` | Раздел: career / sport / mental |
+| `TaskPriority` | low / medium / high |
+
+---
+
+## Тестирование перед сдачей задачи
+
+- [ ] Сборка без ошибок
+- [ ] Создание / редактирование / удаление задачи
+- [ ] Перезапуск приложения — данные на месте
+- [ ] Мягкое удаление → «Удалённые» → восстановление / очистка
+- [ ] Drag-and-drop в группу (режим «По дате»)
+- [ ] Профиль: тема, теги, дашборд
