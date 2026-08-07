@@ -2,7 +2,7 @@
 //  AnimatedMainTabView.swift
 //  BraineeApp
 //
-//  Главный экран с анимированной нижней панелью вкладок и переключением разделов.
+//  Главный экран с геометричной нижней панелью вкладок.
 
 import SwiftUI
 
@@ -31,44 +31,59 @@ struct AnimatedMainTabView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
+            PankinDivider()
             tabBar
         }
+        .pankinScreenBackground()
+        .tint(DesignSystem.Colors.accent)
         .preferredColorScheme(colorScheme)
+        .onAppear {
+            PankinNavigationChrome.apply()
+        }
+        .onChange(of: appThemeRaw) { _, _ in
+            PankinNavigationChrome.apply()
+        }
     }
 
     private var tabBar: some View {
         HStack(spacing: 0) {
             ForEach(MainTab.allCases) { tab in
                 Button {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.78)) {
+                    withAnimation(.easeInOut(duration: 0.2)) {
                         selectedTab = tab
                     }
                 } label: {
-                    VStack(spacing: 6) {
+                    VStack(spacing: 2) {
                         Image(systemName: tab.systemImage)
                             .font(.system(size: 20, weight: selectedTab == tab ? .semibold : .regular))
                         Text(tab.title)
-                            .font(.caption2.weight(selectedTab == tab ? .semibold : .regular))
+                            .font(DesignSystem.Typography.tabLabel())
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                     }
-                    .foregroundStyle(selectedTab == tab ? Color.accentColor : .secondary)
+                    .foregroundStyle(
+                        selectedTab == tab
+                            ? DesignSystem.Colors.accent
+                            : DesignSystem.Colors.textSecondary
+                    )
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
+                    .padding(.vertical, DesignSystem.Space.x1)
                     .background {
                         if selectedTab == tab {
-                            Capsule()
-                                .fill(Color.accentColor.opacity(0.15))
+                            RoundedRectangle(cornerRadius: DesignSystem.Radius.card, style: .circular)
+                                .fill(DesignSystem.Colors.accent.opacity(0.12))
                                 .matchedGeometryEffect(id: "tabSlider", in: tabNamespace)
-                                .padding(.horizontal, 4)
+                                .padding(.horizontal, DesignSystem.Space.x1)
                         }
                     }
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.top, 6)
-        .padding(.bottom, 8)
-        .background(.bar)
+        .padding(.horizontal, DesignSystem.Space.x1)
+        .padding(.top, DesignSystem.Space.x1)
+        .padding(.bottom, DesignSystem.Space.x1)
+        .background(DesignSystem.Colors.surface)
     }
 }
 

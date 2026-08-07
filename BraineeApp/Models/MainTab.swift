@@ -28,7 +28,7 @@ enum MainTab: Int, CaseIterable, Identifiable {
         case .career: TaskCategory.career.systemImage
         case .sport: TaskCategory.sport.systemImage
         case .mental: TaskCategory.mental.systemImage
-        case .profile: "person.circle.fill"
+        case .profile: "person.circle"
         }
     }
 

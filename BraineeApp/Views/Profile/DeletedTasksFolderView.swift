@@ -2,7 +2,7 @@
 //  DeletedTasksFolderView.swift
 //  BraineeApp
 //
-//  Папка удалённых задач: просмотр, восстановление и окончательное удаление.
+//  Удалённые задачи: строгий список в палитре дизайн-системы.
 
 import SwiftUI
 import SwiftData
@@ -18,12 +18,17 @@ struct DeletedTasksFolderView: View {
     var body: some View {
         Group {
             if deletedTasks.isEmpty {
-                ContentUnavailableView {
-                    Label("Папка пуста", systemImage: "trash")
-                } description: {
+                VStack(alignment: .leading, spacing: DesignSystem.Space.x3) {
+                    Text("Папка пуста")
+                        .font(DesignSystem.Typography.title(22))
+                        .foregroundStyle(DesignSystem.Colors.textPrimary)
                     Text("Удалённые задачи появятся здесь")
+                        .font(DesignSystem.Typography.body())
+                        .foregroundStyle(DesignSystem.Colors.textSecondary)
+                    PankinDivider()
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .padding(DesignSystem.Space.x4)
             } else {
                 List {
                     ForEach(deletedTasks, id: \.uuid) { task in
@@ -31,6 +36,7 @@ struct DeletedTasksFolderView: View {
                             deletedRow(task)
                                 .contentShape(Rectangle())
                                 .onTapGesture { toggleSelection(task) }
+                                .listRowBackground(DesignSystem.Colors.surface)
                         } else {
                             NavigationLink {
                                 DeletedTaskDetailView(task: task) {
@@ -39,27 +45,31 @@ struct DeletedTasksFolderView: View {
                             } label: {
                                 deletedRow(task)
                             }
+                            .listRowBackground(DesignSystem.Colors.surface)
                             .swipeActions(edge: .leading, allowsFullSwipe: true) {
                                 Button {
                                     restore(task)
                                 } label: {
                                     Label("Восстановить", systemImage: "arrow.uturn.backward")
                                 }
-                                .tint(.green)
+                                .tint(DesignSystem.Colors.accent)
                             }
                             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                 Button(role: .destructive) {
                                     permanentlyDelete(task)
                                 } label: {
-                                    Label("Удалить", systemImage: "trash")
+                                    Label("Удалить", systemImage: DesignSystem.Icon.trash)
                                 }
                             }
                         }
                     }
                 }
-                .listStyle(.insetGrouped)
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
             }
         }
+        .background(DesignSystem.Colors.background)
+        .tint(DesignSystem.Colors.accent)
         .navigationTitle("Удалённые")
 #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
@@ -84,7 +94,7 @@ struct DeletedTasksFolderView: View {
                             showingClearAllConfirm = true
                         }
                     } label: {
-                        Image(systemName: "ellipsis.circle")
+                        Image(systemName: "ellipsis")
                     }
                 }
             }
@@ -101,30 +111,35 @@ struct DeletedTasksFolderView: View {
     }
 
     private func deletedRow(_ task: TaskItem) -> some View {
-        HStack(spacing: 12) {
+        HStack(spacing: DesignSystem.Space.x3) {
             if isSelecting {
-                Image(systemName: selectedIDs.contains(task.uuid) ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(selectedIDs.contains(task.uuid) ? Color.accentColor : .secondary)
+                Image(systemName: selectedIDs.contains(task.uuid) ? DesignSystem.Icon.checkboxOn : DesignSystem.Icon.checkboxOff)
+                    .foregroundStyle(
+                        selectedIDs.contains(task.uuid)
+                            ? DesignSystem.Colors.accent
+                            : DesignSystem.Colors.textSecondary
+                    )
             }
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: DesignSystem.Space.x1) {
                 Text(task.title)
+                    .font(DesignSystem.Typography.body())
+                    .foregroundStyle(DesignSystem.Colors.textPrimary)
                 Text(task.category.title)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(DesignSystem.Typography.caption())
+                    .foregroundStyle(DesignSystem.Colors.textSecondary)
             }
 
             Spacer()
 
             if let deletedAt = task.deletedAt {
                 Text(deletedAt.formatted(date: .abbreviated, time: .omitted))
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                    .font(DesignSystem.Typography.data(11))
+                    .foregroundStyle(DesignSystem.Colors.accent)
             }
         }
     }
 
-    /// Загружает удалённые задачи вручную, чтобы не зависеть от тяжёлого @Query при открытии экрана.
     private func reloadDeletedTasks() {
         let descriptor = FetchDescriptor<TaskItem>(
             predicate: #Predicate { $0.isSoftDeleted }
@@ -155,7 +170,6 @@ struct DeletedTasksFolderView: View {
             task.deletedAt = nil
             try? modelContext.save()
             modelContext.persistToJSON()
-            // Сразу убираем карточку из списка (не ждём только fetch).
             deletedTasks.removeAll { $0.uuid == uuid }
             selectedIDs.remove(uuid)
             reloadDeletedTasks()

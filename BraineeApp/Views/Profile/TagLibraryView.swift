@@ -2,7 +2,7 @@
 //  TagLibraryView.swift
 //  BraineeApp
 //
-//  Библиотека тегов в профиле: добавление, редактирование и удаление тегов.
+//  Библиотека тегов: линейные иконки, палитра дизайн-системы.
 
 import SwiftUI
 import SwiftData
@@ -25,33 +25,36 @@ struct TagLibraryView: View {
         Section {
             if tags.isEmpty {
                 Text("Нет тегов")
-                    .foregroundStyle(.secondary)
+                    .font(DesignSystem.Typography.body())
+                    .foregroundStyle(DesignSystem.Colors.textSecondary)
+                    .listRowBackground(DesignSystem.Colors.surface)
             } else {
                 ForEach(tags) { tag in
-                    HStack(spacing: 4) {
+                    HStack(spacing: DesignSystem.Space.x1) {
                         TagChipView(name: tag.name)
-                        Spacer(minLength: 8)
+                        Spacer(minLength: DesignSystem.Space.x2)
                         Text("\(tag.tasks?.count ?? 0)")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .frame(minWidth: 20, alignment: .trailing)
+                            .font(DesignSystem.Typography.data(12))
+                            .foregroundStyle(DesignSystem.Colors.accent)
+                            .frame(minWidth: DesignSystem.Space.x5, alignment: .trailing)
 
                         IconTapButton(
-                            systemName: "pencil",
-                            tint: .accentColor,
+                            systemName: DesignSystem.Icon.pencil,
+                            tint: DesignSystem.Colors.accent,
                             accessibilityLabel: "Редактировать тег"
                         ) {
                             beginEdit(tag)
                         }
 
                         IconTapButton(
-                            systemName: "trash",
+                            systemName: DesignSystem.Icon.trash,
                             role: .destructive,
                             accessibilityLabel: "Удалить тег"
                         ) {
                             askDelete(tag)
                         }
                     }
+                    .listRowBackground(DesignSystem.Colors.surface)
                 }
                 .onDelete(perform: requestDeleteFromSwipe)
             }
@@ -59,12 +62,20 @@ struct TagLibraryView: View {
             Button {
                 showingAddTag = true
             } label: {
-                Label("Добавить тег", systemImage: "plus.circle")
+                Label("Добавить тег", systemImage: "plus")
+                    .font(DesignSystem.Typography.body())
+                    .foregroundStyle(DesignSystem.Colors.accent)
             }
+            .listRowBackground(DesignSystem.Colors.surface)
         } header: {
             Text("Библиотека тегов")
+                .font(DesignSystem.Typography.caption())
+                .foregroundStyle(DesignSystem.Colors.textSecondary)
+                .textCase(nil)
         } footer: {
             Text("Теги можно назначать задачам при создании и редактировании.")
+                .font(DesignSystem.Typography.caption())
+                .foregroundStyle(DesignSystem.Colors.textSecondary)
         }
         .alert("Новый тег", isPresented: $showingAddTag) {
             TextField("Название", text: $newTagName)
@@ -115,7 +126,6 @@ struct TagLibraryView: View {
         showingDeleteConfirm = true
     }
 
-    /// Свайп тоже спрашивает подтверждение, а не удаляет сразу.
     private func requestDeleteFromSwipe(at offsets: IndexSet) {
         guard let index = offsets.first else { return }
         askDelete(tags[index])

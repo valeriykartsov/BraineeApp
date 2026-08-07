@@ -2,7 +2,7 @@
 //  ProfileView.swift
 //  BraineeApp
 //
-//  Экран профиля: имя, аватар, тема, дашборд, удалённые задачи и библиотека тегов.
+//  Профиль в палитре и типографике дизайн-системы.
 
 import SwiftUI
 import SwiftData
@@ -29,14 +29,15 @@ struct ProfileView: View {
                 Section {
                     HStack {
                         Spacer()
-                        VStack(spacing: 16) {
+                        VStack(spacing: DesignSystem.Space.x4) {
                             PhotosPicker(selection: $selectedPhoto, matching: .images) {
                                 AvatarImageView(avatarData: profile?.avatarData)
                             }
                             .buttonStyle(.plain)
 
                             TextField("Ваше имя", text: $displayName)
-                                .font(.title3.weight(.semibold))
+                                .font(DesignSystem.Typography.title(18))
+                                .foregroundStyle(DesignSystem.Colors.textPrimary)
                                 .multilineTextAlignment(.center)
                                 .onChange(of: displayName) { _, newValue in
                                     profile?.displayName = newValue
@@ -48,7 +49,7 @@ struct ProfileView: View {
                     .listRowBackground(Color.clear)
                 }
 
-                Section("Тема оформления") {
+                Section {
                     Picker("Тема", selection: Binding(
                         get: { appTheme },
                         set: {
@@ -61,6 +62,12 @@ struct ProfileView: View {
                         }
                     }
                     .pickerStyle(.segmented)
+                    .listRowBackground(DesignSystem.Colors.surface)
+                } header: {
+                    Text("Тема оформления")
+                        .font(DesignSystem.Typography.caption())
+                        .foregroundStyle(DesignSystem.Colors.textSecondary)
+                        .textCase(nil)
                 }
 
                 TaskDashboardView()
@@ -69,22 +76,35 @@ struct ProfileView: View {
                     NavigationLink {
                         DeletedTasksFolderView()
                     } label: {
-                        Label("Удалённые задачи", systemImage: "trash")
+                        Label("Удалённые задачи", systemImage: DesignSystem.Icon.trash)
+                            .font(DesignSystem.Typography.body())
+                            .foregroundStyle(DesignSystem.Colors.textPrimary)
                     }
+                    .listRowBackground(DesignSystem.Colors.surface)
                 }
 
                 TagLibraryView()
 
                 Section {
                     LabeledContent("Папка", value: AppDataStore.folderName)
+                        .font(DesignSystem.Typography.body())
+                        .foregroundStyle(DesignSystem.Colors.textPrimary)
                     Text("Данные хранятся локально в Documents/BraineeApp (mytasks.json, profile.json). Резервная копия сохраняется в Keychain и восстанавливается после переустановки приложения.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(DesignSystem.Typography.caption())
+                        .foregroundStyle(DesignSystem.Colors.textSecondary)
                 } header: {
                     Text("Хранение данных")
+                        .font(DesignSystem.Typography.caption())
+                        .foregroundStyle(DesignSystem.Colors.textSecondary)
+                        .textCase(nil)
                 }
+                .listRowBackground(DesignSystem.Colors.surface)
             }
+            .scrollContentBackground(.hidden)
+            .background(DesignSystem.Colors.background)
+            .tint(DesignSystem.Colors.accent)
             .navigationTitle("Профиль")
+            .pankinSectionChrome()
             .onAppear {
                 ensureProfile()
                 displayName = profile?.displayName ?? ""
@@ -97,7 +117,6 @@ struct ProfileView: View {
         }
     }
 
-    /// Создаёт профиль в базе, если пользователь открыл приложение впервые.
     private func ensureProfile() {
         guard profiles.isEmpty else { return }
         let newProfile = UserProfile(displayName: "")

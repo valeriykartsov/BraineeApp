@@ -54,21 +54,21 @@ struct TaskSectionView: View {
                 onDeleteGroup: deleteGroup
             )
             .navigationTitle(category.title)
+            .pankinSectionChrome()
+            .tint(DesignSystem.Colors.accent)
             .toolbar {
 #if os(iOS)
                 ToolbarItem(placement: .topBarLeading) {
-                    viewModePicker
+                    viewModeSwitcher
                 }
-
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     createGroupButton
                     addButton
                 }
 #else
                 ToolbarItem(placement: .automatic) {
-                    viewModePicker
+                    viewModeSwitcher
                 }
-
                 ToolbarItemGroup(placement: .primaryAction) {
                     createGroupButton
                     addButton
@@ -107,14 +107,14 @@ struct TaskSectionView: View {
         }
     }
 
-    private var viewModePicker: some View {
-        Picker("Режим", selection: $viewMode) {
-            ForEach(TaskViewMode.allCases) { mode in
-                Text(mode.rawValue).tag(mode)
-            }
-        }
-        .pickerStyle(.segmented)
-        .frame(maxWidth: 260)
+    /// Компактный свитчер — примерно как прежний segmented (до ~240pt).
+    private var viewModeSwitcher: some View {
+        PankinSegmentedControl(
+            selection: $viewMode,
+            options: TaskViewMode.allCases,
+            title: { $0.rawValue }
+        )
+        .frame(width: 240)
     }
 
     private var addButton: some View {
