@@ -6,6 +6,9 @@
 
 import SwiftUI
 import SwiftData
+#if canImport(UIKit)
+import UIKit
+#endif
 
 struct TaskOrganizedListView: View {
     @Environment(\.modelContext) private var modelContext
@@ -102,7 +105,8 @@ struct TaskOrganizedListView: View {
             emptyState
         } else {
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: DesignSystem.Space.sectionGap) {
+                // VStack надёжнее LazyVStack для dropDestination между папками.
+                VStack(alignment: .leading, spacing: DesignSystem.Space.sectionGap) {
                     ForEach(sortedGroups) { group in
                         let groupTasks = sortedTasks(
                             visibleTasks.filter { $0.group?.uuid == group.uuid }
@@ -146,27 +150,34 @@ struct TaskOrganizedListView: View {
 
     private func groupSection(group: TaskGroup, tasks groupTasks: [TaskItem]) -> some View {
         let isTargeted = dropTargetGroupUUID == group.uuid
+        let shape = RoundedRectangle(cornerRadius: DesignSystem.Radius.group, style: .continuous)
 
-        return GroupedSection(title: nil) {
-            VStack(alignment: .leading, spacing: 0) {
-                groupHeader(group, taskCount: groupTasks.count)
-                InsetDivider(leading: DesignSystem.Space.rowIconInset)
+        // Без GroupedCard/clipShape: иначе dropDestination часто не ловит жест.
+        return VStack(alignment: .leading, spacing: 0) {
+            groupHeader(group, taskCount: groupTasks.count)
+            InsetDivider(leading: DesignSystem.Space.rowIconInset)
 
-                if groupTasks.isEmpty {
-                    emptyFolderHint(name: group.name)
-                        .padding(.horizontal, DesignSystem.Space.x3)
-                        .padding(.vertical, DesignSystem.Space.x2 + 2)
-                } else {
-                    taskStack(groupTasks)
-                }
+            if groupTasks.isEmpty {
+                emptyFolderHint(name: group.name)
+                    .padding(.horizontal, DesignSystem.Space.x3)
+                    .padding(.vertical, DesignSystem.Space.x4)
+            } else {
+                taskStack(groupTasks)
             }
-            .flatHighlight(highlighted: isTargeted)
         }
+        .background(shape.fill(DesignSystem.Colors.surface))
+        .overlay(
+            shape.strokeBorder(
+                isTargeted ? DesignSystem.Colors.accent : .clear,
+                lineWidth: DesignSystem.Stroke.emphasis
+            )
+        )
+        .contentShape(shape)
         .animation(.easeInOut(duration: 0.15), value: isTargeted)
         .dropDestination(for: String.self) { items, _ in
             performDrop(items, into: group)
-        } isTargeted: { isTargeted in
-            if isTargeted {
+        } isTargeted: { hovering in
+            if hovering {
                 dropTargetGroupUUID = group.uuid
             } else if dropTargetGroupUUID == group.uuid {
                 dropTargetGroupUUID = nil
@@ -176,44 +187,50 @@ struct TaskOrganizedListView: View {
 
     private var ungroupedSection: some View {
         let isTargeted = dropTargetGroupUUID == ungroupedDropID
+        let shape = RoundedRectangle(cornerRadius: DesignSystem.Radius.group, style: .continuous)
 
-        return GroupedSection(title: nil) {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: DesignSystem.Space.x2) {
-                    Image(systemName: DesignSystem.Icon.tray)
-                        .font(.system(size: 16, weight: .regular))
-                        .foregroundStyle(DesignSystem.Colors.accent)
-                        .frame(width: DesignSystem.Space.x5, height: DesignSystem.Space.x5)
-                    Text("Без папки")
-                        .font(DesignSystem.Typography.body(16))
-                        .foregroundStyle(DesignSystem.Colors.textPrimary)
-                    if !ungroupedTasks.isEmpty {
-                        Text("\(ungroupedTasks.count)")
-                            .font(DesignSystem.Typography.caption())
-                            .foregroundStyle(DesignSystem.Colors.textSecondary)
-                    }
-                    Spacer()
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: DesignSystem.Space.x2) {
+                Image(systemName: DesignSystem.Icon.tray)
+                    .font(.system(size: 16, weight: .regular))
+                    .foregroundStyle(DesignSystem.Colors.accent)
+                    .frame(width: DesignSystem.Space.x5, height: DesignSystem.Space.x5)
+                Text("Без папки")
+                    .font(DesignSystem.Typography.body(16))
+                    .foregroundStyle(DesignSystem.Colors.textPrimary)
+                if !ungroupedTasks.isEmpty {
+                    Text("\(ungroupedTasks.count)")
+                        .font(DesignSystem.Typography.caption())
+                        .foregroundStyle(DesignSystem.Colors.textSecondary)
                 }
-                .padding(.horizontal, DesignSystem.Space.x3)
-                .padding(.vertical, DesignSystem.Space.x2 + 2)
-
-                if ungroupedTasks.isEmpty && viewMode == .byDate {
-                    InsetDivider(leading: DesignSystem.Space.rowIconInset)
-                    emptyFolderHint(name: nil)
-                        .padding(.horizontal, DesignSystem.Space.x3)
-                        .padding(.vertical, DesignSystem.Space.x2 + 2)
-                } else if !ungroupedTasks.isEmpty {
-                    InsetDivider(leading: DesignSystem.Space.rowIconInset)
-                    taskStack(ungroupedTasks)
-                }
+                Spacer()
             }
-            .flatHighlight(highlighted: isTargeted)
+            .padding(.horizontal, DesignSystem.Space.x3)
+            .padding(.vertical, DesignSystem.Space.x2 + 2)
+
+            if ungroupedTasks.isEmpty && viewMode == .byDate {
+                InsetDivider(leading: DesignSystem.Space.rowIconInset)
+                emptyFolderHint(name: nil)
+                    .padding(.horizontal, DesignSystem.Space.x3)
+                    .padding(.vertical, DesignSystem.Space.x4)
+            } else if !ungroupedTasks.isEmpty {
+                InsetDivider(leading: DesignSystem.Space.rowIconInset)
+                taskStack(ungroupedTasks)
+            }
         }
+        .background(shape.fill(DesignSystem.Colors.surface))
+        .overlay(
+            shape.strokeBorder(
+                isTargeted ? DesignSystem.Colors.accent : .clear,
+                lineWidth: DesignSystem.Stroke.emphasis
+            )
+        )
+        .contentShape(shape)
         .animation(.easeInOut(duration: 0.15), value: isTargeted)
         .dropDestination(for: String.self) { items, _ in
             performDrop(items, into: nil)
-        } isTargeted: { isTargeted in
-            if isTargeted {
+        } isTargeted: { hovering in
+            if hovering {
                 dropTargetGroupUUID = ungroupedDropID
             } else if dropTargetGroupUUID == ungroupedDropID {
                 dropTargetGroupUUID = nil
@@ -333,33 +350,57 @@ struct TaskOrganizedListView: View {
             TaskRowView(task: task, displaySettings: displaySettings) {
                 onToggle(task)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                onEdit(task)
+            }
+            // contextMenu только слева — long-press не конфликтует с drag справа.
+            .contextMenu {
+                Button {
+                    onEdit(task)
+                } label: {
+                    Label("Редактировать", systemImage: DesignSystem.Icon.pencil)
+                }
+                Button(role: .destructive) {
+                    onDelete(task)
+                } label: {
+                    Label("Удалить", systemImage: DesignSystem.Icon.trash)
+                }
+            }
 
-            Image(systemName: DesignSystem.Icon.drag)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(DesignSystem.Colors.textSecondary.opacity(0.7))
-                .frame(width: DesignSystem.Space.x5, height: DesignSystem.Space.x6)
-                .contentShape(Rectangle())
-                .accessibilityLabel("Открыть задачу")
-                .draggable(task.uuid.uuidString)
+            TaskDragHandle(taskUUID: task.uuid) {
+                taskDragPreview(task)
+            }
         }
         .padding(.horizontal, DesignSystem.Space.x3)
-        .padding(.vertical, DesignSystem.Space.x2 + 2)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            onEdit(task)
-        }
-        .contextMenu {
-            Button {
-                onEdit(task)
-            } label: {
-                Label("Редактировать", systemImage: DesignSystem.Icon.pencil)
-            }
-            Button(role: .destructive) {
-                onDelete(task)
-            } label: {
-                Label("Удалить", systemImage: DesignSystem.Icon.trash)
-            }
-        }
+        .padding(.vertical, DesignSystem.Space.x2)
+    }
+
+    /// Миниатюра при переносе: только название — без полей из настроек отображения.
+    private func taskDragPreview(_ task: TaskItem) -> some View {
+        Text(task.title)
+            .font(DesignSystem.Typography.body(16))
+            .foregroundStyle(DesignSystem.Colors.textPrimary)
+            .lineLimit(2)
+            .multilineTextAlignment(.leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, DesignSystem.Space.x3)
+            .padding(.vertical, DesignSystem.Space.x2 + 2)
+            .frame(width: dragPreviewWidth, alignment: .leading)
+            .background(DesignSystem.Colors.surface)
+            .clipShape(
+                RoundedRectangle(cornerRadius: DesignSystem.Radius.group, style: .continuous)
+            )
+            .shadow(color: .black.opacity(0.18), radius: 10, y: 4)
+    }
+
+    private var dragPreviewWidth: CGFloat {
+#if canImport(UIKit)
+        max(UIScreen.main.bounds.width - DesignSystem.Space.screenInset * 2, 280)
+#else
+        320
+#endif
     }
 
     private func sortedTasks(_ items: [TaskItem]) -> [TaskItem] {
@@ -381,6 +422,7 @@ struct TaskOrganizedListView: View {
     private func assignTask(_ task: TaskItem, to group: TaskGroup?) {
         guard !task.isSoftDeleted else { return }
 
+        HapticFeedback.success()
         withAnimation {
             task.group = group
             let targetTasks = visibleTasks.filter { item in
@@ -393,5 +435,35 @@ struct TaskOrganizedListView: View {
             task.sortOrder = (targetTasks.map(\.sortOrder).max() ?? -1) + 1
             modelContext.persistToJSON()
         }
+    }
+}
+
+/// Ручка drag: вибрация в момент long-press (выбор), а не при начале движения превью.
+private struct TaskDragHandle<Preview: View>: View {
+    let taskUUID: UUID
+    @ViewBuilder var preview: () -> Preview
+
+    /// Становится true, когда long-press распознан (палец ещё на месте).
+    @GestureState private var isLiftSelected = false
+
+    var body: some View {
+        Image(systemName: DesignSystem.Icon.drag)
+            .font(.system(size: 17, weight: .semibold))
+            .foregroundStyle(DesignSystem.Colors.textSecondary.opacity(0.75))
+            .frame(width: 32, height: DesignSystem.Space.x11)
+            .contentShape(Rectangle())
+            .accessibilityLabel("Перетащить задачу")
+            .draggable(taskUUID.uuidString, preview: preview)
+            .simultaneousGesture(
+                LongPressGesture(minimumDuration: 0.35)
+                    .updating($isLiftSelected) { currentState, gestureState, _ in
+                        gestureState = currentState
+                    }
+            )
+            .onChange(of: isLiftSelected) { _, selected in
+                if selected {
+                    HapticFeedback.lift()
+                }
+            }
     }
 }

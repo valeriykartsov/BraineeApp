@@ -2,7 +2,7 @@
 //  AnimatedMainTabView.swift
 //  BraineeApp
 //
-//  Компактная нижняя панель в духе HeadHunter: низкая высота, плотная пара иконка+подпись.
+//  Компактная нижняя панель: подчёркивание «перетекает» между разделами.
 
 import SwiftUI
 
@@ -10,6 +10,7 @@ struct AnimatedMainTabView: View {
     @AppStorage("appTheme") private var appThemeRaw = AppTheme.system.rawValue
     @AppStorage(AccentPalette.storageKey) private var accentPaletteRaw = AccentPalette.orange.rawValue
     @State private var selectedTab: MainTab = .career
+    @Namespace private var tabUnderlineNamespace
 
     private var colorScheme: ColorScheme? {
         AppTheme.resolved(from: appThemeRaw).colorScheme
@@ -17,6 +18,10 @@ struct AnimatedMainTabView: View {
 
     private var accentColor: Color {
         AccentPalette.resolved(from: accentPaletteRaw).color
+    }
+
+    private var flowAnimation: Animation {
+        .spring(response: 0.34, dampingFraction: 0.84)
     }
 
     var body: some View {
@@ -32,7 +37,7 @@ struct AnimatedMainTabView: View {
                     )
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .animation(.easeInOut(duration: 0.25), value: selectedTab)
+            .animation(flowAnimation, value: selectedTab)
 
             AppDivider()
             tabBar
@@ -71,7 +76,7 @@ struct AnimatedMainTabView: View {
                 let isActive = selectedTab == tab
                 Button {
                     guard selectedTab != tab else { return }
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withAnimation(flowAnimation) {
                         selectedTab = tab
                     }
                 } label: {
@@ -85,11 +90,16 @@ struct AnimatedMainTabView: View {
                             .lineLimit(1)
                             .minimumScaleFactor(0.75)
 
-                        // Подчёркивание активного раздела.
-                        Capsule(style: .continuous)
-                            .fill(isActive ? accentColor : Color.clear)
-                            .frame(width: 22, height: 2)
-                            .padding(.top, 1)
+                        ZStack {
+                            Color.clear.frame(width: 22, height: 2)
+                            if isActive {
+                                Capsule(style: .continuous)
+                                    .fill(accentColor)
+                                    .frame(width: 22, height: 2)
+                                    .matchedGeometryEffect(id: "tabUnderline", in: tabUnderlineNamespace)
+                            }
+                        }
+                        .padding(.top, 1)
                     }
                     .foregroundStyle(isActive ? accentColor : DesignSystem.Colors.textSecondary)
                     .frame(maxWidth: .infinity)
@@ -103,7 +113,6 @@ struct AnimatedMainTabView: View {
         }
         .padding(.horizontal, 4)
         .background(DesignSystem.Colors.surface.ignoresSafeArea(edges: .bottom))
-        .animation(.easeInOut(duration: 0.2), value: selectedTab)
     }
 }
 

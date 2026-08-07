@@ -138,7 +138,7 @@ enum DesignSystem {
         static let check = "checkmark"
         static let cancel = "xmark"
         static let person = "person"
-        static let drag = "chevron.right"
+        static let drag = "line.3.horizontal"
         static let search = "magnifyingglass"
         static let paintbrush = "paintbrush"
         static let tag = "tag"
