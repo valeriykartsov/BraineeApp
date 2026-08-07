@@ -24,6 +24,6 @@ enum TaskDragPayload {
               let uuid = UUID(uuidString: raw.trimmingCharacters(in: .whitespacesAndNewlines)) else {
             return nil
         }
-        return tasks.first(where: { $0.uuid == uuid && !$0.isDeleted })
+        return tasks.first(where: { $0.uuid == uuid && !$0.isSoftDeleted })
     }
 }

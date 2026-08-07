@@ -33,7 +33,7 @@ struct TaskSectionView: View {
         self.category = category
         let categoryRaw = category.rawValue
         _tasks = Query(
-            filter: #Predicate<TaskItem> { $0.categoryRaw == categoryRaw && !$0.isDeleted },
+            filter: #Predicate<TaskItem> { $0.categoryRaw == categoryRaw && !$0.isSoftDeleted },
             sort: [SortDescriptor(\TaskItem.sortOrder)]
         )
         _groups = Query(
@@ -171,7 +171,7 @@ struct TaskSectionView: View {
     private func deleteTask(_ task: TaskItem) {
         withAnimation {
             // Мягкое удаление: задача остаётся в JSON и попадает в «Удалённые».
-            task.isDeleted = true
+            task.isSoftDeleted = true
             task.deletedAt = .now
             try? modelContext.save()
             modelContext.persistToJSON()

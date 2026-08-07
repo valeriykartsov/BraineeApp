@@ -63,7 +63,7 @@ struct DeletedTaskDetailView: View {
 #Preview {
     NavigationStack {
         DeletedTaskDetailView(
-            task: TaskItem(title: "Пример", category: .career, isDeleted: true, deletedAt: .now),
+            task: TaskItem(title: "Пример", category: .career, isSoftDeleted: true, deletedAt: .now),
             onRestore: {}
         )
     }

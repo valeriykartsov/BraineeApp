@@ -67,7 +67,8 @@ BraineeApp/
 ### Переменные и свойства
 
 - `camelCase` для свойств и функций.
-- Булевы: `isCompleted`, `isDeleted`, `hasDeadline`, `showingAddTask`.
+- Булевы: `isCompleted`, `isSoftDeleted`, `hasDeadline`, `showingAddTask`.
+- **Не называй** поле мягкого удаления `isDeleted` — у SwiftData уже есть системное `isDeleted`, из‑за конфликта флаг не сохранялся в JSON.
 - Enum raw value для SwiftData: `categoryRaw`, `priorityRaw` (enum хранится как String/Int).
 - UUID моделей: поле `uuid` (не `id` в SwiftData-моделях).
 
@@ -86,7 +87,7 @@ BraineeApp/
    - `Documents/BraineeApp/mytasks.json` — задачи, группы, теги
    - `Documents/BraineeApp/profile.json` — профиль
 4. **Keychain** — зеркало JSON для восстановления после переудаления. Не дублируй логику записи вручную — используй `AppDataStore`.
-5. **Мягкое удаление задач:** `isDeleted = true`, `deletedAt = Date()`. Не удаляй из SwiftData при обычном удалении пользователем.
+5. **Мягкое удаление задач:** `isSoftDeleted = true`, `deletedAt = Date()`. В JSON поле по-прежнему `isDeleted`. Не удаляй из SwiftData при обычном удалении пользователем.
 6. **Окончательное удаление** — только из папки «Удалённые» через `modelContext.delete(task)`.
 7. **Новые поля в JSON** — добавляй с backward-compatible decode (`decodeIfPresent` + значение по умолчанию) и обновляй `normalizeRecords()`.
 8. **Не вызывай `saveTasks` из `prepareStorage`/reconcile** — это приводило к рекурсии и крашу. Пиши файл напрямую или через один уровень абстракции.
@@ -96,7 +97,7 @@ BraineeApp/
 
 ## SwiftUI и SwiftData — паттерны проекта
 
-- `@Query` с `#Predicate` для списков; фильтруй `!$0.isDeleted` в активных списках.
+- `@Query` с `#Predicate` для списков; фильтруй `!$0.isSoftDeleted` в активных списках.
 - `@Environment(\.modelContext)` для insert/update/delete.
 - Дочерние view получают действия через closure: `onToggle`, `onDelete`, `onEdit`.
 - Формы редактирования — `.sheet` + `AddEditTaskView`.

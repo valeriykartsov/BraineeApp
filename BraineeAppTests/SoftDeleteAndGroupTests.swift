@@ -40,7 +40,7 @@ struct SoftDeleteAndGroupTests {
         let task = TaskItem(
             title: "Навсегда",
             category: .career,
-            isDeleted: true,
+            isSoftDeleted: true,
             deletedAt: Date()
         )
         context.insert(task)
@@ -61,7 +61,7 @@ struct SoftDeleteAndGroupTests {
         context.insert(task)
         try context.save()
 
-        task.isDeleted = true
+        task.isSoftDeleted = true
         task.deletedAt = Date()
         context.delete(task)
         try context.save()

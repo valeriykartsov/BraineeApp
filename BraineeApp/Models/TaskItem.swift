@@ -18,7 +18,9 @@ final class TaskItem {
     var taskDetails: String
     var sortOrder: Int
     var uuid: UUID
-    var isDeleted: Bool
+    /// Мягкое удаление (в «Удалённые»). Нельзя называть `isDeleted` —
+    /// у SwiftData уже есть одноимённое системное свойство, и флаг не сохранялся в JSON.
+    var isSoftDeleted: Bool
     var deletedAt: Date?
 
     var group: TaskGroup?
@@ -36,7 +38,7 @@ final class TaskItem {
         taskDetails: String = "",
         sortOrder: Int = 0,
         uuid: UUID = UUID(),
-        isDeleted: Bool = false,
+        isSoftDeleted: Bool = false,
         deletedAt: Date? = nil,
         group: TaskGroup? = nil,
         tags: [TaskTag] = []
@@ -50,7 +52,7 @@ final class TaskItem {
         self.taskDetails = taskDetails
         self.sortOrder = sortOrder
         self.uuid = uuid
-        self.isDeleted = isDeleted
+        self.isSoftDeleted = isSoftDeleted
         self.deletedAt = deletedAt
         self.group = group
         self.tags = tags

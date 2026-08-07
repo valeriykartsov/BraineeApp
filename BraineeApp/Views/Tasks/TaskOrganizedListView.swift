@@ -22,7 +22,7 @@ struct TaskOrganizedListView: View {
     @State private var dropTargetGroupUUID: UUID?
 
     private var visibleTasks: [TaskItem] {
-        let active = tasks.filter { !$0.isDeleted }
+        let active = tasks.filter { !$0.isSoftDeleted }
         switch viewMode {
         case .dayPlan:
             return active.filter(\.isDueToday)
@@ -282,7 +282,7 @@ struct TaskOrganizedListView: View {
 
     /// Переносит задачу в группу (или в «Без папки», если group == nil) и сохраняет JSON.
     private func assignTask(_ task: TaskItem, to group: TaskGroup?) {
-        guard !task.isDeleted else { return }
+        guard !task.isSoftDeleted else { return }
 
         withAnimation {
             task.group = group
