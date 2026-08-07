@@ -2,15 +2,15 @@
 //  BraineeAppTests.swift
 //  BraineeAppTests
 //
-//  Created by Valera Valera on 05.08.2026.
-//
+//  Точка входа набора тестов. Основные сценарии — в соседних файлах *Tests.swift.
 
 import Testing
+@testable import BraineeApp
 
 struct BraineeAppTests {
-
-    @Test func example() async throws {
-        // Write your test here and use APIs like `#expect(...)` to check expected conditions.
+    @Test func тестовыйTargetПодключён_импортРаботает() {
+        // Smoke-тест: @testable import BraineeApp доступен из юнит-тестов.
+        #expect(MyTasksDocument.currentVersion == 2)
+        #expect(TaskInputValidation.detailsMaxLength == 200)
     }
-
 }

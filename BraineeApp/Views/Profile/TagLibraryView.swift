@@ -54,13 +54,12 @@ struct TagLibraryView: View {
     }
 
     private func createTag() {
-        let trimmed = newTagName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        guard !tags.contains(where: { $0.name.caseInsensitiveCompare(trimmed) == .orderedSame }) else {
+        let existingNames = tags.map(\.name)
+        guard TaskInputValidation.canCreateTag(name: newTagName, existingNames: existingNames) else {
             newTagName = ""
             return
         }
-        modelContext.insert(TaskTag(name: trimmed))
+        modelContext.insert(TaskTag(name: TaskInputValidation.normalizedTagName(newTagName)))
         newTagName = ""
         modelContext.persistToJSON()
     }

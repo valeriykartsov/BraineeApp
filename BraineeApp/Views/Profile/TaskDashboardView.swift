@@ -14,7 +14,7 @@ struct TaskDashboardView: View {
     var body: some View {
         Section("Дашборд") {
             ForEach(TaskCategory.allCases) { category in
-                let stats = stats(for: category)
+                let stats = TaskCategoryStats.compute(from: activeTasks, category: category)
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         Label(category.title, systemImage: category.systemImage)
@@ -39,17 +39,6 @@ struct TaskDashboardView: View {
         }
     }
 
-    private func stats(for category: TaskCategory) -> CategoryStats {
-        let tasks = activeTasks.filter { $0.category == category }
-        let completed = tasks.filter(\.isCompleted).count
-        let overdue = tasks.filter(\.isOverdue).count
-        let today = tasks.filter(\.isDueToday).count
-        let total = tasks.count
-        let active = tasks.filter { !$0.isCompleted }.count
-        let progress = total == 0 ? 0 : Double(completed) / Double(total)
-        return CategoryStats(total: total, completed: completed, active: active, overdue: overdue, today: today, progress: progress)
-    }
-
     private func statBadge(title: String, value: Int, color: Color) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text("\(value)")
@@ -68,15 +57,6 @@ struct TaskDashboardView: View {
         case .mental: .purple
         }
     }
-}
-
-private struct CategoryStats {
-    let total: Int
-    let completed: Int
-    let active: Int
-    let overdue: Int
-    let today: Int
-    let progress: Double
 }
 
 #Preview {
