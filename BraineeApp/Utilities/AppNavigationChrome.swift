@@ -1,28 +1,30 @@
 //
-//  PankinNavigationChrome.swift
+//  AppNavigationChrome.swift
 //  BraineeApp
 //
-//  Единый вид navigation bar: моноширинный заголовок, фон как у разделов.
+//  Единый стиль navigation bar: чуть компактнее large title, выше к статус-бару.
 
 import SwiftUI
 #if canImport(UIKit)
 import UIKit
 #endif
 
-enum PankinNavigationChrome {
-    /// Применяет стиль панели навигации под дизайн-систему.
+enum AppNavigationChrome {
+    /// Размер large title для разделов и профиля.
+    static let largeTitleSize: CGFloat = 28
+
     @MainActor
     static func apply() {
 #if canImport(UIKit)
         let background = UIColor(DesignSystem.Colors.background)
         let titleColor = UIColor(DesignSystem.Colors.textPrimary)
-        let titleFont = UIFont.monospacedSystemFont(ofSize: 17, weight: .bold)
-        let largeFont = UIFont.monospacedSystemFont(ofSize: 28, weight: .bold)
+        let titleFont = UIFont.systemFont(ofSize: 17, weight: .semibold)
+        let largeFont = UIFont.systemFont(ofSize: largeTitleSize, weight: .bold)
 
         let appearance = UINavigationBarAppearance()
         appearance.configureWithOpaqueBackground()
         appearance.backgroundColor = background
-        appearance.shadowColor = UIColor(DesignSystem.Colors.divider)
+        appearance.shadowColor = .clear
         appearance.titleTextAttributes = [
             .font: titleFont,
             .foregroundColor: titleColor
@@ -32,17 +34,24 @@ enum PankinNavigationChrome {
             .foregroundColor: titleColor
         ]
 
+        let accent = UIColor(DesignSystem.Colors.accent)
+
         let nav = UINavigationBar.appearance()
         nav.standardAppearance = appearance
         nav.compactAppearance = appearance
         nav.scrollEdgeAppearance = appearance
-        nav.tintColor = UIColor(DesignSystem.Colors.accent)
+        nav.tintColor = accent
+        // Чуть поднимаем inline-заголовок; large title становится компактнее за счёт меньшего шрифта.
+        nav.setTitleVerticalPositionAdjustment(-2, for: .default)
+        nav.setTitleVerticalPositionAdjustment(-2, for: .compact)
+
+        // Кнопки системных алертов (UIAlertController) берут tint отсюда, не из SwiftUI.
+        UIView.appearance().tintColor = accent
 #endif
     }
 }
 
-/// Модификатор экрана раздела: крупный моно-заголовок слева и фон.
-struct PankinSectionChrome: ViewModifier {
+struct AppSectionChrome: ViewModifier {
     func body(content: Content) -> some View {
         content
             .navigationBarTitleDisplayMode(.large)
@@ -53,7 +62,7 @@ struct PankinSectionChrome: ViewModifier {
 }
 
 extension View {
-    func pankinSectionChrome() -> some View {
-        modifier(PankinSectionChrome())
+    func appSectionChrome() -> some View {
+        modifier(AppSectionChrome())
     }
 }

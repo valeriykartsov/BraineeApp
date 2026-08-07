@@ -2,7 +2,7 @@
 //  TaskOrganizedListView.swift
 //  BraineeApp
 //
-//  Список задач в геометрии Панкина: карточки 4pt, тонкие линии, сетка 4.
+//  Список задач в inset-grouped карточках (референс Settings / Telegram).
 
 import SwiftUI
 import SwiftData
@@ -13,6 +13,7 @@ struct TaskOrganizedListView: View {
     let groups: [TaskGroup]
     let tasks: [TaskItem]
     let viewMode: TaskViewMode
+    var displaySettings: TaskListDisplaySettings = .default
 
     var onToggle: (TaskItem) -> Void
     var onDelete: (TaskItem) -> Void
@@ -60,7 +61,7 @@ struct TaskOrganizedListView: View {
                 byDateContent
             }
         }
-        .pankinScreenBackground()
+        .appScreenBackground()
         .alert("Удалить группу?", isPresented: $showingDeleteGroupConfirm) {
             Button("Отмена", role: .cancel) {
                 groupPendingDeletion = nil
@@ -86,37 +87,34 @@ struct TaskOrganizedListView: View {
             emptyState
         } else {
             ScrollView {
-                LazyVStack(spacing: 0) {
-                    ForEach(dayPlanTasks) { task in
-                        taskRow(task)
-                        if task.uuid != dayPlanTasks.last?.uuid {
-                            PankinDivider()
-                                .padding(.leading, DesignSystem.Space.x4)
-                        }
-                    }
+                GroupedSection(title: "Сегодня") {
+                    taskStack(dayPlanTasks)
                 }
-                .pankinCard()
-                .padding(.horizontal, DesignSystem.Space.x3)
-                .padding(.vertical, DesignSystem.Space.x2)
+                .groupedScreenPadding()
+                .padding(.vertical, DesignSystem.Space.x2 + 2)
             }
         }
     }
 
     @ViewBuilder
     private var byDateContent: some View {
-        ScrollView {
-            LazyVStack(spacing: DesignSystem.Space.x2) {
-                ForEach(sortedGroups) { group in
-                    let groupTasks = sortedTasks(
-                        visibleTasks.filter { $0.group?.uuid == group.uuid }
-                    )
-                    groupFolderCard(group: group, tasks: groupTasks)
-                }
+        if visibleTasks.isEmpty && sortedGroups.isEmpty {
+            emptyState
+        } else {
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: DesignSystem.Space.sectionGap) {
+                    ForEach(sortedGroups) { group in
+                        let groupTasks = sortedTasks(
+                            visibleTasks.filter { $0.group?.uuid == group.uuid }
+                        )
+                        groupSection(group: group, tasks: groupTasks)
+                    }
 
-                ungroupedSection
+                    ungroupedSection
+                }
+                .groupedScreenPadding()
+                .padding(.vertical, DesignSystem.Space.x2 + 2)
             }
-            .padding(.horizontal, DesignSystem.Space.x3)
-            .padding(.vertical, DesignSystem.Space.x2)
         }
     }
 
@@ -125,48 +123,45 @@ struct TaskOrganizedListView: View {
         switch viewMode {
         case .dayPlan:
             VStack(alignment: .leading, spacing: DesignSystem.Space.x3) {
-                Text("План на день пуст")
-                    .font(DesignSystem.Typography.title(22))
-                    .foregroundStyle(DesignSystem.Colors.textPrimary)
-                Text("Добавьте задачи с дедлайном на сегодня")
-                    .font(DesignSystem.Typography.body())
-                    .foregroundStyle(DesignSystem.Colors.textSecondary)
-                PankinDivider()
+                GroupedSection(title: "Сегодня") {
+                    VStack(alignment: .leading, spacing: DesignSystem.Space.x2) {
+                        Text("На сегодня задач нет")
+                            .font(DesignSystem.Typography.headline())
+                            .foregroundStyle(DesignSystem.Colors.textPrimary)
+                        Text("Добавьте задачи с дедлайном на сегодня")
+                            .font(DesignSystem.Typography.caption())
+                            .foregroundStyle(DesignSystem.Colors.textSecondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(DesignSystem.Space.x4)
+                }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .padding(DesignSystem.Space.x4)
+            .groupedScreenPadding()
+            .padding(.vertical, DesignSystem.Space.x4)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         case .byDate:
             EmptyTasksView()
         }
     }
 
-    private func groupFolderCard(group: TaskGroup, tasks groupTasks: [TaskItem]) -> some View {
+    private func groupSection(group: TaskGroup, tasks groupTasks: [TaskItem]) -> some View {
         let isTargeted = dropTargetGroupUUID == group.uuid
 
-        return VStack(alignment: .leading, spacing: 0) {
-            groupHeader(group, taskCount: groupTasks.count)
-                .padding(.horizontal, DesignSystem.Space.x3)
-                .padding(.vertical, DesignSystem.Space.x2)
+        return GroupedSection(title: nil) {
+            VStack(alignment: .leading, spacing: 0) {
+                groupHeader(group, taskCount: groupTasks.count)
+                InsetDivider(leading: DesignSystem.Space.rowIconInset)
 
-            PankinDivider()
-
-            if groupTasks.isEmpty && viewMode == .byDate {
-                emptyFolderHint(name: group.name)
-                    .padding(.vertical, DesignSystem.Space.x2)
-            } else {
-                VStack(spacing: 0) {
-                    ForEach(groupTasks) { task in
-                        taskRow(task)
-                        if task.uuid != groupTasks.last?.uuid {
-                            PankinDivider()
-                                .padding(.leading, DesignSystem.Space.x4)
-                        }
-                    }
+                if groupTasks.isEmpty {
+                    emptyFolderHint(name: group.name)
+                        .padding(.horizontal, DesignSystem.Space.x3)
+                        .padding(.vertical, DesignSystem.Space.x2 + 2)
+                } else {
+                    taskStack(groupTasks)
                 }
             }
+            .flatHighlight(highlighted: isTargeted)
         }
-        .pankinCard(highlighted: isTargeted)
-        .contentShape(RoundedRectangle(cornerRadius: DesignSystem.Radius.card, style: .circular))
         .animation(.easeInOut(duration: 0.15), value: isTargeted)
         .dropDestination(for: String.self) { items, _ in
             performDrop(items, into: group)
@@ -182,42 +177,38 @@ struct TaskOrganizedListView: View {
     private var ungroupedSection: some View {
         let isTargeted = dropTargetGroupUUID == ungroupedDropID
 
-        return VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: DesignSystem.Space.x2) {
-                Image(systemName: DesignSystem.Icon.tray)
-                    .foregroundStyle(DesignSystem.Colors.textSecondary)
-                Text("Без папки")
-                    .font(DesignSystem.Typography.headline())
-                    .foregroundStyle(DesignSystem.Colors.textPrimary)
-                if !ungroupedTasks.isEmpty {
-                    Text("\(ungroupedTasks.count)")
-                        .font(DesignSystem.Typography.data(12))
+        return GroupedSection(title: nil) {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: DesignSystem.Space.x2) {
+                    Image(systemName: DesignSystem.Icon.tray)
+                        .font(.system(size: 16, weight: .regular))
                         .foregroundStyle(DesignSystem.Colors.accent)
-                }
-                Spacer()
-            }
-            .padding(.horizontal, DesignSystem.Space.x3)
-            .padding(.vertical, DesignSystem.Space.x2)
-
-            PankinDivider()
-
-            if ungroupedTasks.isEmpty && viewMode == .byDate {
-                emptyFolderHint(name: nil)
-                    .padding(.vertical, DesignSystem.Space.x2)
-            } else {
-                VStack(spacing: 0) {
-                    ForEach(ungroupedTasks) { task in
-                        taskRow(task)
-                        if task.uuid != ungroupedTasks.last?.uuid {
-                            PankinDivider()
-                                .padding(.leading, DesignSystem.Space.x4)
-                        }
+                        .frame(width: DesignSystem.Space.x5, height: DesignSystem.Space.x5)
+                    Text("Без папки")
+                        .font(DesignSystem.Typography.body(16))
+                        .foregroundStyle(DesignSystem.Colors.textPrimary)
+                    if !ungroupedTasks.isEmpty {
+                        Text("\(ungroupedTasks.count)")
+                            .font(DesignSystem.Typography.caption())
+                            .foregroundStyle(DesignSystem.Colors.textSecondary)
                     }
+                    Spacer()
+                }
+                .padding(.horizontal, DesignSystem.Space.x3)
+                .padding(.vertical, DesignSystem.Space.x2 + 2)
+
+                if ungroupedTasks.isEmpty && viewMode == .byDate {
+                    InsetDivider(leading: DesignSystem.Space.rowIconInset)
+                    emptyFolderHint(name: nil)
+                        .padding(.horizontal, DesignSystem.Space.x3)
+                        .padding(.vertical, DesignSystem.Space.x2 + 2)
+                } else if !ungroupedTasks.isEmpty {
+                    InsetDivider(leading: DesignSystem.Space.rowIconInset)
+                    taskStack(ungroupedTasks)
                 }
             }
+            .flatHighlight(highlighted: isTargeted)
         }
-        .pankinCard(highlighted: isTargeted)
-        .contentShape(RoundedRectangle(cornerRadius: DesignSystem.Radius.card, style: .circular))
         .animation(.easeInOut(duration: 0.15), value: isTargeted)
         .dropDestination(for: String.self) { items, _ in
             performDrop(items, into: nil)
@@ -231,34 +222,27 @@ struct TaskOrganizedListView: View {
     }
 
     private func emptyFolderHint(name: String?) -> some View {
-        HStack {
-            Spacer(minLength: 0)
-            Text(name.map { "Перетащите в «\($0)»" } ?? "Перетащите сюда")
-                .font(DesignSystem.Typography.caption())
-                .foregroundStyle(DesignSystem.Colors.textSecondary)
-                .padding(.horizontal, DesignSystem.Space.x3)
-                .padding(.vertical, DesignSystem.Space.x2)
-                .overlay {
-                    RoundedRectangle(cornerRadius: DesignSystem.Radius.card, style: .circular)
-                        .strokeBorder(DesignSystem.Colors.divider, lineWidth: DesignSystem.Stroke.hairline)
-                }
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, DesignSystem.Space.x4)
+        Text(name.map { "Перетащите в «\($0)»" } ?? "Перетащите сюда")
+            .font(DesignSystem.Typography.caption())
+            .foregroundStyle(DesignSystem.Colors.textSecondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder
     private func groupHeader(_ group: TaskGroup, taskCount: Int) -> some View {
         if editingGroupUUID == group.uuid {
-            HStack(spacing: DesignSystem.Space.x1) {
+            HStack(spacing: DesignSystem.Space.x2) {
                 Image(systemName: DesignSystem.Icon.folder)
-                    .foregroundStyle(DesignSystem.Colors.textSecondary)
+                    .font(.system(size: 16, weight: .regular))
+                    .foregroundStyle(DesignSystem.Colors.accent)
+                    .frame(width: DesignSystem.Space.x5, height: DesignSystem.Space.x5)
                 TextField("Название группы", text: $editingGroupName)
-                    .font(DesignSystem.Typography.headline())
+                    .font(DesignSystem.Typography.body(16))
                     .foregroundStyle(DesignSystem.Colors.textPrimary)
                 IconTapButton(
                     systemName: DesignSystem.Icon.check,
                     tint: DesignSystem.Colors.accent,
+                    compact: true,
                     accessibilityLabel: "Подтвердить название"
                 ) {
                     confirmRenameGroup(group)
@@ -268,40 +252,51 @@ struct TaskOrganizedListView: View {
                 IconTapButton(
                     systemName: DesignSystem.Icon.cancel,
                     tint: DesignSystem.Colors.textSecondary,
+                    compact: true,
                     accessibilityLabel: "Отменить редактирование"
                 ) {
                     cancelRenameGroup()
                 }
             }
+            .padding(.horizontal, DesignSystem.Space.x3)
+            .padding(.vertical, DesignSystem.Space.x2 + 2)
         } else {
-            HStack(spacing: DesignSystem.Space.x1) {
+            HStack(spacing: DesignSystem.Space.x2) {
                 Image(systemName: DesignSystem.Icon.folder)
-                    .foregroundStyle(DesignSystem.Colors.textSecondary)
+                    .font(.system(size: 16, weight: .regular))
+                    .foregroundStyle(DesignSystem.Colors.accent)
+                    .frame(width: DesignSystem.Space.x5, height: DesignSystem.Space.x5)
                 Text(group.name)
-                    .font(DesignSystem.Typography.headline())
+                    .font(DesignSystem.Typography.body(16))
                     .foregroundStyle(DesignSystem.Colors.textPrimary)
                 if taskCount > 0 {
                     Text("\(taskCount)")
-                        .font(DesignSystem.Typography.data(12))
-                        .foregroundStyle(DesignSystem.Colors.accent)
+                        .font(DesignSystem.Typography.caption())
+                        .foregroundStyle(DesignSystem.Colors.textSecondary)
                 }
                 Spacer(minLength: DesignSystem.Space.x2)
-                IconTapButton(
-                    systemName: DesignSystem.Icon.pencil,
-                    tint: DesignSystem.Colors.accent,
-                    accessibilityLabel: "Редактировать название группы"
-                ) {
-                    beginRenameGroup(group)
-                }
-                IconTapButton(
-                    systemName: DesignSystem.Icon.trash,
-                    role: .destructive,
-                    accessibilityLabel: "Удалить группу"
-                ) {
-                    groupPendingDeletion = group
-                    showingDeleteGroupConfirm = true
+                HStack(spacing: 0) {
+                    IconTapButton(
+                        systemName: DesignSystem.Icon.pencil,
+                        tint: DesignSystem.Colors.accent,
+                        compact: true,
+                        accessibilityLabel: "Редактировать название группы"
+                    ) {
+                        beginRenameGroup(group)
+                    }
+                    IconTapButton(
+                        systemName: DesignSystem.Icon.trash,
+                        tint: DesignSystem.Colors.accent,
+                        compact: true,
+                        accessibilityLabel: "Удалить группу"
+                    ) {
+                        groupPendingDeletion = group
+                        showingDeleteGroupConfirm = true
+                    }
                 }
             }
+            .padding(.horizontal, DesignSystem.Space.x3)
+            .padding(.vertical, DesignSystem.Space.x2 + 2)
         }
     }
 
@@ -322,22 +317,33 @@ struct TaskOrganizedListView: View {
         cancelRenameGroup()
     }
 
+    private func taskStack(_ items: [TaskItem]) -> some View {
+        VStack(spacing: 0) {
+            ForEach(Array(items.enumerated()), id: \.element.uuid) { index, task in
+                taskRow(task)
+                if index < items.count - 1 {
+                    InsetDivider(leading: DesignSystem.Space.rowIconInset)
+                }
+            }
+        }
+    }
+
     private func taskRow(_ task: TaskItem) -> some View {
         HStack(spacing: DesignSystem.Space.x2) {
-            TaskRowView(task: task) {
+            TaskRowView(task: task, displaySettings: displaySettings) {
                 onToggle(task)
             }
 
             Image(systemName: DesignSystem.Icon.drag)
-                .font(.system(size: 14, weight: .regular))
-                .foregroundStyle(DesignSystem.Colors.textSecondary)
-                .frame(width: DesignSystem.Space.x6, height: DesignSystem.Space.x8)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(DesignSystem.Colors.textSecondary.opacity(0.7))
+                .frame(width: DesignSystem.Space.x5, height: DesignSystem.Space.x6)
                 .contentShape(Rectangle())
-                .accessibilityLabel("Перетащить задачу")
+                .accessibilityLabel("Открыть задачу")
                 .draggable(task.uuid.uuidString)
         }
         .padding(.horizontal, DesignSystem.Space.x3)
-        .padding(.vertical, DesignSystem.Space.x1)
+        .padding(.vertical, DesignSystem.Space.x2 + 2)
         .contentShape(Rectangle())
         .onTapGesture {
             onEdit(task)

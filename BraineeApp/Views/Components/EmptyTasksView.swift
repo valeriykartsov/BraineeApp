@@ -2,23 +2,29 @@
 //  EmptyTasksView.swift
 //  BraineeApp
 //
-//  Заглушка, когда в разделе ещё нет ни одной задачи.
+//  Заглушка пустого раздела в grouped-стиле.
 
 import SwiftUI
 
 struct EmptyTasksView: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignSystem.Space.x3) {
-            Text("Нет задач")
-                .font(DesignSystem.Typography.title(22))
-                .foregroundStyle(DesignSystem.Colors.textPrimary)
-            Text("Нажмите «+», чтобы добавить первую задачу")
-                .font(DesignSystem.Typography.body())
-                .foregroundStyle(DesignSystem.Colors.textSecondary)
-            PankinDivider()
+        VStack(alignment: .leading, spacing: DesignSystem.Space.x6) {
+            GroupedSection(title: "Задачи") {
+                VStack(alignment: .leading, spacing: DesignSystem.Space.x2) {
+                    Text("Нет задач")
+                        .font(DesignSystem.Typography.headline())
+                        .foregroundStyle(DesignSystem.Colors.textPrimary)
+                    Text("Нажмите «+», чтобы добавить первую задачу")
+                        .font(DesignSystem.Typography.caption())
+                        .foregroundStyle(DesignSystem.Colors.textSecondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(DesignSystem.Space.x4)
+            }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .padding(DesignSystem.Space.x4)
-        .pankinScreenBackground()
+        .groupedScreenPadding()
+        .padding(.vertical, DesignSystem.Space.x4)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .appScreenBackground()
     }
 }

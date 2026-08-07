@@ -2,7 +2,7 @@
 //  UserProfile.swift
 //  BraineeApp
 //
-//  Профиль пользователя: отображаемое имя и фото аватара.
+//  Профиль пользователя: имя, аватар, возраст, пол.
 
 import Foundation
 import SwiftData
@@ -11,11 +11,28 @@ import SwiftData
 final class UserProfile {
     var displayName: String
     var avatarData: Data?
+    /// Возраст; `nil` — не указан.
+    var age: Int?
+    /// Сырое значение `UserGender` для SwiftData.
+    var genderRaw: String
     var createdAt: Date
 
-    init(displayName: String = "", avatarData: Data? = nil, createdAt: Date = .now) {
+    var gender: UserGender {
+        get { UserGender.resolved(from: genderRaw) }
+        set { genderRaw = newValue.rawValue }
+    }
+
+    init(
+        displayName: String = "",
+        avatarData: Data? = nil,
+        age: Int? = nil,
+        gender: UserGender = .unspecified,
+        createdAt: Date = .now
+    ) {
         self.displayName = displayName
         self.avatarData = avatarData
+        self.age = age
+        self.genderRaw = gender.rawValue
         self.createdAt = createdAt
     }
 }

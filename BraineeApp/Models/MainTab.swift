@@ -23,12 +23,23 @@ enum MainTab: Int, CaseIterable, Identifiable {
         }
     }
 
+    /// Контурная иконка (неактивная вкладка).
     var systemImage: String {
         switch self {
-        case .career: TaskCategory.career.systemImage
-        case .sport: TaskCategory.sport.systemImage
-        case .mental: TaskCategory.mental.systemImage
-        case .profile: "person.circle"
+        case .career: "briefcase"
+        case .sport: "figure.run"
+        case .mental: "brain.head.profile"
+        case .profile: "person"
+        }
+    }
+
+    /// Более «залитая» иконка для активной вкладки (как в HH).
+    var selectedSystemImage: String {
+        switch self {
+        case .career: "briefcase.fill"
+        case .sport: "figure.run"
+        case .mental: "brain.head.profile"
+        case .profile: "person.fill"
         }
     }
 

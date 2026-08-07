@@ -2,27 +2,38 @@
 //  LaunchScreenView.swift
 //  BraineeApp
 //
-//  Адаптивный загрузочный экран: фон как у разделов, логотип и текст под тему.
+//  Загрузочный экран: анимированный логотип + название + слоган.
 
 import SwiftUI
 
 struct LaunchScreenView: View {
+    @Environment(\.colorScheme) private var colorScheme
+    var playsLogoAnimation: Bool = true
+
+    private var splashBackground: Color {
+        colorScheme == .dark ? .black : .white
+    }
+
     var body: some View {
         ZStack {
-            // Тот же фон, что у Карьера / Спорт / Ментальное / Профиль.
-            DesignSystem.Colors.background
+            splashBackground
                 .ignoresSafeArea()
 
-            VStack(spacing: DesignSystem.Space.x5) {
-                PankinLogoMark(size: DesignSystem.Space.grid(36))
+            VStack(spacing: 0) {
+                AppLogoMark(
+                    size: DesignSystem.Space.grid(32),
+                    playsAppearAnimation: playsLogoAnimation
+                )
 
                 Text("BraineeApp")
                     .font(DesignSystem.Typography.title(28))
                     .foregroundStyle(DesignSystem.Colors.textPrimary)
+                    .padding(.top, DesignSystem.Space.x5)
 
                 Text("Make your day!")
-                    .font(DesignSystem.Typography.data(14))
+                    .font(DesignSystem.Typography.body(15))
                     .foregroundStyle(DesignSystem.Colors.textSecondary)
+                    .padding(.top, DesignSystem.Space.x2)
             }
             .accessibilityElement(children: .combine)
             .accessibilityLabel("BraineeApp. Make your day!")

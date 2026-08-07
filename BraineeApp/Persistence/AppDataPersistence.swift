@@ -15,7 +15,11 @@ enum AppDataPersistence {
         clearAllData(in: context)
 
         let tasksDocument = try AppDataStore.loadTasks()
-        let profileDocument = try AppDataStore.loadProfile()
+        var profileDocument = try AppDataStore.loadProfile()
+
+        if applyAccentDefaults(to: &profileDocument) {
+            try? AppDataStore.saveProfile(profileDocument)
+        }
 
         importTasks(tasksDocument, into: context)
         importProfile(profileDocument, into: context)
@@ -26,6 +30,29 @@ enum AppDataPersistence {
         }
 
         try context.save()
+    }
+
+    /// Правила акцента при старте.
+    /// - Первая установка / переустановка → оранжевый + маркер запуска.
+    /// - Повторный запуск без ключа в UserDefaults → значение из profile.json.
+    /// - Возвращает `true`, если profile нужно сохранить на диск.
+    @discardableResult
+    static func applyAccentDefaults(
+        to profile: inout ProfileDocument,
+        defaults: UserDefaults = .standard
+    ) -> Bool {
+        let isFreshInstall = !defaults.bool(forKey: AccentPalette.hasLaunchedStorageKey)
+        if isFreshInstall {
+            profile.accentPaletteRaw = AccentPalette.orange.rawValue
+            defaults.set(AccentPalette.orange.rawValue, forKey: AccentPalette.storageKey)
+            defaults.set(true, forKey: AccentPalette.hasLaunchedStorageKey)
+            return true
+        }
+
+        if defaults.object(forKey: AccentPalette.storageKey) == nil {
+            defaults.set(profile.accentPaletteRaw, forKey: AccentPalette.storageKey)
+        }
+        return false
     }
 
     /// Сохраняет текущее состояние SwiftData обратно в JSON и Keychain.
@@ -90,11 +117,15 @@ enum AppDataPersistence {
     }
 
     private static func importProfile(_ document: ProfileDocument, into context: ModelContext) {
-        let avatarData = document.avatarBase64.flatMap { Data(base64Encoded: $0) }
+        var normalized = document
+        normalized.normalize()
+        let avatarData = normalized.avatarBase64.flatMap { Data(base64Encoded: $0) }
         let profile = UserProfile(
-            displayName: document.displayName,
+            displayName: normalized.displayName,
             avatarData: avatarData,
-            createdAt: document.createdAt
+            age: normalized.age,
+            gender: UserGender.resolved(from: normalized.genderRaw),
+            createdAt: normalized.createdAt
         )
         context.insert(profile)
     }
@@ -141,13 +172,19 @@ enum AppDataPersistence {
         let profiles = (try? context.fetch(FetchDescriptor<UserProfile>())) ?? []
         let profile = profiles.first
 
-        return ProfileDocument(
-            version: 1,
+        var document = ProfileDocument(
+            version: ProfileDocument.currentVersion,
             displayName: profile?.displayName ?? "",
             avatarBase64: profile?.avatarData?.base64EncodedString(),
+            age: profile?.age,
+            genderRaw: profile?.genderRaw ?? UserGender.unspecified.rawValue,
             appThemeRaw: UserDefaults.standard.string(forKey: "appTheme") ?? AppTheme.system.rawValue,
+            accentPaletteRaw: UserDefaults.standard.string(forKey: AccentPalette.storageKey)
+                ?? AccentPalette.orange.rawValue,
             createdAt: profile?.createdAt ?? .now
         )
+        document.normalize()
+        return document
     }
 }
 

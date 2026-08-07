@@ -201,19 +201,77 @@ struct TagRecord: Codable, Identifiable {
     }
 }
 
-/// Файл profile.json — имя, аватар и тема оформления.
+/// Файл profile.json — имя, аватар, возраст, пол и тема оформления.
 struct ProfileDocument: Codable {
     var version: Int
     var displayName: String
     var avatarBase64: String?
+    var age: Int?
+    var genderRaw: String
     var appThemeRaw: String
+    var accentPaletteRaw: String
     var createdAt: Date
 
+    static let currentVersion = 3
+
     static let empty = ProfileDocument(
-        version: 1,
+        version: currentVersion,
         displayName: "",
         avatarBase64: nil,
+        age: nil,
+        genderRaw: UserGender.unspecified.rawValue,
         appThemeRaw: AppTheme.system.rawValue,
+        accentPaletteRaw: AccentPalette.orange.rawValue,
         createdAt: .now
     )
+
+    init(
+        version: Int,
+        displayName: String,
+        avatarBase64: String?,
+        age: Int?,
+        genderRaw: String,
+        appThemeRaw: String,
+        accentPaletteRaw: String,
+        createdAt: Date
+    ) {
+        self.version = version
+        self.displayName = displayName
+        self.avatarBase64 = avatarBase64
+        self.age = age
+        self.genderRaw = genderRaw
+        self.appThemeRaw = appThemeRaw
+        self.accentPaletteRaw = accentPaletteRaw
+        self.createdAt = createdAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        version = try container.decodeIfPresent(Int.self, forKey: .version) ?? 1
+        displayName = try container.decodeIfPresent(String.self, forKey: .displayName) ?? ""
+        avatarBase64 = try container.decodeIfPresent(String.self, forKey: .avatarBase64)
+        age = try container.decodeIfPresent(Int.self, forKey: .age)
+        genderRaw = try container.decodeIfPresent(String.self, forKey: .genderRaw)
+            ?? UserGender.unspecified.rawValue
+        appThemeRaw = try container.decodeIfPresent(String.self, forKey: .appThemeRaw)
+            ?? AppTheme.system.rawValue
+        accentPaletteRaw = try container.decodeIfPresent(String.self, forKey: .accentPaletteRaw)
+            ?? AccentPalette.orange.rawValue
+        createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? .now
+    }
+
+    /// Нормализация старых profile.json и граничных значений.
+    mutating func normalize() {
+        version = Self.currentVersion
+        displayName = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if UserGender(rawValue: genderRaw) == nil {
+            genderRaw = UserGender.unspecified.rawValue
+        }
+        if AccentPalette(rawValue: accentPaletteRaw) == nil {
+            accentPaletteRaw = AccentPalette.orange.rawValue
+        }
+        if let age, (age < 1 || age > 120) {
+            self.age = nil
+        }
+    }
 }
