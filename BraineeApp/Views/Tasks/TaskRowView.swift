@@ -2,7 +2,7 @@
 //  TaskRowView.swift
 //  BraineeApp
 //
-//  Одна строка задачи в списке: чекбокс, текст, дедлайн, приоритет и теги.
+//  Компактная строка задачи: контрастные дата/теги/приоритет на карточке.
 
 import SwiftUI
 import SwiftData
@@ -12,39 +12,68 @@ struct TaskRowView: View {
     var onToggle: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(alignment: .top, spacing: DesignSystem.Space.x2) {
             Button(action: onToggle) {
-                Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
-                    .font(.title3)
-                    .foregroundStyle(task.isCompleted ? .green : .secondary)
+                Image(systemName: task.isCompleted ? DesignSystem.Icon.checkboxOn : DesignSystem.Icon.checkboxOff)
+                    .font(.system(size: 18, weight: .regular))
+                    .foregroundStyle(
+                        task.isCompleted
+                            ? DesignSystem.Colors.accent
+                            : DesignSystem.Colors.textSecondary
+                    )
+                    .frame(width: DesignSystem.Space.x8, height: DesignSystem.Space.x8)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .padding(.top, DesignSystem.Space.x1)
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: DesignSystem.Space.x1) {
                 Text(task.title)
-                    .font(.body)
+                    .font(DesignSystem.Typography.body(15))
                     .strikethrough(task.isCompleted)
-                    .foregroundStyle(task.isCompleted ? .secondary : .primary)
+                    .foregroundStyle(
+                        task.isCompleted
+                            ? DesignSystem.Colors.textSecondary
+                            : DesignSystem.Colors.textPrimary
+                    )
 
                 if !task.taskDetails.isEmpty {
                     Text(task.taskDetails)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
+                        .font(DesignSystem.Typography.caption(11))
+                        .foregroundStyle(DesignSystem.Colors.textSecondary)
+                        .lineLimit(1)
                 }
 
-                HStack(spacing: 8) {
+                HStack(spacing: DesignSystem.Space.x1) {
                     if let deadline = task.deadline {
-                        Label(deadline.formatted(date: .abbreviated, time: .omitted), systemImage: "calendar")
-                            .font(.caption)
-                            .foregroundStyle(task.isOverdue ? .red : .secondary)
+                        HStack(spacing: DesignSystem.Space.x1) {
+                            Image(systemName: DesignSystem.Icon.calendar)
+                                .font(.system(size: 10, weight: .medium))
+                            Text(deadline.formatted(date: .abbreviated, time: .omitted))
+                                .font(DesignSystem.Typography.data(11))
+                        }
+                        .foregroundStyle(
+                            task.isOverdue
+                                ? DesignSystem.Colors.danger
+                                : DesignSystem.Colors.textPrimary
+                        )
+                        .padding(.horizontal, DesignSystem.Space.x2)
+                        .padding(.vertical, DesignSystem.Space.x1)
+                        .background(DesignSystem.Colors.chip)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: DesignSystem.Radius.card, style: .circular)
+                                .strokeBorder(
+                                    task.isOverdue ? DesignSystem.Colors.danger : DesignSystem.Colors.divider,
+                                    lineWidth: DesignSystem.Stroke.hairline
+                                )
+                        }
                     }
 
                     PriorityBadge(priority: task.priority)
                 }
 
                 if !task.tags.isEmpty {
-                    TagFlowLayout(spacing: 6) {
+                    TagFlowLayout(spacing: DesignSystem.Space.x1) {
                         ForEach(task.tags, id: \.persistentModelID) { tag in
                             TagChipView(name: tag.name)
                         }
@@ -52,25 +81,27 @@ struct TaskRowView: View {
                 }
             }
 
-            Spacer()
+            Spacer(minLength: 0)
         }
-        .padding(.vertical, 4)
-        .opacity(task.isCompleted ? 0.7 : 1)
+        .opacity(task.isCompleted ? 0.65 : 1)
     }
 }
 
-/// Цветной бейдж с названием приоритета.
+/// Компактный бейдж приоритета на chip-подложке.
 struct PriorityBadge: View {
     let priority: TaskPriority
 
     var body: some View {
         Text(priority.title)
-            .font(.caption2.weight(.semibold))
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(PriorityStyle.color(for: priority).opacity(0.15))
+            .font(DesignSystem.Typography.data(10))
+            .padding(.horizontal, DesignSystem.Space.x2)
+            .padding(.vertical, DesignSystem.Space.x1)
+            .background(DesignSystem.Colors.chip)
             .foregroundStyle(PriorityStyle.color(for: priority))
-            .clipShape(Capsule())
+            .overlay {
+                RoundedRectangle(cornerRadius: DesignSystem.Radius.card, style: .circular)
+                    .strokeBorder(PriorityStyle.color(for: priority), lineWidth: DesignSystem.Stroke.hairline)
+            }
     }
 }
 

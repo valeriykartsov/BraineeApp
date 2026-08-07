@@ -9,9 +9,14 @@ import SwiftData
 
 struct AppRootView: View {
     @Environment(\.modelContext) private var modelContext
+    @AppStorage("appTheme") private var appThemeRaw = AppTheme.system.rawValue
     @State private var isReady = false
     @State private var showLaunch = true
     @State private var loadError: String?
+
+    private var colorScheme: ColorScheme? {
+        AppTheme.resolved(from: appThemeRaw).colorScheme
+    }
 
     var body: some View {
         ZStack {
@@ -20,11 +25,18 @@ struct AppRootView: View {
                     .persistOnBackground()
                     .opacity(showLaunch ? 0 : 1)
             } else if let loadError {
-                ContentUnavailableView {
-                    Label("Ошибка загрузки", systemImage: "exclamationmark.triangle")
-                } description: {
+                VStack(alignment: .leading, spacing: DesignSystem.Space.x3) {
+                    Text("Ошибка загрузки")
+                        .font(DesignSystem.Typography.title(22))
+                        .foregroundStyle(DesignSystem.Colors.textPrimary)
                     Text(loadError)
+                        .font(DesignSystem.Typography.body())
+                        .foregroundStyle(DesignSystem.Colors.textSecondary)
+                    PankinDivider()
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .padding(DesignSystem.Space.x4)
+                .pankinScreenBackground()
             }
 
             if showLaunch || !isReady {
@@ -32,6 +44,7 @@ struct AppRootView: View {
                     .transition(.opacity)
             }
         }
+        .preferredColorScheme(colorScheme)
         .task {
             do {
                 try AppDataPersistence.bootstrap(into: modelContext)

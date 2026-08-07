@@ -23,7 +23,7 @@ enum TaskCategory: String, Codable, CaseIterable, Identifiable {
 
     var systemImage: String {
         switch self {
-        case .career: "briefcase.fill"
+        case .career: "briefcase"
         case .sport: "figure.run"
         case .mental: "brain.head.profile"
         }

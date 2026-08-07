@@ -56,8 +56,12 @@ struct AddEditTaskView: View {
                     HStack {
                         Spacer()
                         Text("\(taskDetails.count)/\(detailsLimit)")
-                            .font(.caption)
-                            .foregroundStyle(taskDetails.count >= detailsLimit ? .red : .secondary)
+                            .font(DesignSystem.Typography.data(12))
+                            .foregroundStyle(
+                                taskDetails.count >= detailsLimit
+                                    ? DesignSystem.Colors.danger
+                                    : DesignSystem.Colors.accent
+                            )
                     }
                 } header: {
                     Text("Описание")
@@ -79,9 +83,9 @@ struct AddEditTaskView: View {
                     Picker("Приоритет", selection: $priority) {
                         ForEach(TaskPriority.allCases) { level in
                             HStack {
-                                Circle()
+                                Rectangle()
                                     .fill(PriorityStyle.color(for: level))
-                                    .frame(width: 10, height: 10)
+                                    .frame(width: DesignSystem.Space.x2, height: DesignSystem.Space.x2)
                                 Text(level.title)
                             }
                             .tag(level)
@@ -93,7 +97,7 @@ struct AddEditTaskView: View {
 
                 if !allTags.isEmpty {
                     Section("Теги") {
-                        TagFlowLayout(spacing: 8) {
+                        TagFlowLayout(spacing: DesignSystem.Space.x2) {
                             ForEach(allTags) { tag in
                                 TagChipView(
                                     name: tag.name,
@@ -114,6 +118,9 @@ struct AddEditTaskView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(DesignSystem.Colors.background)
+            .tint(DesignSystem.Colors.accent)
             .navigationTitle(isEditing ? "Редактировать" : "Новая задача")
 #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)

@@ -2,7 +2,7 @@
 //  TagChipView.swift
 //  BraineeApp
 //
-//  Маленький бейдж тега и TagFlowLayout — перенос тегов на новую строку.
+//  Компактный чип тега: chip-подложка, чтобы не сливаться с карточкой.
 
 import SwiftUI
 
@@ -26,22 +26,25 @@ struct TagChipView: View {
 
     private var chipLabel: some View {
         Text(name)
-            .font(.caption2.weight(.medium))
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(isSelected ? Color.accentColor.opacity(0.2) : Color.secondary.opacity(0.12))
-            .foregroundStyle(isSelected ? Color.accentColor : .secondary)
-            .clipShape(Capsule())
+            .font(DesignSystem.Typography.caption(11))
+            .fontWeight(.medium)
+            .padding(.horizontal, DesignSystem.Space.x2)
+            .padding(.vertical, DesignSystem.Space.x1)
+            .background(isSelected ? DesignSystem.Colors.accent.opacity(0.12) : DesignSystem.Colors.chip)
+            .foregroundStyle(isSelected ? DesignSystem.Colors.accent : DesignSystem.Colors.textPrimary)
             .overlay {
-                Capsule()
-                    .strokeBorder(isSelected ? Color.accentColor.opacity(0.4) : .clear, lineWidth: 1)
+                RoundedRectangle(cornerRadius: DesignSystem.Radius.card, style: .circular)
+                    .strokeBorder(
+                        isSelected ? DesignSystem.Colors.accent : DesignSystem.Colors.divider,
+                        lineWidth: DesignSystem.Stroke.hairline
+                    )
             }
     }
 }
 
 /// Раскладывает теги в несколько строк, как перенос слов в тексте.
 struct TagFlowLayout: Layout {
-    var spacing: CGFloat = 8
+    var spacing: CGFloat = DesignSystem.Space.x1
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let result = arrange(proposal: proposal, subviews: subviews)

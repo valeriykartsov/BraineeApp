@@ -2,35 +2,40 @@
 //  LaunchScreenView.swift
 //  BraineeApp
 //
-//  Стартовый экран с логотипом, показывается на 1–2 секунды при запуске.
+//  Адаптивный загрузочный экран: фон как у разделов, логотип и текст под тему.
 
 import SwiftUI
 
 struct LaunchScreenView: View {
     var body: some View {
         ZStack {
-            Color(.systemBackground)
+            // Тот же фон, что у Карьера / Спорт / Ментальное / Профиль.
+            DesignSystem.Colors.background
                 .ignoresSafeArea()
 
-            VStack(spacing: 20) {
-                Image("LaunchLogo")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 120, height: 120)
-                    .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-                    .shadow(color: .black.opacity(0.12), radius: 12, y: 6)
+            VStack(spacing: DesignSystem.Space.x5) {
+                PankinLogoMark(size: DesignSystem.Space.grid(36))
 
                 Text("BraineeApp")
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                    .font(DesignSystem.Typography.title(28))
+                    .foregroundStyle(DesignSystem.Colors.textPrimary)
 
                 Text("Make your day!")
-                    .font(.title3.weight(.medium))
-                    .foregroundStyle(.secondary)
+                    .font(DesignSystem.Typography.data(14))
+                    .foregroundStyle(DesignSystem.Colors.textSecondary)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("BraineeApp. Make your day!")
         }
     }
 }
 
-#Preview {
+#Preview("Light") {
     LaunchScreenView()
+        .preferredColorScheme(.light)
+}
+
+#Preview("Dark") {
+    LaunchScreenView()
+        .preferredColorScheme(.dark)
 }

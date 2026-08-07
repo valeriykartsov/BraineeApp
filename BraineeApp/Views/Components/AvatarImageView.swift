@@ -2,13 +2,17 @@
 //  AvatarImageView.swift
 //  BraineeApp
 //
-//  Круглый аватар пользователя: фото из данных профиля или заглушка.
+//  Аватар: квадрат со скруглением 4pt (геометрия Панкина), фото или заглушка.
 
 import SwiftUI
 
 struct AvatarImageView: View {
     let avatarData: Data?
-    var size: CGFloat = 100
+    var size: CGFloat = DesignSystem.Space.grid(25) // 100
+
+    private var shape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: DesignSystem.Radius.card, style: .circular)
+    }
 
     var body: some View {
         if let avatarData, let platformImage = PlatformImage.make(from: avatarData) {
@@ -16,20 +20,22 @@ struct AvatarImageView: View {
                 .resizable()
                 .scaledToFill()
                 .frame(width: size, height: size)
-                .clipShape(Circle())
+                .clipShape(shape)
                 .overlay {
-                    Circle()
-                        .strokeBorder(.secondary.opacity(0.3), lineWidth: 1)
+                    shape.strokeBorder(DesignSystem.Colors.divider, lineWidth: DesignSystem.Stroke.hairline)
                 }
         } else {
             ZStack {
-                Circle()
-                    .fill(.quaternary)
+                shape
+                    .fill(DesignSystem.Colors.surface)
                     .frame(width: size, height: size)
+                    .overlay {
+                        shape.strokeBorder(DesignSystem.Colors.divider, lineWidth: DesignSystem.Stroke.hairline)
+                    }
 
-                Image(systemName: "person.crop.circle.badge.plus")
-                    .font(.system(size: size * 0.4))
-                    .foregroundStyle(.secondary)
+                Image(systemName: DesignSystem.Icon.person)
+                    .font(.system(size: size * 0.36, weight: .light))
+                    .foregroundStyle(DesignSystem.Colors.textSecondary)
             }
         }
     }

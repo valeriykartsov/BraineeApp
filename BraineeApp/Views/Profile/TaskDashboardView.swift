@@ -2,7 +2,7 @@
 //  TaskDashboardView.swift
 //  BraineeApp
 //
-//  Сводка по разделам: сколько задач выполнено, просрочено и запланировано на сегодня.
+//  Дашборд: моно-числа, геометрический прогресс-бар, строгая сетка.
 
 import SwiftUI
 import SwiftData
@@ -12,50 +12,49 @@ struct TaskDashboardView: View {
     private var activeTasks: [TaskItem]
 
     var body: some View {
-        Section("Дашборд") {
+        Section {
             ForEach(TaskCategory.allCases) { category in
                 let stats = TaskCategoryStats.compute(from: activeTasks, category: category)
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
+                VStack(alignment: .leading, spacing: DesignSystem.Space.x2) {
+                    HStack(alignment: .firstTextBaseline) {
                         Label(category.title, systemImage: category.systemImage)
-                            .font(.headline)
+                            .font(DesignSystem.Typography.headline())
+                            .foregroundStyle(DesignSystem.Colors.textPrimary)
                         Spacer()
                         Text("\(stats.completed)/\(stats.total)")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.secondary)
+                            .font(DesignSystem.Typography.data())
+                            .foregroundStyle(DesignSystem.Colors.accent)
                     }
 
-                    ProgressView(value: stats.progress)
-                        .tint(progressColor(for: category))
+                    PankinProgressBar(value: stats.progress)
 
-                    HStack(spacing: 16) {
-                        statBadge(title: "Активные", value: stats.active, color: .blue)
-                        statBadge(title: "Просрочено", value: stats.overdue, color: .red)
-                        statBadge(title: "Сегодня", value: stats.today, color: .orange)
+                    HStack(spacing: DesignSystem.Space.x4) {
+                        statBadge(title: "Активные", value: stats.active)
+                        statBadge(title: "Просрочено", value: stats.overdue, emphasize: stats.overdue > 0)
+                        statBadge(title: "Сегодня", value: stats.today)
                     }
                 }
-                .padding(.vertical, 4)
+                .padding(.vertical, DesignSystem.Space.x1)
+                .listRowBackground(DesignSystem.Colors.surface)
             }
+        } header: {
+            Text("Дашборд")
+                .font(DesignSystem.Typography.caption())
+                .foregroundStyle(DesignSystem.Colors.textSecondary)
+                .textCase(nil)
         }
     }
 
-    private func statBadge(title: String, value: Int, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
+    private func statBadge(title: String, value: Int, emphasize: Bool = false) -> some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Space.x1) {
             Text("\(value)")
-                .font(.subheadline.weight(.bold))
-                .foregroundStyle(color)
+                .font(DesignSystem.Typography.data(16))
+                .foregroundStyle(emphasize ? DesignSystem.Colors.danger : DesignSystem.Colors.accent)
             Text(title)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+                .font(DesignSystem.Typography.caption(10))
+                .foregroundStyle(DesignSystem.Colors.textSecondary)
         }
-    }
-
-    private func progressColor(for category: TaskCategory) -> Color {
-        switch category {
-        case .career: .blue
-        case .sport: .green
-        case .mental: .purple
-        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

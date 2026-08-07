@@ -2,7 +2,7 @@
 //  IconTapButton.swift
 //  BraineeApp
 //
-//  Кнопка-иконка с удобной зоной нажатия (~44×44), чтобы легче попадать пальцем.
+//  Кнопка-иконка с удобной зоной нажатия (~44×44) в стиле дизайн-системы.
 
 import SwiftUI
 
@@ -16,9 +16,10 @@ struct IconTapButton: View {
     var body: some View {
         Button(role: role, action: action) {
             Image(systemName: systemName)
-                .font(.body.weight(.medium))
+                .font(DesignSystem.Typography.body(16))
+                .fontWeight(.medium)
                 .foregroundStyle(resolvedTint)
-                .frame(minWidth: 44, minHeight: 44)
+                .frame(minWidth: DesignSystem.Space.x11, minHeight: DesignSystem.Space.x11)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.borderless)
@@ -27,7 +28,7 @@ struct IconTapButton: View {
 
     private var resolvedTint: Color {
         if let tint { return tint }
-        if role == .destructive { return .red }
-        return .accentColor
+        if role == .destructive { return DesignSystem.Colors.danger }
+        return DesignSystem.Colors.accent
     }
 }
