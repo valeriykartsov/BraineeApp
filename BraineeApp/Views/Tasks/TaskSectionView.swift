@@ -117,7 +117,8 @@ struct TaskSectionView: View {
                 options: TaskViewMode.allCases,
                 title: { $0.rawValue }
             )
-            .frame(maxWidth: .infinity)
+
+            Spacer(minLength: DesignSystem.Space.x2)
 
             // Три кнопки одной ширины: настройки → группа → задача.
             HStack(spacing: DesignSystem.Space.x1) {

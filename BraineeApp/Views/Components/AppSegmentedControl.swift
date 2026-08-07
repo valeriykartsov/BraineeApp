@@ -2,7 +2,7 @@
 //  AppSegmentedControl.swift
 //  BraineeApp
 //
-//  Сегментный переключатель в стиле soft capsule.
+//  Компактный сегментный переключатель: капсула «перетекает» к выбранному пункту.
 
 import SwiftUI
 
@@ -11,12 +11,24 @@ struct AppSegmentedControl<Option: Hashable>: View {
     let options: [Option]
     let title: (Option) -> String
 
+    @Namespace private var selectionNamespace
+    @AppStorage(AccentPalette.storageKey) private var accentPaletteRaw = AccentPalette.orange.rawValue
+
+    private var accentColor: Color {
+        AccentPalette.resolved(from: accentPaletteRaw).color
+    }
+
+    private var flowAnimation: Animation {
+        .spring(response: 0.34, dampingFraction: 0.84)
+    }
+
     var body: some View {
-        HStack(spacing: DesignSystem.Space.x1) {
+        HStack(spacing: 0) {
             ForEach(Array(options.enumerated()), id: \.offset) { _, option in
                 let isSelected = selection == option
                 Button {
-                    withAnimation(.easeInOut(duration: 0.15)) {
+                    guard selection != option else { return }
+                    withAnimation(flowAnimation) {
                         selection = option
                     }
                 } label: {
@@ -24,19 +36,16 @@ struct AppSegmentedControl<Option: Hashable>: View {
                         .font(DesignSystem.Typography.caption(12))
                         .fontWeight(.semibold)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.85)
-                        .foregroundStyle(
-                            isSelected
-                                ? Color.white
-                                : DesignSystem.Colors.textSecondary
-                        )
-                        .padding(.horizontal, DesignSystem.Space.x2)
+                        .foregroundStyle(isSelected ? Color.white : DesignSystem.Colors.textSecondary)
+                        .padding(.horizontal, DesignSystem.Space.x3)
                         .padding(.vertical, DesignSystem.Space.x2)
-                        .frame(maxWidth: .infinity)
-                        .background(
-                            Capsule(style: .continuous)
-                                .fill(isSelected ? DesignSystem.Colors.accent : Color.clear)
-                        )
+                        .background {
+                            if isSelected {
+                                Capsule(style: .continuous)
+                                    .fill(accentColor)
+                                    .matchedGeometryEffect(id: "segmentThumb", in: selectionNamespace)
+                            }
+                        }
                 }
                 .buttonStyle(.plain)
             }
@@ -46,5 +55,7 @@ struct AppSegmentedControl<Option: Hashable>: View {
             Capsule(style: .continuous)
                 .fill(DesignSystem.Colors.chip)
         )
+        // Ширина по содержимому — не растягивается на всю строку.
+        .fixedSize(horizontal: true, vertical: false)
     }
 }

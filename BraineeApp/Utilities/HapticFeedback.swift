@@ -14,9 +14,17 @@ enum HapticFeedback {
         let generator = UINotificationFeedbackGenerator()
         generator.notificationOccurred(.success)
     }
+
+    /// Отклик в момент выбора / «подхвата» карточки (ещё до движения).
+    static func lift() {
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.prepare()
+        generator.impactOccurred()
+    }
 }
 #else
 enum HapticFeedback {
     static func success() {}
+    static func lift() {}
 }
 #endif
