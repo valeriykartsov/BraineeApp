@@ -8,7 +8,7 @@ import SwiftUI
 import SwiftData
 
 struct TaskDashboardView: View {
-    @Query(filter: #Predicate<TaskItem> { !$0.isDeleted })
+    @Query(filter: #Predicate<TaskItem> { !$0.isSoftDeleted })
     private var activeTasks: [TaskItem]
 
     var body: some View {

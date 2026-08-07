@@ -127,7 +127,7 @@ struct DeletedTasksFolderView: View {
     /// Загружает удалённые задачи вручную, чтобы не зависеть от тяжёлого @Query при открытии экрана.
     private func reloadDeletedTasks() {
         let descriptor = FetchDescriptor<TaskItem>(
-            predicate: #Predicate { $0.isDeleted }
+            predicate: #Predicate { $0.isSoftDeleted }
         )
 
         guard let fetched = try? modelContext.fetch(descriptor) else {
@@ -150,7 +150,7 @@ struct DeletedTasksFolderView: View {
 
     private func restore(_ task: TaskItem) {
         withAnimation {
-            task.isDeleted = false
+            task.isSoftDeleted = false
             task.deletedAt = nil
             try? modelContext.save()
             modelContext.persistToJSON()

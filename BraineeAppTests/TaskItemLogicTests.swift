@@ -59,32 +59,30 @@ struct TaskItemLogicTests {
         #expect(task.isDueToday == false)
     }
 
-    @Test func мягкоеУдаление_ставитФлаги() throws {
-        // Мягкое удаление: задача остаётся в SwiftData, deletedAt заполнен.
-        // Флаг isDeleted проверяем через init (как при загрузке из JSON) —
-        // у PersistentModel есть одноимённое свойство, поэтому после insert
-        // чтение task.isDeleted может давать системное значение, а не наше поле.
+    @Test func мягкоеУдалениеПослеПрисвоения_сохраняетсяВМоделиИJSONФлаге() throws {
+        // Регрессия: поле нельзя называть isDeleted (конфликт со SwiftData) —
+        // иначе после перезапуска удалённая задача снова появлялась в разделе.
         let container = try TestHelpers.makeContainer()
         let context = container.mainContext
-        let deletedAt = Date()
-        let task = TaskItem(
-            title: "Удалить мягко",
-            category: .career,
-            isDeleted: true,
-            deletedAt: deletedAt
-        )
+        let task = TaskItem(title: "Удалить мягко", category: .career)
         context.insert(task)
+
+        task.isSoftDeleted = true
+        task.deletedAt = Date()
         try context.save()
 
+        #expect(task.isSoftDeleted == true)
+        #expect(task.deletedAt != nil)
+
         let uuid = task.uuid
-        let descriptor = FetchDescriptor<TaskItem>(
-            predicate: #Predicate { $0.uuid == uuid }
+        let fetched = try context.fetch(
+            FetchDescriptor<TaskItem>(predicate: #Predicate { $0.uuid == uuid })
         )
-        let fetched = try context.fetch(descriptor)
         #expect(fetched.count == 1)
+        #expect(fetched[0].isSoftDeleted == true)
         #expect(fetched[0].deletedAt != nil)
 
-        // В JSON-слое (источник правды) soft delete хранится явно.
+        // Как при export в mytasks.json: isSoftDeleted → record.isDeleted.
         let record = TaskRecord(
             id: uuid,
             title: fetched[0].title,
@@ -97,11 +95,10 @@ struct TaskItemLogicTests {
             sortOrder: 0,
             groupID: nil,
             tagIDs: [],
-            isDeleted: true,
+            isDeleted: fetched[0].isSoftDeleted,
             deletedAt: fetched[0].deletedAt
         )
         #expect(record.isDeleted == true)
-        #expect(record.deletedAt != nil)
     }
 
     @Test func восстановление_снимаетФлагиУдаления() throws {
@@ -110,15 +107,15 @@ struct TaskItemLogicTests {
         let task = TaskItem(
             title: "Вернуть",
             category: .sport,
-            isDeleted: true,
+            isSoftDeleted: true,
             deletedAt: Date()
         )
         container.mainContext.insert(task)
 
-        task.isDeleted = false
+        task.isSoftDeleted = false
         task.deletedAt = nil
 
-        #expect(task.isDeleted == false)
+        #expect(task.isSoftDeleted == false)
         #expect(task.deletedAt == nil)
     }
 

@@ -80,7 +80,7 @@ enum AppDataPersistence {
                 taskDetails: record.taskDetails,
                 sortOrder: record.sortOrder,
                 uuid: record.id,
-                isDeleted: record.isDeleted,
+                isSoftDeleted: record.isDeleted,
                 deletedAt: record.deletedAt ?? (record.isDeleted ? record.createdAt : nil),
                 group: record.groupID.flatMap { groupByID[$0] },
                 tags: tags
@@ -130,8 +130,8 @@ enum AppDataPersistence {
                     sortOrder: $0.sortOrder,
                     groupID: $0.group?.uuid,
                     tagIDs: $0.tags.map(\.uuid),
-                    isDeleted: $0.isDeleted,
-                    deletedAt: $0.isDeleted ? ($0.deletedAt ?? .now) : nil
+                    isDeleted: $0.isSoftDeleted,
+                    deletedAt: $0.isSoftDeleted ? ($0.deletedAt ?? .now) : nil
                 )
             }
         )

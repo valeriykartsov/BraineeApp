@@ -65,14 +65,14 @@ struct TaskCategoryStatsTests {
         let deleted = TaskItem(
             title: "Удалённая",
             category: .mental,
-            isDeleted: true,
+            isSoftDeleted: true,
             deletedAt: Date()
         )
         container.mainContext.insert(active)
         container.mainContext.insert(deleted)
 
-        // Как в UI: в compute передаём только !isDeleted
-        let activeOnly = [active, deleted].filter { !$0.isDeleted }
+        // Как в UI: в compute передаём только !isSoftDeleted
+        let activeOnly = [active, deleted].filter { !$0.isSoftDeleted }
         let stats = TaskCategoryStats.compute(from: activeOnly, category: .mental)
         #expect(stats.total == 1)
     }
