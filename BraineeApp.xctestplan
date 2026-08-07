@@ -1,0 +1,37 @@
+{
+  "configurations" : [
+    {
+      "id" : "1247AB20-BAD3-4B3B-B81C-1291432F3A76",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:BraineeApp.xcodeproj",
+      "identifier" : "A0140D4830234520004676EF",
+      "name" : "BraineeApp"
+    }
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:BraineeApp.xcodeproj",
+        "identifier" : "A0140D5B30234522004676EF",
+        "name" : "BraineeAppTests"
+      }
+    },
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:BraineeApp.xcodeproj",
+        "identifier" : "A0140D6530234522004676EF",
+        "name" : "BraineeAppUITests"
+      }
+    }
+  ],
+  "version" : 1
+}
