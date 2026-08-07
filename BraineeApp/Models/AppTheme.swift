@@ -2,6 +2,7 @@
 //  AppTheme.swift
 //  BraineeApp
 //
+//  Настройка темы оформления: системная, светлая или тёмная.
 
 import SwiftUI
 
@@ -20,11 +21,17 @@ enum AppTheme: String, CaseIterable, Identifiable {
         }
     }
 
+    /// nil для системной темы — SwiftUI сам подберёт светлую/тёмную.
     var colorScheme: ColorScheme? {
         switch self {
         case .system: nil
         case .light: .light
         case .dark: .dark
         }
+    }
+
+    /// Безопасно читает тему из @AppStorage или JSON, даже если значение неизвестно.
+    static func resolved(from rawValue: String) -> AppTheme {
+        AppTheme(rawValue: rawValue) ?? .system
     }
 }

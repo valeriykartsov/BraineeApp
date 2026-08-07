@@ -2,6 +2,7 @@
 //  TaskItem.swift
 //  BraineeApp
 //
+//  Модель задачи: название, дедлайн, приоритет, описание, группа, теги и мягкое удаление.
 
 import Foundation
 import SwiftData
@@ -65,6 +66,7 @@ final class TaskItem {
         set { categoryRaw = newValue.rawValue }
     }
 
+    /// Просрочена, если дедлайн был раньше сегодня и задача не выполнена.
     var isOverdue: Bool {
         guard let deadline, !isCompleted else { return false }
         return Calendar.current.startOfDay(for: deadline) < Calendar.current.startOfDay(for: .now)
@@ -73,32 +75,5 @@ final class TaskItem {
     var isDueToday: Bool {
         guard let deadline else { return false }
         return Calendar.current.isDateInToday(deadline)
-    }
-}
-
-enum TaskSortHelper {
-    static func byDateMode(_ lhs: TaskItem, _ rhs: TaskItem) -> Bool {
-        let lhsRank = dateRank(for: lhs)
-        let rhsRank = dateRank(for: rhs)
-        if lhsRank != rhsRank { return lhsRank < rhsRank }
-        if lhs.priority != rhs.priority { return lhs.priority > rhs.priority }
-        return lhs.sortOrder < rhs.sortOrder
-    }
-
-    static func byDayPlan(_ lhs: TaskItem, _ rhs: TaskItem) -> Bool {
-        if lhs.isCompleted != rhs.isCompleted {
-            return !lhs.isCompleted && rhs.isCompleted
-        }
-        if lhs.priority != rhs.priority { return lhs.priority > rhs.priority }
-        return lhs.sortOrder < rhs.sortOrder
-    }
-
-    private static func dateRank(for task: TaskItem) -> Int {
-        if task.isOverdue { return 0 }
-        guard let deadline = task.deadline else { return 4 }
-        let calendar = Calendar.current
-        if calendar.isDateInToday(deadline) { return 1 }
-        if calendar.isDateInTomorrow(deadline) { return 2 }
-        return 3
     }
 }
