@@ -2,6 +2,7 @@
 //  TaskGroup.swift
 //  BraineeApp
 //
+//  Модель группы (папки) задач внутри раздела: Карьера, Спорт или Ментальное.
 
 import Foundation
 import SwiftData

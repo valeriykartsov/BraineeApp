@@ -2,6 +2,7 @@
 //  AppDataStore.swift
 //  BraineeApp
 //
+//  Чтение и запись JSON-файлов в Documents и резервной копии в Keychain.
 
 import Foundation
 
@@ -28,11 +29,13 @@ enum AppDataStore {
         return documents.appendingPathComponent(folderName, isDirectory: true)
     }
 
+    /// Создаёт папку BraineeApp и при необходимости восстанавливает mytasks.json из Keychain.
     static func prepareStorage() throws {
         try FileManager.default.createDirectory(at: storageDirectory, withIntermediateDirectories: true)
         try reconcileTasksBackupIfNeeded()
     }
 
+    /// Загружает задачи: сравнивает файл и Keychain, возвращает более свежую копию.
     static func loadTasks() throws -> MyTasksDocument {
         let fileDocument = loadTasksFromFile()
         let keychainDocument = loadTasksFromKeychain()
@@ -51,6 +54,7 @@ enum AppDataStore {
         return document
     }
 
+    /// Сохраняет mytasks.json; Keychain обновляется отдельно, ошибка Keychain не блокирует запись файла.
     static func saveTasks(_ document: MyTasksDocument, syncKeychain: Bool = true) throws {
         try FileManager.default.createDirectory(at: storageDirectory, withIntermediateDirectories: true)
 
@@ -127,6 +131,7 @@ enum AppDataStore {
         }
     }
 
+    /// После переустановки копирует Keychain в файл напрямую, без рекурсивного saveTasks.
     private static func reconcileTasksBackupIfNeeded() throws {
         let url = storageDirectory.appendingPathComponent(tasksFileName)
         guard !FileManager.default.fileExists(atPath: url.path),

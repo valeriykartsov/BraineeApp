@@ -2,6 +2,7 @@
 //  TaskCategory.swift
 //  BraineeApp
 //
+//  Три раздела приложения: Карьера, Спорт, Ментальное.
 
 import Foundation
 

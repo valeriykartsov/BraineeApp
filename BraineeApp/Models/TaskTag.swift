@@ -2,6 +2,7 @@
 //  TaskTag.swift
 //  BraineeApp
 //
+//  Модель тега из библиотеки тегов в профиле; тег можно прикрепить к задаче.
 
 import Foundation
 import SwiftData

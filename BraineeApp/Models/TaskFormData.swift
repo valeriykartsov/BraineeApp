@@ -2,6 +2,7 @@
 //  TaskFormData.swift
 //  BraineeApp
 //
+//  Временный набор полей формы создания/редактирования задачи перед сохранением.
 
 import Foundation
 

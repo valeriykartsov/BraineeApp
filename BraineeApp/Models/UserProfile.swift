@@ -2,6 +2,7 @@
 //  UserProfile.swift
 //  BraineeApp
 //
+//  Профиль пользователя: отображаемое имя и фото аватара.
 
 import Foundation
 import SwiftData

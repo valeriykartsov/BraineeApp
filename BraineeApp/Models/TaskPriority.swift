@@ -2,6 +2,7 @@
 //  TaskPriority.swift
 //  BraineeApp
 //
+//  Уровни приоритета задачи от низкого до наивысшего.
 
 import Foundation
 

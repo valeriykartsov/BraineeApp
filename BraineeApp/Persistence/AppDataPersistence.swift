@@ -2,12 +2,14 @@
 //  AppDataPersistence.swift
 //  BraineeApp
 //
+//  Связь SwiftData и JSON: загрузка при старте, экспорт после изменений.
 
 import Foundation
 import SwiftData
 import SwiftUI
 
 enum AppDataPersistence {
+    /// Очищает память и загружает данные из JSON в SwiftData при запуске приложения.
     static func bootstrap(into context: ModelContext) throws {
         try AppDataStore.prepareStorage()
         clearAllData(in: context)
@@ -26,6 +28,7 @@ enum AppDataPersistence {
         try context.save()
     }
 
+    /// Сохраняет текущее состояние SwiftData обратно в JSON и Keychain.
     static func export(from context: ModelContext) {
         try? context.save()
 
@@ -149,11 +152,13 @@ enum AppDataPersistence {
 }
 
 extension ModelContext {
+    /// Удобный вызов после любого изменения задач, профиля или тегов.
     func persistToJSON() {
         AppDataPersistence.export(from: self)
     }
 }
 
+/// Автосохранение JSON, когда приложение уходит в фон.
 struct JSONPersistenceModifier: ViewModifier {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
