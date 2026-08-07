@@ -2,6 +2,7 @@
 //  DeletedTaskDetailView.swift
 //  BraineeApp
 //
+//  Просмотр удалённой задачи только для чтения с кнопкой «Восстановить».
 
 import SwiftUI
 

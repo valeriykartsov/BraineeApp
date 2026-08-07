@@ -2,6 +2,7 @@
 //  EmptyTasksView.swift
 //  BraineeApp
 //
+//  Заглушка, когда в разделе ещё нет ни одной задачи.
 
 import SwiftUI
 

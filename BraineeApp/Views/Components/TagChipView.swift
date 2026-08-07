@@ -2,6 +2,7 @@
 //  TagChipView.swift
 //  BraineeApp
 //
+//  Маленький бейдж тега и TagFlowLayout — перенос тегов на новую строку.
 
 import SwiftUI
 
@@ -38,6 +39,7 @@ struct TagChipView: View {
     }
 }
 
+/// Раскладывает теги в несколько строк, как перенос слов в тексте.
 struct TagFlowLayout: Layout {
     var spacing: CGFloat = 8
 

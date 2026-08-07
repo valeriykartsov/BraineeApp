@@ -2,6 +2,7 @@
 //  TaskDashboardView.swift
 //  BraineeApp
 //
+//  Сводка по разделам: сколько задач выполнено, просрочено и запланировано на сегодня.
 
 import SwiftUI
 import SwiftData
