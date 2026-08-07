@@ -2,6 +2,7 @@
 //  KeychainStorage.swift
 //  BraineeApp
 //
+//  Резервное хранилище JSON в Keychain — переживает переустановку приложения.
 
 import Foundation
 import Security

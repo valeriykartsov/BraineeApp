@@ -2,6 +2,7 @@
 //  ListStyle+Platform.swift
 //  BraineeApp
 //
+//  Единый стиль списков для iOS и macOS.
 
 import SwiftUI
 

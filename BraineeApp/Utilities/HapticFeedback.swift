@@ -2,6 +2,7 @@
 //  HapticFeedback.swift
 //  BraineeApp
 //
+//  Короткая вибрация при успешном действии (например, отметка задачи выполненной).
 
 import SwiftUI
 

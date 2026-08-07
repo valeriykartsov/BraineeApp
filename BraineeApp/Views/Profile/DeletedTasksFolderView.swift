@@ -2,6 +2,7 @@
 //  DeletedTasksFolderView.swift
 //  BraineeApp
 //
+//  Папка удалённых задач: просмотр, восстановление и окончательное удаление.
 
 import SwiftUI
 import SwiftData
@@ -123,6 +124,7 @@ struct DeletedTasksFolderView: View {
         }
     }
 
+    /// Загружает удалённые задачи вручную, чтобы не зависеть от тяжёлого @Query при открытии экрана.
     private func reloadDeletedTasks() {
         let descriptor = FetchDescriptor<TaskItem>(
             predicate: #Predicate { $0.isDeleted }

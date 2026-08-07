@@ -2,6 +2,7 @@
 //  AddEditTaskView.swift
 //  BraineeApp
 //
+//  Форма создания и редактирования задачи: название, дедлайн, приоритет, теги, удаление.
 
 import SwiftUI
 import SwiftData

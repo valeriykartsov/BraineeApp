@@ -2,6 +2,7 @@
 //  TaskOrganizedListView.swift
 //  BraineeApp
 //
+//  Список задач по группам с drag-and-drop: карточки папок и секция «Без папки».
 
 import SwiftUI
 import SwiftData
@@ -272,12 +273,14 @@ struct TaskOrganizedListView: View {
     }
 
     @discardableResult
+    /// Обрабатывает drop-жест: находит задачу по UUID и передаёт в assignTask.
     private func performDrop(_ items: [String], into group: TaskGroup?) -> Bool {
         guard let task = TaskDragPayload.task(in: tasks, from: items) else { return false }
         assignTask(task, to: group)
         return true
     }
 
+    /// Переносит задачу в группу (или в «Без папки», если group == nil) и сохраняет JSON.
     private func assignTask(_ task: TaskItem, to group: TaskGroup?) {
         guard !task.isDeleted else { return }
 

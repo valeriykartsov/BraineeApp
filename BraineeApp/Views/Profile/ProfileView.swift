@@ -2,6 +2,7 @@
 //  ProfileView.swift
 //  BraineeApp
 //
+//  Экран профиля: имя, аватар, тема, дашборд, удалённые задачи и библиотека тегов.
 
 import SwiftUI
 import SwiftData
@@ -19,7 +20,7 @@ struct ProfileView: View {
     private var profile: UserProfile? { profiles.first }
 
     private var appTheme: AppTheme {
-        AppTheme(rawValue: appThemeRaw) ?? .system
+        AppTheme.resolved(from: appThemeRaw)
     }
 
     var body: some View {
@@ -30,7 +31,7 @@ struct ProfileView: View {
                         Spacer()
                         VStack(spacing: 16) {
                             PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                                avatarView
+                                AvatarImageView(avatarData: profile?.avatarData)
                             }
                             .buttonStyle(.plain)
 
@@ -96,29 +97,7 @@ struct ProfileView: View {
         }
     }
 
-    @ViewBuilder
-    private var avatarView: some View {
-        if let data = profile?.avatarData, let uiImage = platformImage(from: data) {
-            platformImageView(uiImage)
-                .frame(width: 100, height: 100)
-                .clipShape(Circle())
-                .overlay {
-                    Circle()
-                        .strokeBorder(.secondary.opacity(0.3), lineWidth: 1)
-                }
-        } else {
-            ZStack {
-                Circle()
-                    .fill(.quaternary)
-                    .frame(width: 100, height: 100)
-
-                Image(systemName: "person.crop.circle.badge.plus")
-                    .font(.system(size: 40))
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
-
+    /// Создаёт профиль в базе, если пользователь открыл приложение впервые.
     private func ensureProfile() {
         guard profiles.isEmpty else { return }
         let newProfile = UserProfile(displayName: "")
@@ -137,32 +116,6 @@ struct ProfileView: View {
         }
     }
 }
-
-#if os(iOS)
-import UIKit
-
-private func platformImage(from data: Data) -> UIImage? {
-    UIImage(data: data)
-}
-
-private func platformImageView(_ image: UIImage) -> some View {
-    Image(uiImage: image)
-        .resizable()
-        .scaledToFill()
-}
-#else
-import AppKit
-
-private func platformImage(from data: Data) -> NSImage? {
-    NSImage(data: data)
-}
-
-private func platformImageView(_ image: NSImage) -> some View {
-    Image(nsImage: image)
-        .resizable()
-        .scaledToFill()
-}
-#endif
 
 #Preview {
     ProfileView()

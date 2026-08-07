@@ -2,6 +2,7 @@
 //  TagLibraryView.swift
 //  BraineeApp
 //
+//  Библиотека тегов в профиле: добавление и удаление тегов для задач.
 
 import SwiftUI
 import SwiftData
