@@ -2,6 +2,7 @@
 //  LaunchScreenView.swift
 //  BraineeApp
 //
+//  Стартовый экран с логотипом, показывается на 1–2 секунды при запуске.
 
 import SwiftUI
 

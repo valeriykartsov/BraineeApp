@@ -2,6 +2,7 @@
 //  AppRootView.swift
 //  BraineeApp
 //
+//  Корневой экран: загрузка JSON, splash-экран и переход к основному интерфейсу.
 
 import SwiftUI
 import SwiftData

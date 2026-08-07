@@ -2,6 +2,7 @@
 //  PriorityStyle.swift
 //  BraineeApp
 //
+//  Цвета бейджей приоритета задачи (низкий, средний, высокий, наивысший).
 
 import SwiftUI
 
