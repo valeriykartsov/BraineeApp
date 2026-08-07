@@ -7,6 +7,8 @@
 import SwiftUI
 
 struct DeletedTaskDetailView: View {
+    @Environment(\.dismiss) private var dismiss
+
     let task: TaskItem
     var onRestore: () -> Void
 
@@ -54,7 +56,11 @@ struct DeletedTaskDetailView: View {
 #endif
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button("Восстановить", action: onRestore)
+                Button("Восстановить") {
+                    onRestore()
+                    // Возврат к списку «Удалённые», чтобы карточка сразу исчезла.
+                    dismiss()
+                }
             }
         }
     }

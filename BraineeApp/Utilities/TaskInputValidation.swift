@@ -40,7 +40,26 @@ enum TaskInputValidation {
         }
     }
 
+    /// Переименование тега: пустое нельзя; дубликат нельзя, кроме текущего имени.
+    static func canRenameTag(name: String, existingNames: [String], currentName: String) -> Bool {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
+        if trimmed.caseInsensitiveCompare(currentName) == .orderedSame {
+            return true
+        }
+        return canCreateTag(name: trimmed, existingNames: existingNames)
+    }
+
+    /// Название группы: не пустое после trim.
+    static func canSaveGroupName(_ name: String) -> Bool {
+        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     static func normalizedTagName(_ name: String) -> String {
+        name.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    static func normalizedGroupName(_ name: String) -> String {
         name.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

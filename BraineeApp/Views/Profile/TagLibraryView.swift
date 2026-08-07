@@ -2,7 +2,7 @@
 //  TagLibraryView.swift
 //  BraineeApp
 //
-//  Библиотека тегов в профиле: добавление и удаление тегов для задач.
+//  Библиотека тегов в профиле: добавление, редактирование и удаление тегов.
 
 import SwiftUI
 import SwiftData
@@ -14,6 +14,13 @@ struct TagLibraryView: View {
     @State private var newTagName = ""
     @State private var showingAddTag = false
 
+    @State private var editingTag: TaskTag?
+    @State private var editedTagName = ""
+    @State private var showingEditTag = false
+
+    @State private var tagPendingDeletion: TaskTag?
+    @State private var showingDeleteConfirm = false
+
     var body: some View {
         Section {
             if tags.isEmpty {
@@ -21,15 +28,32 @@ struct TagLibraryView: View {
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(tags) { tag in
-                    HStack {
+                    HStack(spacing: 4) {
                         TagChipView(name: tag.name)
-                        Spacer()
+                        Spacer(minLength: 8)
                         Text("\(tag.tasks?.count ?? 0)")
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                            .frame(minWidth: 20, alignment: .trailing)
+
+                        IconTapButton(
+                            systemName: "pencil",
+                            tint: .accentColor,
+                            accessibilityLabel: "Редактировать тег"
+                        ) {
+                            beginEdit(tag)
+                        }
+
+                        IconTapButton(
+                            systemName: "trash",
+                            role: .destructive,
+                            accessibilityLabel: "Удалить тег"
+                        ) {
+                            askDelete(tag)
+                        }
                     }
                 }
-                .onDelete(perform: deleteTags)
+                .onDelete(perform: requestDeleteFromSwipe)
             }
 
             Button {
@@ -40,7 +64,7 @@ struct TagLibraryView: View {
         } header: {
             Text("Библиотека тегов")
         } footer: {
-            Text("Теги можно назначать задачам при создании и редактировании")
+            Text("Теги можно назначать задачам при создании и редактировании.")
         }
         .alert("Новый тег", isPresented: $showingAddTag) {
             TextField("Название", text: $newTagName)
@@ -51,6 +75,50 @@ struct TagLibraryView: View {
                 createTag()
             }
         }
+        .alert("Редактировать тег", isPresented: $showingEditTag) {
+            TextField("Название", text: $editedTagName)
+            Button("Отмена", role: .cancel) {
+                editingTag = nil
+                editedTagName = ""
+            }
+            Button("Сохранить") {
+                saveEditedTag()
+            }
+        }
+        .alert("Удалить тег?", isPresented: $showingDeleteConfirm) {
+            Button("Отмена", role: .cancel) {
+                tagPendingDeletion = nil
+            }
+            Button("Удалить", role: .destructive) {
+                if let tag = tagPendingDeletion {
+                    deleteTag(tag)
+                }
+                tagPendingDeletion = nil
+            }
+        } message: {
+            if let name = tagPendingDeletion?.name {
+                Text("Тег «\(name)» будет удалён из библиотеки и с задач.")
+            } else {
+                Text("Тег будет удалён из библиотеки и с задач.")
+            }
+        }
+    }
+
+    private func beginEdit(_ tag: TaskTag) {
+        editingTag = tag
+        editedTagName = tag.name
+        showingEditTag = true
+    }
+
+    private func askDelete(_ tag: TaskTag) {
+        tagPendingDeletion = tag
+        showingDeleteConfirm = true
+    }
+
+    /// Свайп тоже спрашивает подтверждение, а не удаляет сразу.
+    private func requestDeleteFromSwipe(at offsets: IndexSet) {
+        guard let index = offsets.first else { return }
+        askDelete(tags[index])
     }
 
     private func createTag() {
@@ -64,10 +132,26 @@ struct TagLibraryView: View {
         modelContext.persistToJSON()
     }
 
-    private func deleteTags(at offsets: IndexSet) {
-        for index in offsets {
-            modelContext.delete(tags[index])
+    private func saveEditedTag() {
+        guard let tag = editingTag else { return }
+        let existingNames = tags.map(\.name)
+        guard TaskInputValidation.canRenameTag(
+            name: editedTagName,
+            existingNames: existingNames,
+            currentName: tag.name
+        ) else {
+            editingTag = nil
+            editedTagName = ""
+            return
         }
+        tag.name = TaskInputValidation.normalizedTagName(editedTagName)
+        editingTag = nil
+        editedTagName = ""
+        modelContext.persistToJSON()
+    }
+
+    private func deleteTag(_ tag: TaskTag) {
+        modelContext.delete(tag)
         modelContext.persistToJSON()
     }
 }

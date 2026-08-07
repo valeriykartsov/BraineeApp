@@ -50,4 +50,31 @@ struct TaskInputValidationTests {
             TaskInputValidation.canCreateTag(name: "Спорт", existingNames: ["Работа"]) == true
         )
     }
+
+    @Test func переименованиеТега_тожеИмяДопустимо() {
+        // Оставить то же имя (другой регистр) при правке — можно.
+        #expect(
+            TaskInputValidation.canRenameTag(
+                name: "работа",
+                existingNames: ["Работа", "Спорт"],
+                currentName: "Работа"
+            ) == true
+        )
+    }
+
+    @Test func переименованиеТега_вСуществующийДубликат_нельзя() {
+        // Нельзя переименовать тег в имя другого тега.
+        #expect(
+            TaskInputValidation.canRenameTag(
+                name: "Спорт",
+                existingNames: ["Работа", "Спорт"],
+                currentName: "Работа"
+            ) == false
+        )
+    }
+
+    @Test func пустоеНазваниеГруппы_нельзяСохранить() {
+        #expect(TaskInputValidation.canSaveGroupName("  ") == false)
+        #expect(TaskInputValidation.canSaveGroupName("Проекты") == true)
+    }
 }

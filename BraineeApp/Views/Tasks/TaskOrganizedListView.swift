@@ -2,7 +2,7 @@
 //  TaskOrganizedListView.swift
 //  BraineeApp
 //
-//  Список задач по группам с drag-and-drop: карточки папок и секция «Без папки».
+//  Список задач: «По дате» — папки и drag-and-drop; «План на день» — плоский список без групп.
 
 import SwiftUI
 import SwiftData
@@ -20,6 +20,10 @@ struct TaskOrganizedListView: View {
     var onDeleteGroup: (TaskGroup) -> Void
 
     @State private var dropTargetGroupUUID: UUID?
+    @State private var editingGroupUUID: UUID?
+    @State private var editingGroupName = ""
+    @State private var groupPendingDeletion: TaskGroup?
+    @State private var showingDeleteGroupConfirm = false
 
     private var visibleTasks: [TaskItem] {
         let active = tasks.filter { !$0.isSoftDeleted }
@@ -39,34 +43,86 @@ struct TaskOrganizedListView: View {
         sortedTasks(visibleTasks.filter { $0.group == nil })
     }
 
+    /// Плоский список задач на сегодня (без папок).
+    private var dayPlanTasks: [TaskItem] {
+        sortedTasks(visibleTasks)
+    }
+
     private var ungroupedDropID: UUID {
         UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
     }
 
     var body: some View {
-        if visibleTasks.isEmpty && sortedGroups.isEmpty && viewMode == .dayPlan {
+        Group {
+            switch viewMode {
+            case .dayPlan:
+                dayPlanContent
+            case .byDate:
+                byDateContent
+            }
+        }
+        .alert("Удалить группу?", isPresented: $showingDeleteGroupConfirm) {
+            Button("Отмена", role: .cancel) {
+                groupPendingDeletion = nil
+            }
+            Button("Удалить", role: .destructive) {
+                if let group = groupPendingDeletion {
+                    onDeleteGroup(group)
+                }
+                groupPendingDeletion = nil
+            }
+        } message: {
+            if let name = groupPendingDeletion?.name {
+                Text("Группа «\(name)» будет удалена. Задачи из неё останутся в «Без папки».")
+            } else {
+                Text("Задачи из группы останутся в «Без папки».")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var dayPlanContent: some View {
+        if dayPlanTasks.isEmpty {
             emptyState
         } else {
             ScrollView {
-                LazyVStack(spacing: 12) {
-                    ForEach(sortedGroups) { group in
-                        let groupTasks = sortedTasks(
-                            visibleTasks.filter { $0.group?.uuid == group.uuid }
-                        )
-                        if !groupTasks.isEmpty || viewMode == .byDate {
-                            groupFolderCard(group: group, tasks: groupTasks)
+                LazyVStack(spacing: 0) {
+                    ForEach(dayPlanTasks) { task in
+                        taskRow(task)
+                        if task.uuid != dayPlanTasks.last?.uuid {
+                            Divider()
+                                .padding(.leading, 16)
                         }
                     }
-
-                    if viewMode == .byDate || !ungroupedTasks.isEmpty {
-                        ungroupedSection
-                    }
                 }
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color(.secondarySystemGroupedBackground))
+                )
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
             }
             .background(Color(.systemGroupedBackground))
         }
+    }
+
+    @ViewBuilder
+    private var byDateContent: some View {
+        ScrollView {
+            LazyVStack(spacing: 12) {
+                ForEach(sortedGroups) { group in
+                    let groupTasks = sortedTasks(
+                        visibleTasks.filter { $0.group?.uuid == group.uuid }
+                    )
+                    groupFolderCard(group: group, tasks: groupTasks)
+                }
+
+                ungroupedSection
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+        }
+        .background(Color(.systemGroupedBackground))
     }
 
     @ViewBuilder
@@ -207,26 +263,78 @@ struct TaskOrganizedListView: View {
         .padding(.horizontal, 16)
     }
 
+    @ViewBuilder
     private func groupHeader(_ group: TaskGroup, taskCount: Int) -> some View {
-        HStack {
-            Image(systemName: "folder.fill")
-                .foregroundStyle(.secondary)
-            Text(group.name)
-                .font(.headline)
-            if taskCount > 0 {
-                Text("\(taskCount)")
-                    .font(.caption)
+        if editingGroupUUID == group.uuid {
+            HStack(spacing: 4) {
+                Image(systemName: "folder.fill")
                     .foregroundStyle(.secondary)
+                TextField("Название группы", text: $editingGroupName)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.headline)
+                IconTapButton(
+                    systemName: "checkmark.circle.fill",
+                    tint: .green,
+                    accessibilityLabel: "Подтвердить название"
+                ) {
+                    confirmRenameGroup(group)
+                }
+                .disabled(!TaskInputValidation.canSaveGroupName(editingGroupName))
+
+                IconTapButton(
+                    systemName: "xmark.circle.fill",
+                    tint: .secondary,
+                    accessibilityLabel: "Отменить редактирование"
+                ) {
+                    cancelRenameGroup()
+                }
             }
-            Spacer()
-            Button(role: .destructive) {
-                onDeleteGroup(group)
-            } label: {
-                Image(systemName: "trash")
-                    .font(.caption)
+        } else {
+            HStack(spacing: 4) {
+                Image(systemName: "folder.fill")
+                    .foregroundStyle(.secondary)
+                Text(group.name)
+                    .font(.headline)
+                if taskCount > 0 {
+                    Text("\(taskCount)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 8)
+                IconTapButton(
+                    systemName: "pencil",
+                    tint: .accentColor,
+                    accessibilityLabel: "Редактировать название группы"
+                ) {
+                    beginRenameGroup(group)
+                }
+                IconTapButton(
+                    systemName: "trash",
+                    role: .destructive,
+                    accessibilityLabel: "Удалить группу"
+                ) {
+                    groupPendingDeletion = group
+                    showingDeleteGroupConfirm = true
+                }
             }
-            .buttonStyle(.borderless)
         }
+    }
+
+    private func beginRenameGroup(_ group: TaskGroup) {
+        editingGroupUUID = group.uuid
+        editingGroupName = group.name
+    }
+
+    private func cancelRenameGroup() {
+        editingGroupUUID = nil
+        editingGroupName = ""
+    }
+
+    private func confirmRenameGroup(_ group: TaskGroup) {
+        guard TaskInputValidation.canSaveGroupName(editingGroupName) else { return }
+        group.name = TaskInputValidation.normalizedGroupName(editingGroupName)
+        modelContext.persistToJSON()
+        cancelRenameGroup()
     }
 
     private func taskRow(_ task: TaskItem) -> some View {
