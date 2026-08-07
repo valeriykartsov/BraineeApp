@@ -2,6 +2,7 @@
 //  TaskRowView.swift
 //  BraineeApp
 //
+//  Одна строка задачи в списке: чекбокс, текст, дедлайн, приоритет и теги.
 
 import SwiftUI
 import SwiftData
@@ -58,6 +59,7 @@ struct TaskRowView: View {
     }
 }
 
+/// Цветной бейдж с названием приоритета.
 struct PriorityBadge: View {
     let priority: TaskPriority
 

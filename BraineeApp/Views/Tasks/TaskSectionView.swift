@@ -2,10 +2,12 @@
 //  TaskSectionView.swift
 //  BraineeApp
 //
+//  Экран раздела задач: список, режимы просмотра, создание задач и групп.
 
 import SwiftUI
 import SwiftData
 
+/// Режим отображения: все задачи по дате или только план на сегодня.
 enum TaskViewMode: String, CaseIterable, Identifiable {
     case byDate = "По дате"
     case dayPlan = "План на день"
@@ -168,6 +170,7 @@ struct TaskSectionView: View {
 
     private func deleteTask(_ task: TaskItem) {
         withAnimation {
+            // Мягкое удаление: задача остаётся в JSON и попадает в «Удалённые».
             task.isDeleted = true
             task.deletedAt = .now
             try? modelContext.save()
