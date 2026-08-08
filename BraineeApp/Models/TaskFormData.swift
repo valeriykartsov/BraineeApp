@@ -10,6 +10,7 @@ struct TaskFormData {
     var title: String
     var deadline: Date?
     var hasDeadlineTime: Bool
+    var reminderOffsets: [TaskReminderOffset]
     var priority: TaskPriority
     var status: TaskStatus
     var taskDetails: String

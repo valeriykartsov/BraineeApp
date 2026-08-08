@@ -67,12 +67,15 @@ struct TaskRowView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: DesignSystem.Space.x1) {
                 if displaySettings.showDeadline, let text = task.deadlineDisplayText {
-                    MetaChip(
-                        text: text,
-                        foreground: task.isOverdue
-                            ? DesignSystem.Colors.danger
-                            : DesignSystem.Colors.textSecondary
-                    )
+                    // Периодическое обновление: просрочка по времени появляется без перезапуска экрана.
+                    TimelineView(.periodic(from: .now, by: 30)) { context in
+                        MetaChip(
+                            text: text,
+                            foreground: task.isOverdue(at: context.date)
+                                ? DesignSystem.Colors.danger
+                                : DesignSystem.Colors.textSecondary
+                        )
+                    }
                 }
 
                 if displaySettings.showStatus {

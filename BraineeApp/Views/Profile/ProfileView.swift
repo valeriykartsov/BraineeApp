@@ -2,7 +2,7 @@
 //  ProfileView.swift
 //  BraineeApp
 //
-//  Профиль: пользователь, тема, дашборд, теги, хранение.
+//  Профиль: пользователь, дашборд, теги, ещё (оформление, вкладки, FAQ), хранение.
 
 import SwiftUI
 import SwiftData
@@ -15,21 +15,15 @@ struct ProfileView: View {
     /// Активна вкладка «Профиль» — при уходе возвращаем общий вид (корень + без поиска).
     var isActive: Bool = true
 
-    @AppStorage("appTheme") private var appThemeRaw = AppTheme.system.rawValue
     @AppStorage(AccentPalette.storageKey) private var accentPaletteRaw = AccentPalette.orange.rawValue
 
     @State private var searchText = ""
     @State private var isSearchExpanded = false
     @State private var showingEditProfile = false
-    @State private var showingAccentPicker = false
     @State private var navigationResetID = UUID()
     @FocusState private var isSearchFocused: Bool
 
     private var profile: UserProfile? { profiles.first }
-
-    private var appTheme: AppTheme {
-        AppTheme.resolved(from: appThemeRaw)
-    }
 
     private var accentPalette: AccentPalette {
         AccentPalette.resolved(from: accentPaletteRaw)
@@ -61,22 +55,18 @@ struct ProfileView: View {
                         userSection
                     }
 
-                    if matches(
-                        "тема", "оформление", "светлая", "тёмная",
-                        "акцент", "цвет", "оранжевый", "зелёный", "синий"
-                    ) {
-                        themeSection
-                    }
-
                     if matches("дашборд", "статистика", "прогресс", "задачи") {
                         TaskDashboardView()
                     }
 
                     if matches(
                         "ещё", "удалённые", "удалить", "корзина", "панель", "вкладки",
-                        "матрица", "привычки", "календарь", "faq", "вопрос", "вопросы", "помощь", "справка"
+                        "матрица", "привычки", "календарь", "faq", "вопрос", "вопросы", "помощь", "справка",
+                        "тема", "оформление", "светлая", "тёмная", "акцент", "цвет",
+                        "ориентация", "положение", "вертикал", "горизонтал",
+                        "уведомлен", "напоминал", "дедлайн", "пуш"
                     ) {
-                        deletedSection
+                        moreSection
                     }
 
                     if matches("тег", "теги", "библиотека") {
@@ -135,11 +125,6 @@ struct ProfileView: View {
                     saveProfile(name: name, age: age, gender: gender, avatarData: avatarData)
                 }
             }
-            .sheet(isPresented: $showingAccentPicker) {
-                AccentPalettePickerView(current: accentPalette) { selected in
-                    applyAccent(selected)
-                }
-            }
         }
         .id(navigationResetID)
         .tint(accentPalette.color)
@@ -151,22 +136,7 @@ struct ProfileView: View {
         isSearchExpanded = false
         isSearchFocused = false
         showingEditProfile = false
-        showingAccentPicker = false
         navigationResetID = UUID()
-    }
-
-    private func applyAccent(_ selected: AccentPalette) {
-        let previous = accentPalette
-        accentPaletteRaw = selected.rawValue
-        AppNavigationChrome.apply(accentRaw: selected.rawValue)
-        modelContext.persistToJSON()
-
-        guard selected != previous else { return }
-
-        // Системный алерт iOS про смену иконки оставляем; своё окно не показываем.
-        Task { @MainActor in
-            AppIconSwitcher.apply(for: selected) { _ in }
-        }
     }
 
     private var searchToggleButton: some View {
@@ -248,72 +218,26 @@ struct ProfileView: View {
         }
     }
 
-    private var themeSection: some View {
-        GroupedSection(title: "Тема оформления") {
-            VStack(alignment: .leading, spacing: DesignSystem.Space.x3) {
-                HStack(spacing: DesignSystem.Space.x3) {
-                    Image(systemName: DesignSystem.Icon.paintbrush)
-                        .font(.system(size: 18, weight: .regular))
-                        .foregroundStyle(accentPalette.color)
-                        .frame(width: DesignSystem.Space.x6, height: DesignSystem.Space.x6)
-                    Text("Тема")
-                        .font(DesignSystem.Typography.body())
-                        .foregroundStyle(DesignSystem.Colors.textPrimary)
-                    Spacer()
-                }
-
-                Picker("Тема", selection: Binding(
-                    get: { appTheme },
-                    set: {
-                        appThemeRaw = $0.rawValue
-                        modelContext.persistToJSON()
-                    }
-                )) {
-                    ForEach(AppTheme.allCases) { theme in
-                        Text(theme.title).tag(theme)
-                    }
-                }
-                .pickerStyle(.segmented)
-
-                Button {
-                    showingAccentPicker = true
-                } label: {
-                    HStack(spacing: DesignSystem.Space.x3) {
-                        Circle()
-                            .fill(accentPalette.color)
-                            .frame(width: DesignSystem.Space.x5, height: DesignSystem.Space.x5)
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Акцентный цвет")
-                                .font(DesignSystem.Typography.caption(12))
-                                .foregroundStyle(DesignSystem.Colors.textSecondary)
-                            Text(accentPalette.title)
-                                .font(DesignSystem.Typography.body())
-                                .foregroundStyle(DesignSystem.Colors.textPrimary)
-                        }
-
-                        Spacer()
-
-                        Image(systemName: "chevron.up.chevron.down")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(DesignSystem.Colors.textSecondary)
-                    }
-                    .padding(.horizontal, DesignSystem.Space.x3)
-                    .padding(.vertical, DesignSystem.Space.x3)
-                    .background(
-                        RoundedRectangle(cornerRadius: DesignSystem.Radius.card, style: .continuous)
-                            .fill(DesignSystem.Colors.chip)
-                    )
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Выбрать акцентный цвет")
-            }
-            .padding(DesignSystem.Space.x3)
-        }
-    }
-
-    private var deletedSection: some View {
+    private var moreSection: some View {
         GroupedSection(title: "Ещё") {
+            NavigationLink {
+                AppearanceSettingsView()
+            } label: {
+                GroupedNavRow(title: "Тема оформления", systemImage: DesignSystem.Icon.paintbrush)
+            }
+            .buttonStyle(.plain)
+
+            InsetDivider(leading: DesignSystem.Space.rowIconInset)
+
+            NavigationLink {
+                NotificationSettingsView()
+            } label: {
+                GroupedNavRow(title: "Уведомления", systemImage: "bell")
+            }
+            .buttonStyle(.plain)
+
+            InsetDivider(leading: DesignSystem.Space.rowIconInset)
+
             NavigationLink {
                 TabBarSettingsView()
             } label: {

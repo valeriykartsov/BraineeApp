@@ -98,4 +98,19 @@ struct EisenhowerQuadrantTests {
         )
         #expect(q == .schedule)
     }
+
+    @Test func сегодняВремяУжеПрошло_срочная() {
+        // Дедлайн сегодня с прошедшим временем → срочно (просрочка по времени).
+        let deadline = calendar.date(bySettingHour: 10, minute: 0, second: 0, of: now)!
+        let later = calendar.date(bySettingHour: 15, minute: 0, second: 0, of: now)!
+        #expect(
+            EisenhowerQuadrant.isUrgent(
+                deadline: deadline,
+                hasDeadlineTime: true,
+                isCompleted: false,
+                now: later,
+                calendar: calendar
+            )
+        )
+    }
 }

@@ -13,6 +13,7 @@ struct AnimatedMainTabView: View {
     @AppStorage(TabBarSettings.showCalendarKey) private var showCalendar = true
     @AppStorage(TabBarSettings.showMatrixKey) private var showMatrix = false
     @AppStorage(TabBarSettings.showHabitsKey) private var showHabits = false
+    @ObservedObject private var deepLinkRouter = NotificationDeepLinkRouter.shared
     @State private var selectedTab: MainTab = .tasks
     @Namespace private var tabUnderlineNamespace
 
@@ -84,6 +85,12 @@ struct AnimatedMainTabView: View {
         .onChange(of: tabVisibilityToken) { _, _ in
             withAnimation(flowAnimation) {
                 ensureSelectedTabVisible()
+            }
+        }
+        .onChange(of: deepLinkRouter.pendingTaskUUID) { _, uuid in
+            guard uuid != nil else { return }
+            withAnimation(flowAnimation) {
+                selectedTab = .tasks
             }
         }
     }

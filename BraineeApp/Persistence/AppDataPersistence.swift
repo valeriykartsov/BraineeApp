@@ -30,6 +30,10 @@ enum AppDataPersistence {
         }
 
         try context.save()
+        WidgetSnapshotBuilder.publish(
+            tasks: context.fetchActiveTasks(),
+            habits: context.fetchHabits()
+        )
     }
 
     /// Правила акцента при старте.
@@ -105,6 +109,7 @@ enum AppDataPersistence {
                 isCompleted: status == .done,
                 deadline: record.deadline,
                 hasDeadlineTime: record.hasDeadlineTime,
+                reminderOffsets: TaskReminderOffset.normalizedList(record.reminderOffsetsRaw),
                 priority: TaskPriority(rawValue: record.priorityRaw) ?? .medium,
                 category: .tasks,
                 status: status,
@@ -172,6 +177,7 @@ enum AppDataPersistence {
                     isCompleted: $0.isCompleted,
                     deadline: $0.deadline,
                     hasDeadlineTime: $0.hasDeadlineTime,
+                    reminderOffsetsRaw: $0.reminderOffsetsRaw,
                     priorityRaw: $0.priorityRaw,
                     categoryRaw: $0.categoryRaw,
                     statusRaw: $0.statusRaw,
@@ -220,6 +226,12 @@ extension ModelContext {
     /// Удобный вызов после любого изменения задач, профиля или тегов.
     func persistToJSON() {
         AppDataPersistence.export(from: self)
+        let tasks = fetchActiveTasks()
+        let habits = fetchHabits()
+        WidgetSnapshotBuilder.publish(tasks: tasks, habits: habits)
+        Task {
+            await AppNotifications.refresh(tasks: tasks, habits: habits)
+        }
     }
 }
 

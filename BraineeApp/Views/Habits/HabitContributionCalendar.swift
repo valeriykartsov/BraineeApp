@@ -2,7 +2,8 @@
 //  HabitContributionCalendar.swift
 //  BraineeApp
 //
-//  Сетка прогресса в стиле GitHub: текущая неделя справа, отступы между месяцами.
+//  Сетка прогресса: слева 2 предыдущих месяца, справа полный текущий.
+//  Подписи месяцев по центру блока дней; календарь выровнен влево.
 
 import SwiftUI
 
@@ -16,7 +17,7 @@ struct HabitContributionCalendar: View {
     private let monthGap: CGFloat = 8
     private let labelColumnWidth: CGFloat = 22
     private let monthLabelHeight: CGFloat = 14
-    private let minCell: CGFloat = 10
+    private let minCell: CGFloat = 8
 
     private var accentColor: Color {
         AccentPalette.resolved(from: accentPaletteRaw).color
@@ -24,14 +25,14 @@ struct HabitContributionCalendar: View {
 
     private var layoutHeight: CGFloat {
         let width = measuredWidth > 0 ? measuredWidth : 280
-        let span = HabitProgress.weekSpan(
-            forAvailableWidth: width,
+        let layout = HabitProgress.cellSizeForThreeMonthWindow(
+            availableWidth: width,
             labelColumnWidth: labelColumnWidth,
             gap: cellGap,
             monthGap: monthGap,
             minCell: minCell
         )
-        return monthLabelHeight + cellGap + 7 * span.cellSize + 6 * cellGap
+        return monthLabelHeight + cellGap + 7 * layout.cellSize + 6 * cellGap
     }
 
     var body: some View {
@@ -50,49 +51,59 @@ struct HabitContributionCalendar: View {
                     calendarGrid(width: measuredWidth)
                 }
             }
-            .clipped()
             .accessibilityLabel("Календарь прогресса привычек")
     }
 
     private func calendarGrid(width: CGFloat) -> some View {
-        let span = HabitProgress.weekSpan(
-            forAvailableWidth: width,
+        let layout = HabitProgress.cellSizeForThreeMonthWindow(
+            availableWidth: width,
             labelColumnWidth: labelColumnWidth,
             gap: cellGap,
             monthGap: monthGap,
             minCell: minCell
         )
-        let days = HabitProgress.contributionDays(
-            weeksBefore: span.weeksBefore,
-            weeksAfter: span.weeksAfter
-        )
-        let columns = HabitProgress.columns(from: days)
-        let monthBoundaries = HabitProgress.monthBoundaryIndices(after: columns)
-        let cellSize = span.cellSize
-        let weekdayLabels = columns.first?.map { CalendarWeekHelper.weekdayShort($0) } ?? []
-        let monthMarkers = Self.monthMarkers(for: columns)
+        let columns = layout.columns
+        let bands = layout.bands
+        let cellSize = layout.cellSize
+        let boundaries = Set(bands.dropLast().compactMap { band -> Int? in
+            let last = band.columnEndExclusive - 1
+            return last >= 0 ? last : nil
+        })
         let columnOffsets = Self.columnOffsets(
             columnCount: columns.count,
             cellSize: cellSize,
             cellGap: cellGap,
             monthGap: monthGap,
-            monthBoundaries: monthBoundaries
+            monthBoundaries: boundaries
         )
-        let gridWidth = (columnOffsets.last ?? 0) + cellSize
+        let gridWidth = layout.gridWidth
+        let weekdayLabels = columns.first?.map { CalendarWeekHelper.weekdayShort($0) } ?? []
 
+        // Календарь слева в контейнере — без сдвига к правому краю.
         return VStack(alignment: .leading, spacing: cellGap) {
             HStack(alignment: .center, spacing: cellGap) {
                 Color.clear.frame(width: labelColumnWidth, height: monthLabelHeight)
                 ZStack(alignment: .leading) {
                     Color.clear.frame(width: gridWidth, height: monthLabelHeight)
-                    ForEach(monthMarkers, id: \.index) { marker in
-                        Text(marker.label)
+                    ForEach(Array(bands.enumerated()), id: \.element.columnStart) { _, band in
+                        let startX = columnOffsets[safe: band.columnStart] ?? 0
+                        let endX: CGFloat = {
+                            if band.columnEndExclusive < columnOffsets.count {
+                                return columnOffsets[band.columnEndExclusive]
+                            }
+                            return gridWidth
+                        }()
+                        let bandWidth = max(endX - startX, cellSize)
+                        Text(band.label)
                             .font(.system(size: 9, weight: .medium))
                             .foregroundStyle(DesignSystem.Colors.textSecondary)
-                            .offset(x: columnOffsets[safe: marker.index] ?? 0)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                            .frame(width: bandWidth, alignment: .center)
+                            .offset(x: startX)
                     }
                 }
-                .frame(width: min(gridWidth, width - labelColumnWidth - cellGap), alignment: .leading)
+                .frame(width: gridWidth, alignment: .leading)
             }
 
             HStack(alignment: .top, spacing: cellGap) {
@@ -126,14 +137,13 @@ struct HabitContributionCalendar: View {
                         if columnIndex < columns.count - 1 {
                             Color.clear
                                 .frame(
-                                    width: monthBoundaries.contains(columnIndex) ? monthGap : cellGap,
+                                    width: boundaries.contains(columnIndex) ? monthGap : cellGap,
                                     height: 1
                                 )
                         }
                     }
                 }
-                .frame(width: min(gridWidth, width - labelColumnWidth - cellGap), alignment: .leading)
-                .clipped()
+                .frame(width: gridWidth, alignment: .leading)
             }
         }
         .frame(width: width, alignment: .leading)
@@ -156,25 +166,6 @@ struct HabitContributionCalendar: View {
             }
         }
         return offsets
-    }
-
-    private static func monthMarkers(for columns: [[Date]]) -> [(index: Int, label: String)] {
-        var result: [(Int, String)] = []
-        let calendar = Calendar.current
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ru_RU")
-        formatter.dateFormat = "LLL"
-
-        for (index, week) in columns.enumerated() {
-            guard let day = week.first else { continue }
-            if index > 0, let previous = columns[index - 1].first,
-               calendar.isDate(day, equalTo: previous, toGranularity: .month) {
-                continue
-            }
-            let label = formatter.string(from: day).replacingOccurrences(of: ".", with: "")
-            result.append((index, label))
-        }
-        return result
     }
 
     private func cellColor(for day: Date) -> Color {

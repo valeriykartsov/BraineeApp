@@ -2,7 +2,7 @@
 //  TaskItem.swift
 //  BraineeApp
 //
-//  Модель задачи: название, дедлайн, приоритет, статус, описание, группа, теги и мягкое удаление.
+//  Модель задачи: название, дедлайн, напоминания, приоритет, статус, описание, группа, теги.
 
 import Foundation
 import SwiftData
@@ -14,6 +14,8 @@ final class TaskItem {
     var deadline: Date?
     /// Показывать время дедлайна (если false — только дата).
     var hasDeadlineTime: Bool
+    /// До 3 пресетов напоминаний (как в Calendar), rawValue TaskReminderOffset.
+    var reminderOffsetsRaw: [String]
     var priorityRaw: Int
     var categoryRaw: String
     var statusRaw: String
@@ -36,6 +38,7 @@ final class TaskItem {
         isCompleted: Bool = false,
         deadline: Date? = nil,
         hasDeadlineTime: Bool = false,
+        reminderOffsets: [TaskReminderOffset] = [],
         priority: TaskPriority = .medium,
         category: TaskCategory = .tasks,
         status: TaskStatus? = nil,
@@ -52,6 +55,9 @@ final class TaskItem {
         self.isCompleted = isCompleted
         self.deadline = deadline
         self.hasDeadlineTime = hasDeadlineTime && deadline != nil
+        self.reminderOffsetsRaw = deadline == nil
+            ? []
+            : TaskReminderOffset.encodeList(reminderOffsets)
         self.priorityRaw = priority.rawValue
         self.categoryRaw = category.rawValue
         let resolved = status ?? TaskStatus.fromCompletion(isCompleted)
@@ -85,6 +91,17 @@ final class TaskItem {
         }
     }
 
+    var reminderOffsets: [TaskReminderOffset] {
+        get { TaskReminderOffset.normalizedList(reminderOffsetsRaw) }
+        set {
+            reminderOffsetsRaw = deadline == nil
+                ? []
+                : TaskReminderOffset.encodeList(newValue)
+        }
+    }
+
+    var hasReminder: Bool { !reminderOffsets.isEmpty }
+
     /// Чекбокс: вкл → Готово, выкл → Новая.
     func applyCompletionToggle() {
         if isCompleted || status == .done {
@@ -94,13 +111,17 @@ final class TaskItem {
         }
     }
 
-    /// Просрочена, если дедлайн был раньше сегодня и задача не выполнена.
+    /// Просрочена: по дате+времени (если время задано) или только по календарному дню.
     var isOverdue: Bool {
+        isOverdue(at: .now)
+    }
+
+    func isOverdue(at now: Date, calendar: Calendar = .current) -> Bool {
         guard let deadline, !isCompleted else { return false }
         if hasDeadlineTime {
-            return deadline < .now
+            return deadline < now
         }
-        return Calendar.current.startOfDay(for: deadline) < Calendar.current.startOfDay(for: .now)
+        return calendar.startOfDay(for: deadline) < calendar.startOfDay(for: now)
     }
 
     var isDueToday: Bool {
@@ -115,5 +136,22 @@ final class TaskItem {
             return deadline.formatted(date: .abbreviated, time: .shortened)
         }
         return deadline.formatted(date: .abbreviated, time: .omitted)
+    }
+
+    /// Будущие моменты пушей по всем пресетам напоминаний.
+    func reminderFireDates(
+        now: Date = .now,
+        calendar: Calendar = .current
+    ) -> [(offset: TaskReminderOffset, date: Date)] {
+        guard let deadline, !isCompleted else { return [] }
+        return reminderOffsets.compactMap { offset in
+            guard let date = offset.fireDate(
+                deadline: deadline,
+                hasDeadlineTime: hasDeadlineTime,
+                now: now,
+                calendar: calendar
+            ) else { return nil }
+            return (offset, date)
+        }
     }
 }

@@ -15,7 +15,7 @@ struct MyTasksDocument: Codable {
     var tasks: [TaskRecord]
     var habits: [HabitRecord]
 
-    static let currentVersion = 6
+    static let currentVersion = 8
     static let empty = MyTasksDocument(
         version: currentVersion,
         lastSavedAt: nil,
@@ -113,7 +113,13 @@ struct MyTasksDocument: Codable {
             // v6: время дедлайна только если дата задана.
             if tasks[index].deadline == nil {
                 tasks[index].hasDeadlineTime = false
+                tasks[index].reminderOffsetsRaw = []
             }
+
+            // v8: до 3 пресетов напоминаний (как в Calendar).
+            tasks[index].reminderOffsetsRaw = TaskReminderOffset
+                .normalizedList(tasks[index].reminderOffsetsRaw)
+                .map(\.rawValue)
         }
 
         for index in habits.indices {
@@ -136,6 +142,7 @@ struct TaskRecord: Codable, Identifiable {
     var isCompleted: Bool
     var deadline: Date?
     var hasDeadlineTime: Bool
+    var reminderOffsetsRaw: [String]
     var priorityRaw: Int
     var categoryRaw: String
     var statusRaw: String
@@ -153,6 +160,7 @@ struct TaskRecord: Codable, Identifiable {
         isCompleted: Bool,
         deadline: Date?,
         hasDeadlineTime: Bool = false,
+        reminderOffsetsRaw: [String] = [],
         priorityRaw: Int,
         categoryRaw: String,
         statusRaw: String = TaskStatus.new.rawValue,
@@ -169,6 +177,11 @@ struct TaskRecord: Codable, Identifiable {
         self.isCompleted = isCompleted
         self.deadline = deadline
         self.hasDeadlineTime = hasDeadlineTime && deadline != nil
+        self.reminderOffsetsRaw = deadline == nil
+            ? []
+            : TaskReminderOffset.encodeList(
+                TaskReminderOffset.normalizedList(reminderOffsetsRaw)
+            )
         self.priorityRaw = priorityRaw
         self.categoryRaw = categoryRaw
         self.statusRaw = statusRaw
@@ -190,6 +203,27 @@ struct TaskRecord: Codable, Identifiable {
         deadline = try container.decodeIfPresent(Date.self, forKey: .deadline)
         hasDeadlineTime = (try container.decodeIfPresent(Bool.self, forKey: .hasDeadlineTime) ?? false)
             && deadline != nil
+
+        if let offsets = try container.decodeIfPresent([String].self, forKey: .reminderOffsetsRaw) {
+            reminderOffsetsRaw = TaskReminderOffset.encodeList(
+                TaskReminderOffset.normalizedList(offsets)
+            )
+        } else {
+            // v7 → v8: одно напоминание value + unit.
+            let legacyOn = (try container.decodeIfPresent(Bool.self, forKey: .hasReminder) ?? false)
+                && deadline != nil
+            let legacyValue = try container.decodeIfPresent(Int.self, forKey: .reminderValue) ?? 1
+            let legacyUnit = try container.decodeIfPresent(String.self, forKey: .reminderUnitRaw) ?? "hours"
+            if legacyOn, let offset = TaskReminderOffset.migrated(fromValue: legacyValue, unitRaw: legacyUnit) {
+                reminderOffsetsRaw = [offset.rawValue]
+            } else {
+                reminderOffsetsRaw = []
+            }
+        }
+        if deadline == nil {
+            reminderOffsetsRaw = []
+        }
+
         priorityRaw = try container.decodeIfPresent(Int.self, forKey: .priorityRaw) ?? TaskPriority.medium.rawValue
         categoryRaw = try container.decodeIfPresent(String.self, forKey: .categoryRaw) ?? TaskCategory.unifiedRaw
         createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? .now
@@ -205,6 +239,34 @@ struct TaskRecord: Codable, Identifiable {
         } else {
             statusRaw = TaskStatus.fromCompletion(isCompleted).rawValue
         }
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, title, isCompleted, deadline, hasDeadlineTime
+        case reminderOffsetsRaw
+        case hasReminder, reminderValue, reminderUnitRaw // только decode (миграция v7)
+        case priorityRaw, categoryRaw, statusRaw, createdAt, taskDetails
+        case sortOrder, groupID, tagIDs, isDeleted, deletedAt
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(title, forKey: .title)
+        try container.encode(isCompleted, forKey: .isCompleted)
+        try container.encodeIfPresent(deadline, forKey: .deadline)
+        try container.encode(hasDeadlineTime, forKey: .hasDeadlineTime)
+        try container.encode(reminderOffsetsRaw, forKey: .reminderOffsetsRaw)
+        try container.encode(priorityRaw, forKey: .priorityRaw)
+        try container.encode(categoryRaw, forKey: .categoryRaw)
+        try container.encode(statusRaw, forKey: .statusRaw)
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encode(taskDetails, forKey: .taskDetails)
+        try container.encode(sortOrder, forKey: .sortOrder)
+        try container.encodeIfPresent(groupID, forKey: .groupID)
+        try container.encode(tagIDs, forKey: .tagIDs)
+        try container.encode(isDeleted, forKey: .isDeleted)
+        try container.encodeIfPresent(deletedAt, forKey: .deletedAt)
     }
 }
 

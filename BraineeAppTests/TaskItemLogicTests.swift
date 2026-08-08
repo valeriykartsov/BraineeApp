@@ -50,6 +50,53 @@ struct TaskItemLogicTests {
         #expect(task.isOverdue == false)
     }
 
+    @Test func дедлайнСегодняСоВременемВПрошлом_просрочена() throws {
+        // Если задано время и оно уже прошло — просрочка, даже если день ещё сегодня.
+        let container = try TestHelpers.makeContainer()
+        let calendar = Calendar.current
+        let now = Date()
+        let past = calendar.date(byAdding: .hour, value: -1, to: now) ?? now.addingTimeInterval(-3600)
+        let task = TaskItem(
+            title: "Опоздали",
+            deadline: past,
+            hasDeadlineTime: true,
+            category: .tasks
+        )
+        container.mainContext.insert(task)
+        #expect(task.isOverdue(at: now) == true)
+        #expect(task.isDueToday == true)
+    }
+
+    @Test func дедлайнСегодняСоВременемВБудущем_неПросрочена() throws {
+        // Время сегодня ещё не наступило — не просрочена.
+        let container = try TestHelpers.makeContainer()
+        let calendar = Calendar.current
+        let now = Date()
+        let future = calendar.date(byAdding: .hour, value: 2, to: now) ?? now.addingTimeInterval(7200)
+        let task = TaskItem(
+            title: "Ещё успеем",
+            deadline: future,
+            hasDeadlineTime: true,
+            category: .tasks
+        )
+        container.mainContext.insert(task)
+        #expect(task.isOverdue(at: now) == false)
+    }
+
+    @Test func дедлайнСегодняБезВремени_неПросрочена() throws {
+        // Без времени смотрим только календарный день — сегодня ещё не просрочка.
+        let container = try TestHelpers.makeContainer()
+        let now = Date()
+        let task = TaskItem(
+            title: "Весь день",
+            deadline: now,
+            hasDeadlineTime: false,
+            category: .tasks
+        )
+        container.mainContext.insert(task)
+        #expect(task.isOverdue(at: now) == false)
+    }
+
     @Test func безДедлайна_неПросроченаИНеНаСегодня() throws {
         // Без даты — ни просрочка, ни «сегодня».
         let container = try TestHelpers.makeContainer()

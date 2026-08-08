@@ -2,21 +2,19 @@
 //  EisenhowerMatrixView.swift
 //  BraineeApp
 //
-//  Матрица Эйзенхауэра: 4 квадранта по срочности дедлайна и приоритету.
+//  Матрица Эйзенхауэра: 4 одинаковых квадранта; тап открывает список задач.
 
 import SwiftUI
 import SwiftData
 
 struct EisenhowerMatrixView: View {
-    @Environment(\.modelContext) private var modelContext
+    @Environment(\.colorScheme) private var colorScheme
 
     @Query(
         filter: #Predicate<TaskItem> { !$0.isSoftDeleted },
         sort: [SortDescriptor(\TaskItem.sortOrder)]
     )
     private var tasks: [TaskItem]
-
-    @State private var editingTask: TaskItem?
 
     private var tasksByQuadrant: [EisenhowerQuadrant: [TaskItem]] {
         var result: [EisenhowerQuadrant: [TaskItem]] = Dictionary(
@@ -47,14 +45,18 @@ struct EisenhowerMatrixView: View {
                     .padding(.bottom, DesignSystem.Space.x2)
 
                 ScrollView {
-                    VStack(spacing: DesignSystem.Space.x2) {
-                        HStack(alignment: .top, spacing: DesignSystem.Space.x2) {
-                            quadrantCard(.doFirst)
-                            quadrantCard(.schedule)
-                        }
-                        HStack(alignment: .top, spacing: DesignSystem.Space.x2) {
-                            quadrantCard(.delegate)
-                            quadrantCard(.eliminate)
+                    LazyVGrid(
+                        columns: [
+                            GridItem(.flexible(), spacing: DesignSystem.Space.x2),
+                            GridItem(.flexible(), spacing: DesignSystem.Space.x2)
+                        ],
+                        spacing: DesignSystem.Space.x2
+                    ) {
+                        ForEach(EisenhowerQuadrant.allCases) { quadrant in
+                            NavigationLink(value: quadrant) {
+                                quadrantCard(quadrant)
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
                     .groupedScreenPadding()
@@ -65,16 +67,10 @@ struct EisenhowerMatrixView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .navigationBar)
             .tint(DesignSystem.Colors.accent)
-            .sheet(item: $editingTask) { task in
-                AddEditTaskView(
-                    task: task,
-                    onSave: { formData in
-                        updateTask(task, formData: formData)
-                    },
-                    onDelete: { taskToDelete in
-                        softDelete(taskToDelete)
-                        editingTask = nil
-                    }
+            .navigationDestination(for: EisenhowerQuadrant.self) { quadrant in
+                EisenhowerQuadrantDetailView(
+                    quadrant: quadrant,
+                    tasks: tasksByQuadrant[quadrant] ?? []
                 )
             }
         }
@@ -82,72 +78,74 @@ struct EisenhowerMatrixView: View {
 
     private func quadrantCard(_ quadrant: EisenhowerQuadrant) -> some View {
         let items = tasksByQuadrant[quadrant] ?? []
+        let preview = EisenhowerMatrixLayout.preview(items: items)
         let shape = RoundedRectangle(cornerRadius: DesignSystem.Radius.group, style: .continuous)
+        let showsBorder = colorScheme == .light
 
         return VStack(alignment: .leading, spacing: DesignSystem.Space.x2) {
             VStack(alignment: .leading, spacing: DesignSystem.Space.x1) {
-                Text(quadrant.title)
-                    .font(DesignSystem.Typography.body(16))
-                    .foregroundStyle(DesignSystem.Colors.textPrimary)
+                HStack(alignment: .firstTextBaseline) {
+                    Text(quadrant.title)
+                        .font(DesignSystem.Typography.body(16))
+                        .foregroundStyle(DesignSystem.Colors.textPrimary)
+                        .lineLimit(1)
+                    Spacer(minLength: DesignSystem.Space.x1)
+                    if !items.isEmpty {
+                        Text("\(items.count)")
+                            .font(DesignSystem.Typography.caption())
+                            .foregroundStyle(DesignSystem.Colors.textSecondary)
+                    }
+                }
                 Text(quadrant.subtitle)
                     .font(DesignSystem.Typography.caption())
                     .foregroundStyle(DesignSystem.Colors.textSecondary)
+                    .lineLimit(2)
             }
 
-            if items.isEmpty {
-                Text("Пусто")
-                    .font(DesignSystem.Typography.caption())
-                    .foregroundStyle(DesignSystem.Colors.textSecondary)
-                    .padding(.top, DesignSystem.Space.x1)
-            } else {
-                VStack(alignment: .leading, spacing: DesignSystem.Space.x1 + 1) {
-                    ForEach(items, id: \.uuid) { task in
-                        Button {
-                            editingTask = task
-                        } label: {
-                            Text(task.title)
-                                .font(DesignSystem.Typography.bodyBold(15))
-                                .strikethrough(task.isCompleted)
-                                .foregroundStyle(
-                                    task.isCompleted
-                                        ? DesignSystem.Colors.textSecondary
-                                        : DesignSystem.Colors.textPrimary
-                                )
-                                .lineLimit(1)
-                                .truncationMode(.tail)
-                                .multilineTextAlignment(.leading)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.vertical, 3)
-                        }
-                        .buttonStyle(.plain)
+            VStack(alignment: .leading, spacing: DesignSystem.Space.x1 + 1) {
+                if items.isEmpty {
+                    Text("Пусто")
+                        .font(DesignSystem.Typography.caption())
+                        .foregroundStyle(DesignSystem.Colors.textSecondary)
+                } else {
+                    ForEach(preview.visible, id: \.uuid) { task in
+                        Text(task.title)
+                            .font(DesignSystem.Typography.bodyBold(15))
+                            .strikethrough(task.isCompleted)
+                            .foregroundStyle(
+                                task.isCompleted
+                                    ? DesignSystem.Colors.textSecondary
+                                    : DesignSystem.Colors.textPrimary
+                            )
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    if preview.showsOverflow {
+                        Text("...")
+                            .font(DesignSystem.Typography.bodyBold(15))
+                            .foregroundStyle(DesignSystem.Colors.textSecondary)
+                            .accessibilityLabel("Есть ещё задачи")
                     }
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
+            Spacer(minLength: 0)
         }
         .padding(DesignSystem.Space.x3)
-        .frame(maxWidth: .infinity, minHeight: 140, alignment: .topLeading)
+        .frame(maxWidth: .infinity, minHeight: EisenhowerMatrixLayout.cardHeight, maxHeight: EisenhowerMatrixLayout.cardHeight, alignment: .topLeading)
         .background(shape.fill(DesignSystem.Colors.surface))
-    }
-
-    private func updateTask(_ task: TaskItem, formData: TaskFormData) {
-        task.title = formData.title
-        task.deadline = formData.deadline
-        task.hasDeadlineTime = formData.hasDeadlineTime
-        task.priority = formData.priority
-        task.status = formData.status
-        task.category = .tasks
-        task.taskDetails = formData.taskDetails
-        task.tags = formData.selectedTags
-        modelContext.persistToJSON()
-    }
-
-    private func softDelete(_ task: TaskItem) {
-        withAnimation {
-            task.isSoftDeleted = true
-            task.deletedAt = .now
-        }
-        try? modelContext.save()
-        modelContext.persistToJSON()
+        .overlay(
+            shape.strokeBorder(
+                showsBorder ? DesignSystem.Colors.divider : .clear,
+                lineWidth: DesignSystem.Stroke.regular
+            )
+        )
+        .contentShape(shape)
+        .accessibilityElement(children: .combine)
+        .accessibilityHint("Открыть список задач квадранта")
     }
 }
 
