@@ -133,7 +133,10 @@ enum DesignSystem {
         static let folder = "folder"
         static let tray = "tray"
         static let calendar = "calendar"
+        /// Ключ для IconTapButton: рисуется абстрактный EditPencilIcon, не SF Symbol.
         static let pencil = "pencil"
+        static let pencilSize: CGFloat = 18
+        static let pencilSizeCompact: CGFloat = 17
         static let trash = "trash"
         static let check = "checkmark"
         static let cancel = "xmark"

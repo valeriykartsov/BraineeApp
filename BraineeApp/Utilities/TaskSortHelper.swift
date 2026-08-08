@@ -2,13 +2,19 @@
 //  TaskSortHelper.swift
 //  BraineeApp
 //
-//  Правила сортировки задач для режимов «По дате» и «План на день».
+//  Правила сортировки задач в списке: незакрытые сверху, внутри — по дате/порядку.
 
 import Foundation
 
 enum TaskSortHelper {
-    /// Сначала просроченные, затем сегодня, завтра, остальные; внутри — по приоритету.
-    static func byDateMode(_ lhs: TaskItem, _ rhs: TaskItem) -> Bool {
+    /// Выполненные всегда внизу; среди активных — просроченные/даты/приоритет/порядок.
+    static func byListMode(_ lhs: TaskItem, _ rhs: TaskItem) -> Bool {
+        if lhs.isCompleted != rhs.isCompleted {
+            return !lhs.isCompleted && rhs.isCompleted
+        }
+        if lhs.isCompleted {
+            return lhs.sortOrder < rhs.sortOrder
+        }
         let lhsRank = dateRank(for: lhs)
         let rhsRank = dateRank(for: rhs)
         if lhsRank != rhsRank { return lhsRank < rhsRank }
@@ -16,7 +22,11 @@ enum TaskSortHelper {
         return lhs.sortOrder < rhs.sortOrder
     }
 
-    /// Активные задачи выше выполненных, затем по приоритету и порядку в списке.
+    /// Совместимость со старыми тестами «по дате» (без учёта выполнения в приоритете даты).
+    static func byDateMode(_ lhs: TaskItem, _ rhs: TaskItem) -> Bool {
+        byListMode(lhs, rhs)
+    }
+
     static func byDayPlan(_ lhs: TaskItem, _ rhs: TaskItem) -> Bool {
         if lhs.isCompleted != rhs.isCompleted {
             return !lhs.isCompleted && rhs.isCompleted
@@ -25,7 +35,14 @@ enum TaskSortHelper {
         return lhs.sortOrder < rhs.sortOrder
     }
 
-    /// Чем меньше число, тем выше задача в списке «По дате».
+    /// Переносит задачу в конец своей группы (или «без папки»).
+    static func moveToEnd(of peers: [TaskItem], task: TaskItem) {
+        let others = peers.filter { $0.uuid != task.uuid }
+        let maxOrder = others.map(\.sortOrder).max() ?? -1
+        task.sortOrder = maxOrder + 1
+    }
+
+    /// Чем меньше число, тем выше задача среди незакрытых.
     private static func dateRank(for task: TaskItem) -> Int {
         if task.isOverdue { return 0 }
         guard let deadline = task.deadline else { return 4 }

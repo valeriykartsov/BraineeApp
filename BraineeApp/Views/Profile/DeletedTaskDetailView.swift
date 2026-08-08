@@ -16,7 +16,6 @@ struct DeletedTaskDetailView: View {
         List {
             Section {
                 LabeledContent("Название", value: task.title)
-                LabeledContent("Раздел", value: task.category.title)
                 if let group = task.group {
                     LabeledContent("Группа", value: group.name)
                 }
@@ -47,7 +46,7 @@ struct DeletedTaskDetailView: View {
                 LabeledContent("Приоритет", value: task.priority.title)
                 LabeledContent("Статус", value: task.isCompleted ? "Выполнена" : "Активна")
                 if let deadline = task.deadline {
-                    LabeledContent("Дедлайн", value: deadline.formatted(date: .abbreviated, time: .omitted))
+                    LabeledContent("Дедлайн", value: task.deadlineDisplayText ?? deadline.formatted(date: .abbreviated, time: .omitted))
                 }
                 if let deletedAt = task.deletedAt {
                     LabeledContent("Удалена", value: deletedAt.formatted(date: .abbreviated, time: .shortened))
@@ -103,7 +102,7 @@ struct DeletedTaskDetailView: View {
 #Preview {
     NavigationStack {
         DeletedTaskDetailView(
-            task: TaskItem(title: "Пример", category: .career, isSoftDeleted: true, deletedAt: .now),
+            task: TaskItem(title: "Пример", isSoftDeleted: true, deletedAt: .now),
             onRestore: {}
         )
     }

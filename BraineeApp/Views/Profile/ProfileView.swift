@@ -9,7 +9,11 @@ import SwiftData
 
 struct ProfileView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
     @Query private var profiles: [UserProfile]
+
+    /// Активна вкладка «Профиль» — при уходе возвращаем общий вид (корень + без поиска).
+    var isActive: Bool = true
 
     @AppStorage("appTheme") private var appThemeRaw = AppTheme.system.rawValue
     @AppStorage(AccentPalette.storageKey) private var accentPaletteRaw = AccentPalette.orange.rawValue
@@ -18,6 +22,7 @@ struct ProfileView: View {
     @State private var isSearchExpanded = false
     @State private var showingEditProfile = false
     @State private var showingAccentPicker = false
+    @State private var navigationResetID = UUID()
     @FocusState private var isSearchFocused: Bool
 
     private var profile: UserProfile? { profiles.first }
@@ -63,11 +68,14 @@ struct ProfileView: View {
                         themeSection
                     }
 
-                    if matches("дашборд", "статистика", "карьера", "спорт", "ментальное", "прогресс") {
+                    if matches("дашборд", "статистика", "прогресс", "задачи") {
                         TaskDashboardView()
                     }
 
-                    if matches("удалённые", "удалить", "корзина") {
+                    if matches(
+                        "ещё", "удалённые", "удалить", "корзина", "панель", "вкладки",
+                        "матрица", "привычки", "календарь", "faq", "вопрос", "вопросы", "помощь", "справка"
+                    ) {
                         deletedSection
                     }
 
@@ -107,6 +115,16 @@ struct ProfileView: View {
             .onAppear {
                 ensureProfile()
             }
+            .onChange(of: isActive) { _, active in
+                if !active {
+                    resetToOverview()
+                }
+            }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .background {
+                    resetToOverview()
+                }
+            }
             .sheet(isPresented: $showingEditProfile) {
                 EditProfileView(
                     initialName: profile?.displayName ?? "",
@@ -123,13 +141,24 @@ struct ProfileView: View {
                 }
             }
         }
+        .id(navigationResetID)
         .tint(accentPalette.color)
+    }
+
+    /// Общий вид: корень навигации, поиск закрыт, фильтр сброшен.
+    private func resetToOverview() {
+        searchText = ""
+        isSearchExpanded = false
+        isSearchFocused = false
+        showingEditProfile = false
+        showingAccentPicker = false
+        navigationResetID = UUID()
     }
 
     private func applyAccent(_ selected: AccentPalette) {
         let previous = accentPalette
         accentPaletteRaw = selected.rawValue
-        AppNavigationChrome.apply()
+        AppNavigationChrome.apply(accentRaw: selected.rawValue)
         modelContext.persistToJSON()
 
         guard selected != previous else { return }
@@ -161,46 +190,38 @@ struct ProfileView: View {
 
     private var userSection: some View {
         GroupedSection(title: "Пользователь") {
-            VStack(alignment: .leading, spacing: DesignSystem.Space.x3) {
-                HStack(alignment: .top, spacing: DesignSystem.Space.x3) {
-                    AvatarImageView(
-                        avatarData: profile?.avatarData,
-                        size: DesignSystem.Space.grid(18)
-                    )
+            HStack(alignment: .top, spacing: DesignSystem.Space.x3) {
+                AvatarImageView(
+                    avatarData: profile?.avatarData,
+                    size: DesignSystem.Space.grid(18)
+                )
 
-                    VStack(alignment: .leading, spacing: DesignSystem.Space.x2) {
-                        Text(displayNameText)
-                            .font(DesignSystem.Typography.headline())
-                            .foregroundStyle(DesignSystem.Colors.textPrimary)
+                VStack(alignment: .leading, spacing: DesignSystem.Space.x2) {
+                    Text(displayNameText)
+                        .font(DesignSystem.Typography.headline())
+                        .foregroundStyle(DesignSystem.Colors.textPrimary)
 
-                        HStack(alignment: .top, spacing: DesignSystem.Space.x3) {
-                            labeledValue(title: "Возраст", value: ageText)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                            labeledValue(
-                                title: "Пол",
-                                value: profile?.gender.title ?? UserGender.unspecified.title
-                            )
+                    HStack(alignment: .top, spacing: DesignSystem.Space.x3) {
+                        labeledValue(title: "Возраст", value: ageText)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                    }
-
-                    Spacer(minLength: 0)
-                }
-
-                Button {
-                    showingEditProfile = true
-                } label: {
-                    Text("Редактировать")
-                        .font(DesignSystem.Typography.bodyBold(15))
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, DesignSystem.Space.x3)
-                        .background(
-                            RoundedRectangle(cornerRadius: DesignSystem.Radius.card, style: .continuous)
-                                .fill(accentPalette.color)
+                        labeledValue(
+                            title: "Пол",
+                            value: profile?.gender.title ?? UserGender.unspecified.title
                         )
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                 }
-                .buttonStyle(.plain)
+
+                Spacer(minLength: 0)
+
+                IconTapButton(
+                    systemName: DesignSystem.Icon.pencil,
+                    tint: accentPalette.color,
+                    compact: true,
+                    accessibilityLabel: "Редактировать профиль"
+                ) {
+                    showingEditProfile = true
+                }
             }
             .padding(DesignSystem.Space.x3)
         }
@@ -293,6 +314,24 @@ struct ProfileView: View {
 
     private var deletedSection: some View {
         GroupedSection(title: "Ещё") {
+            NavigationLink {
+                TabBarSettingsView()
+            } label: {
+                GroupedNavRow(title: "Панель вкладок", systemImage: "square.grid.2x2")
+            }
+            .buttonStyle(.plain)
+
+            InsetDivider(leading: DesignSystem.Space.rowIconInset)
+
+            NavigationLink {
+                FAQView()
+            } label: {
+                GroupedNavRow(title: "FAQ", systemImage: "questionmark.circle")
+            }
+            .buttonStyle(.plain)
+
+            InsetDivider(leading: DesignSystem.Space.rowIconInset)
+
             NavigationLink {
                 DeletedTasksFolderView()
             } label: {

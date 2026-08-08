@@ -6,21 +6,23 @@
 
 import Foundation
 
-/// Корневой документ mytasks.json — все задачи, группы и теги приложения.
+/// Корневой документ mytasks.json — задачи, группы, теги и привычки.
 struct MyTasksDocument: Codable {
     var version: Int
     var lastSavedAt: Date?
     var tags: [TagRecord]
     var groups: [GroupRecord]
     var tasks: [TaskRecord]
+    var habits: [HabitRecord]
 
-    static let currentVersion = 2
+    static let currentVersion = 6
     static let empty = MyTasksDocument(
         version: currentVersion,
         lastSavedAt: nil,
         tags: [],
         groups: [],
-        tasks: []
+        tasks: [],
+        habits: []
     )
 
     init(
@@ -28,13 +30,15 @@ struct MyTasksDocument: Codable {
         lastSavedAt: Date?,
         tags: [TagRecord],
         groups: [GroupRecord],
-        tasks: [TaskRecord]
+        tasks: [TaskRecord],
+        habits: [HabitRecord] = []
     ) {
         self.version = version
         self.lastSavedAt = lastSavedAt
         self.tags = tags
         self.groups = groups
         self.tasks = tasks
+        self.habits = habits
     }
 
     init(from decoder: Decoder) throws {
@@ -44,6 +48,7 @@ struct MyTasksDocument: Codable {
         tags = try container.decodeIfPresent([TagRecord].self, forKey: .tags) ?? []
         groups = try container.decodeIfPresent([GroupRecord].self, forKey: .groups) ?? []
         tasks = try container.decodeIfPresent([TaskRecord].self, forKey: .tasks) ?? []
+        habits = try container.decodeIfPresent([HabitRecord].self, forKey: .habits) ?? []
     }
 
     /// Чинит старые файлы: убирает дубликаты и битые ссылки на группы/теги.
@@ -68,8 +73,24 @@ struct MyTasksDocument: Codable {
             return true
         }
 
+        var seenHabitIDs = Set<UUID>()
+        habits = habits.filter { record in
+            guard seenHabitIDs.insert(record.id).inserted else { return false }
+            return true
+        }
+        // Не больше 7 привычек — лишние отбрасываем (порядок sortOrder).
+        habits.sort { $0.sortOrder < $1.sortOrder }
+        if habits.count > Habit.maxCount {
+            habits = Array(habits.prefix(Habit.maxCount))
+        }
+
         let validGroupIDs = Set(groups.map(\.id))
         let validTagIDs = Set(tags.map(\.id))
+
+        // v3: все разделы (career/sport/mental) сливаются в единый «Задачи».
+        for index in groups.indices {
+            groups[index].categoryRaw = TaskCategory.unifiedRaw
+        }
 
         for index in tasks.indices {
             if tasks[index].isDeleted && tasks[index].deletedAt == nil {
@@ -81,7 +102,25 @@ struct MyTasksDocument: Codable {
             }
 
             tasks[index].tagIDs = tasks[index].tagIDs.filter { validTagIDs.contains($0) }
+            tasks[index].categoryRaw = TaskCategory.unifiedRaw
+
+            // v5: статус + согласованность с isCompleted.
+            let status = TaskStatus(rawValue: tasks[index].statusRaw)
+                ?? TaskStatus.fromCompletion(tasks[index].isCompleted)
+            tasks[index].statusRaw = status.rawValue
+            tasks[index].isCompleted = status == .done
+
+            // v6: время дедлайна только если дата задана.
+            if tasks[index].deadline == nil {
+                tasks[index].hasDeadlineTime = false
+            }
         }
+
+        for index in habits.indices {
+            habits[index].completedDays = Array(Set(habits[index].completedDays)).sorted()
+            habits[index].title = habits[index].title.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        habits.removeAll { $0.title.isEmpty }
     }
 
     /// Помогает выбрать более свежую копию между файлом и Keychain.
@@ -96,8 +135,10 @@ struct TaskRecord: Codable, Identifiable {
     var title: String
     var isCompleted: Bool
     var deadline: Date?
+    var hasDeadlineTime: Bool
     var priorityRaw: Int
     var categoryRaw: String
+    var statusRaw: String
     var createdAt: Date
     var taskDetails: String
     var sortOrder: Int
@@ -111,8 +152,10 @@ struct TaskRecord: Codable, Identifiable {
         title: String,
         isCompleted: Bool,
         deadline: Date?,
+        hasDeadlineTime: Bool = false,
         priorityRaw: Int,
         categoryRaw: String,
+        statusRaw: String = TaskStatus.new.rawValue,
         createdAt: Date,
         taskDetails: String,
         sortOrder: Int,
@@ -125,8 +168,10 @@ struct TaskRecord: Codable, Identifiable {
         self.title = title
         self.isCompleted = isCompleted
         self.deadline = deadline
+        self.hasDeadlineTime = hasDeadlineTime && deadline != nil
         self.priorityRaw = priorityRaw
         self.categoryRaw = categoryRaw
+        self.statusRaw = statusRaw
         self.createdAt = createdAt
         self.taskDetails = taskDetails
         self.sortOrder = sortOrder
@@ -143,8 +188,10 @@ struct TaskRecord: Codable, Identifiable {
         title = try container.decode(String.self, forKey: .title)
         isCompleted = try container.decodeIfPresent(Bool.self, forKey: .isCompleted) ?? false
         deadline = try container.decodeIfPresent(Date.self, forKey: .deadline)
+        hasDeadlineTime = (try container.decodeIfPresent(Bool.self, forKey: .hasDeadlineTime) ?? false)
+            && deadline != nil
         priorityRaw = try container.decodeIfPresent(Int.self, forKey: .priorityRaw) ?? TaskPriority.medium.rawValue
-        categoryRaw = try container.decodeIfPresent(String.self, forKey: .categoryRaw) ?? TaskCategory.career.rawValue
+        categoryRaw = try container.decodeIfPresent(String.self, forKey: .categoryRaw) ?? TaskCategory.unifiedRaw
         createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? .now
         taskDetails = try container.decodeIfPresent(String.self, forKey: .taskDetails) ?? ""
         sortOrder = try container.decodeIfPresent(Int.self, forKey: .sortOrder) ?? 0
@@ -152,6 +199,12 @@ struct TaskRecord: Codable, Identifiable {
         tagIDs = try container.decodeIfPresent([UUID].self, forKey: .tagIDs) ?? []
         isDeleted = try container.decodeIfPresent(Bool.self, forKey: .isDeleted) ?? false
         deletedAt = try container.decodeIfPresent(Date.self, forKey: .deletedAt)
+        if let raw = try container.decodeIfPresent(String.self, forKey: .statusRaw),
+           TaskStatus(rawValue: raw) != nil {
+            statusRaw = raw
+        } else {
+            statusRaw = TaskStatus.fromCompletion(isCompleted).rawValue
+        }
     }
 }
 
@@ -175,7 +228,7 @@ struct GroupRecord: Codable, Identifiable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
         name = try container.decodeIfPresent(String.self, forKey: .name) ?? "Группа"
-        categoryRaw = try container.decodeIfPresent(String.self, forKey: .categoryRaw) ?? TaskCategory.career.rawValue
+        categoryRaw = try container.decodeIfPresent(String.self, forKey: .categoryRaw) ?? TaskCategory.unifiedRaw
         sortOrder = try container.decodeIfPresent(Int.self, forKey: .sortOrder) ?? 0
         createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? .now
     }
@@ -198,6 +251,38 @@ struct TagRecord: Codable, Identifiable {
         id = try container.decode(UUID.self, forKey: .id)
         name = try container.decodeIfPresent(String.self, forKey: .name) ?? "Тег"
         createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? .now
+    }
+}
+
+/// Привычка в JSON.
+struct HabitRecord: Codable, Identifiable {
+    var id: UUID
+    var title: String
+    var sortOrder: Int
+    var createdAt: Date
+    var completedDays: [String]
+
+    init(
+        id: UUID,
+        title: String,
+        sortOrder: Int,
+        createdAt: Date,
+        completedDays: [String] = []
+    ) {
+        self.id = id
+        self.title = title
+        self.sortOrder = sortOrder
+        self.createdAt = createdAt
+        self.completedDays = completedDays
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        title = try container.decodeIfPresent(String.self, forKey: .title) ?? ""
+        sortOrder = try container.decodeIfPresent(Int.self, forKey: .sortOrder) ?? 0
+        createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? .now
+        completedDays = try container.decodeIfPresent([String].self, forKey: .completedDays) ?? []
     }
 }
 

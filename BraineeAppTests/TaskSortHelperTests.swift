@@ -19,14 +19,14 @@ struct TaskSortHelperTests {
             title: "Просрочена",
             deadline: TestHelpers.daysFromNow(-1),
             priority: .low,
-            category: .career,
+            category: .tasks,
             sortOrder: 0
         )
         let today = TaskItem(
             title: "Сегодня",
             deadline: Date(),
             priority: .highest,
-            category: .career,
+            category: .tasks,
             sortOrder: 0
         )
         container.mainContext.insert(overdue)
@@ -42,10 +42,10 @@ struct TaskSortHelperTests {
         let withDate = TaskItem(
             title: "С датой",
             deadline: TestHelpers.daysFromNow(5),
-            category: .career,
+            category: .tasks,
             sortOrder: 0
         )
-        let noDate = TaskItem(title: "Без даты", category: .career, sortOrder: 0)
+        let noDate = TaskItem(title: "Без даты", category: .tasks, sortOrder: 0)
         container.mainContext.insert(withDate)
         container.mainContext.insert(noDate)
 
@@ -62,7 +62,7 @@ struct TaskSortHelperTests {
             isCompleted: true,
             deadline: Date(),
             priority: .highest,
-            category: .sport,
+            category: .tasks,
             sortOrder: 0
         )
         let active = TaskItem(
@@ -70,7 +70,7 @@ struct TaskSortHelperTests {
             isCompleted: false,
             deadline: Date(),
             priority: .low,
-            category: .sport,
+            category: .tasks,
             sortOrder: 0
         )
         container.mainContext.insert(done)

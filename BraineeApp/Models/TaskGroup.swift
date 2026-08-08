@@ -2,7 +2,7 @@
 //  TaskGroup.swift
 //  BraineeApp
 //
-//  Модель группы (папки) задач внутри раздела: Карьера, Спорт или Ментальное.
+//  Модель группы (папки) задач.
 
 import Foundation
 import SwiftData
@@ -20,7 +20,7 @@ final class TaskGroup {
 
     init(
         name: String,
-        category: TaskCategory,
+        category: TaskCategory = .tasks,
         sortOrder: Int = 0,
         uuid: UUID = UUID(),
         createdAt: Date = .now
@@ -33,7 +33,7 @@ final class TaskGroup {
     }
 
     var category: TaskCategory {
-        get { TaskCategory(rawValue: categoryRaw) ?? .career }
+        get { TaskCategory(rawValue: categoryRaw) ?? .tasks }
         set { categoryRaw = newValue.rawValue }
     }
 }

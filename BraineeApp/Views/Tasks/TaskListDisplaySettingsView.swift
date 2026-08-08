@@ -40,6 +40,7 @@ struct TaskListDisplaySettingsView: View {
                     Toggle("Детали", isOn: $settings.showDetails)
                     Toggle("Дедлайн", isOn: $settings.showDeadline)
                     Toggle("Приоритет", isOn: $settings.showPriority)
+                    Toggle("Статус", isOn: $settings.showStatus)
                     Toggle("Теги", isOn: $settings.showTags)
                 } header: {
                     Text("Показывать в списке")

@@ -2,30 +2,18 @@
 //  TaskCategory.swift
 //  BraineeApp
 //
-//  Три раздела приложения: Карьера, Спорт, Ментальное.
+//  Единый раздел задач. Старые значения career/sport/mental мигрируются в "tasks".
 
 import Foundation
 
 enum TaskCategory: String, Codable, CaseIterable, Identifiable {
-    case career
-    case sport
-    case mental
+    /// Единственный раздел после объединения вкладок.
+    case tasks
+
+    /// Значение в JSON для всех задач и групп.
+    static let unifiedRaw = TaskCategory.tasks.rawValue
 
     var id: String { rawValue }
 
-    var title: String {
-        switch self {
-        case .career: "Карьера"
-        case .sport: "Спорт"
-        case .mental: "Ментальное"
-        }
-    }
-
-    var systemImage: String {
-        switch self {
-        case .career: "briefcase"
-        case .sport: "figure.run"
-        case .mental: "brain.head.profile"
-        }
-    }
+    var title: String { "Задачи" }
 }

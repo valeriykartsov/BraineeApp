@@ -3,13 +3,17 @@
 //  BraineeApp
 //
 //  Компактная нижняя панель: подчёркивание «перетекает» между разделами.
+//  Контент табов не уничтожается при переключении — без лагов от пересоздания @Query.
 
 import SwiftUI
 
 struct AnimatedMainTabView: View {
     @AppStorage("appTheme") private var appThemeRaw = AppTheme.system.rawValue
     @AppStorage(AccentPalette.storageKey) private var accentPaletteRaw = AccentPalette.orange.rawValue
-    @State private var selectedTab: MainTab = .career
+    @AppStorage(TabBarSettings.showCalendarKey) private var showCalendar = true
+    @AppStorage(TabBarSettings.showMatrixKey) private var showMatrix = false
+    @AppStorage(TabBarSettings.showHabitsKey) private var showHabits = false
+    @State private var selectedTab: MainTab = .tasks
     @Namespace private var tabUnderlineNamespace
 
     private var colorScheme: ColorScheme? {
@@ -24,20 +28,42 @@ struct AnimatedMainTabView: View {
         .spring(response: 0.34, dampingFraction: 0.84)
     }
 
+    private var visibleTabs: [MainTab] {
+        MainTab.visibleTabs(
+            showCalendar: showCalendar,
+            showMatrix: showMatrix,
+            showHabits: showHabits
+        )
+    }
+
+    private var tabVisibilityToken: String {
+        "\(showCalendar)-\(showMatrix)-\(showHabits)"
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             ZStack {
-                tabContent(for: selectedTab)
-                    .id(selectedTab)
-                    .transition(
-                        .asymmetric(
-                            insertion: .opacity.combined(with: .move(edge: .trailing)).combined(with: .offset(y: 6)),
-                            removal: .opacity.combined(with: .move(edge: .leading))
-                        )
-                    )
+                TaskSectionView(isActive: selectedTab == .tasks)
+                    .opacity(selectedTab == .tasks ? 1 : 0)
+                    .allowsHitTesting(selectedTab == .tasks)
+
+                CalendarWeekView(isActive: selectedTab == .calendar)
+                    .opacity(selectedTab == .calendar ? 1 : 0)
+                    .allowsHitTesting(selectedTab == .calendar)
+
+                EisenhowerMatrixView()
+                    .opacity(selectedTab == .matrix ? 1 : 0)
+                    .allowsHitTesting(selectedTab == .matrix)
+
+                HabitsView()
+                    .opacity(selectedTab == .habits ? 1 : 0)
+                    .allowsHitTesting(selectedTab == .habits)
+
+                ProfileView(isActive: selectedTab == .profile)
+                    .opacity(selectedTab == .profile ? 1 : 0)
+                    .allowsHitTesting(selectedTab == .profile)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .animation(flowAnimation, value: selectedTab)
 
             AppDivider()
             tabBar
@@ -46,33 +72,25 @@ struct AnimatedMainTabView: View {
         .tint(accentColor)
         .preferredColorScheme(colorScheme)
         .onAppear {
-            AppNavigationChrome.apply()
+            AppNavigationChrome.apply(accentRaw: accentPaletteRaw)
+            ensureSelectedTabVisible()
         }
         .onChange(of: appThemeRaw) { _, _ in
-            AppNavigationChrome.apply()
+            AppNavigationChrome.apply(accentRaw: accentPaletteRaw)
         }
-        .onChange(of: accentPaletteRaw) { _, _ in
-            AppNavigationChrome.apply()
+        .onChange(of: accentPaletteRaw) { _, newValue in
+            AppNavigationChrome.apply(accentRaw: newValue)
         }
-    }
-
-    @ViewBuilder
-    private func tabContent(for tab: MainTab) -> some View {
-        switch tab {
-        case .career:
-            TaskSectionView(category: .career)
-        case .sport:
-            TaskSectionView(category: .sport)
-        case .mental:
-            TaskSectionView(category: .mental)
-        case .profile:
-            ProfileView()
+        .onChange(of: tabVisibilityToken) { _, _ in
+            withAnimation(flowAnimation) {
+                ensureSelectedTabVisible()
+            }
         }
     }
 
     private var tabBar: some View {
         HStack(spacing: 0) {
-            ForEach(MainTab.allCases) { tab in
+            ForEach(visibleTabs) { tab in
                 let isActive = selectedTab == tab
                 Button {
                     guard selectedTab != tab else { return }
@@ -111,12 +129,22 @@ struct AnimatedMainTabView: View {
                 .accessibilityAddTraits(isActive ? .isSelected : [])
             }
         }
+        .animation(flowAnimation, value: tabVisibilityToken)
         .padding(.horizontal, 4)
         .background(DesignSystem.Colors.surface.ignoresSafeArea(edges: .bottom))
+    }
+
+    private func ensureSelectedTabVisible() {
+        if !visibleTabs.contains(selectedTab) {
+            selectedTab = .tasks
+        }
     }
 }
 
 #Preview {
     AnimatedMainTabView()
-        .modelContainer(for: [TaskItem.self, TaskGroup.self, TaskTag.self, UserProfile.self], inMemory: true)
+        .modelContainer(
+            for: [TaskItem.self, TaskGroup.self, TaskTag.self, UserProfile.self, Habit.self],
+            inMemory: true
+        )
 }

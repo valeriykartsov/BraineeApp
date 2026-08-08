@@ -11,16 +11,16 @@ struct AddEditTaskView: View {
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \TaskTag.name) private var allTags: [TaskTag]
 
-    let creationCategory: TaskCategory
     var task: TaskItem?
     var onSave: (TaskFormData) -> Void
     var onDelete: ((TaskItem) -> Void)?
 
     @State private var title = ""
     @State private var hasDeadline = false
+    @State private var hasDeadlineTime = false
     @State private var deadline = Date()
     @State private var priority: TaskPriority = .medium
-    @State private var category: TaskCategory = .career
+    @State private var status: TaskStatus = .new
     @State private var taskDetails = ""
     @State private var selectedTagIDs: Set<PersistentIdentifier> = []
     @State private var showingDeleteConfirm = false
@@ -34,15 +34,6 @@ struct AddEditTaskView: View {
                 Section {
                     TextField("Название", text: $title)
                         .font(DesignSystem.Typography.body())
-
-                    if isEditing {
-                        Picker("Тип", selection: $category) {
-                            ForEach(TaskCategory.allCases) { cat in
-                                Label(cat.title, systemImage: cat.systemImage)
-                                    .tag(cat)
-                            }
-                        }
-                    }
                 } header: {
                     Text("Задача")
                         .foregroundStyle(DesignSystem.Colors.textSecondary)
@@ -80,6 +71,11 @@ struct AddEditTaskView: View {
                 Section {
                     Toggle("Указать дату", isOn: $hasDeadline)
                         .tint(DesignSystem.Colors.accent)
+                        .onChange(of: hasDeadline) { _, enabled in
+                            if !enabled {
+                                hasDeadlineTime = false
+                            }
+                        }
 
                     if hasDeadline {
                         DatePicker(
@@ -88,6 +84,32 @@ struct AddEditTaskView: View {
                             displayedComponents: .date
                         )
                         .tint(DesignSystem.Colors.accent)
+
+                        Toggle("Указать время", isOn: $hasDeadlineTime)
+                            .tint(DesignSystem.Colors.accent)
+
+                        if hasDeadlineTime {
+                            DatePicker(
+                                "Время",
+                                selection: $deadline,
+                                displayedComponents: .hourAndMinute
+                            )
+                            .tint(DesignSystem.Colors.accent)
+                        }
+                    }
+
+                    if isEditing {
+                        VStack(alignment: .leading, spacing: DesignSystem.Space.x2) {
+                            Text("Статус")
+                                .font(DesignSystem.Typography.caption())
+                                .foregroundStyle(DesignSystem.Colors.textSecondary)
+                            Picker("Статус", selection: $status) {
+                                ForEach(TaskStatus.allCases) { item in
+                                    Text(item.title).tag(item)
+                                }
+                            }
+                            .pickerStyle(.segmented)
+                        }
                     }
                 } header: {
                     Text("Дедлайн")
@@ -194,16 +216,16 @@ struct AddEditTaskView: View {
                 Text("Задача будет перемещена в «Удалённые задачи» в профиле.")
             }
             .onAppear {
-                category = creationCategory
                 guard let task else { return }
                 title = task.title
                 priority = task.priority
-                category = task.category
+                status = task.status
                 taskDetails = task.taskDetails
                 selectedTagIDs = Set(task.tags.map(\.persistentModelID))
                 if let taskDeadline = task.deadline {
                     hasDeadline = true
                     deadline = taskDeadline
+                    hasDeadlineTime = task.hasDeadlineTime
                 }
             }
         }
@@ -222,11 +244,23 @@ struct AddEditTaskView: View {
         guard TaskInputValidation.canSaveTitle(title) else { return }
 
         let selectedTags = allTags.filter { selectedTagIDs.contains($0.persistentModelID) }
+        let resolvedDeadline: Date?
+        if hasDeadline {
+            if hasDeadlineTime {
+                resolvedDeadline = deadline
+            } else {
+                resolvedDeadline = Calendar.current.startOfDay(for: deadline)
+            }
+        } else {
+            resolvedDeadline = nil
+        }
+
         let formData = TaskFormData(
             title: TaskInputValidation.normalizedTitle(title),
-            deadline: hasDeadline ? deadline : nil,
+            deadline: resolvedDeadline,
+            hasDeadlineTime: hasDeadline && hasDeadlineTime,
             priority: priority,
-            category: isEditing ? category : creationCategory,
+            status: isEditing ? status : .new,
             taskDetails: TaskInputValidation.clampedDetails(taskDetails),
             selectedTags: selectedTags
         )
@@ -236,6 +270,6 @@ struct AddEditTaskView: View {
 }
 
 #Preview {
-    AddEditTaskView(creationCategory: .career, onSave: { _ in })
+    AddEditTaskView(onSave: { _ in })
         .modelContainer(for: [TaskItem.self, TaskTag.self], inMemory: true)
 }

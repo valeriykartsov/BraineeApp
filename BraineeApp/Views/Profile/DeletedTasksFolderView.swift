@@ -135,9 +135,11 @@ struct DeletedTasksFolderView: View {
                 Text(task.title)
                     .font(DesignSystem.Typography.body())
                     .foregroundStyle(DesignSystem.Colors.textPrimary)
-                Text(task.category.title)
-                    .font(DesignSystem.Typography.caption())
-                    .foregroundStyle(DesignSystem.Colors.textSecondary)
+                if let text = task.deadlineDisplayText {
+                    Text(text)
+                        .font(DesignSystem.Typography.caption())
+                        .foregroundStyle(DesignSystem.Colors.textSecondary)
+                }
             }
 
             Spacer()
@@ -174,25 +176,25 @@ struct DeletedTasksFolderView: View {
     }
 
     private func restore(_ task: TaskItem) {
+        let uuid = task.uuid
         withAnimation {
-            let uuid = task.uuid
             task.isSoftDeleted = false
             task.deletedAt = nil
-            try? modelContext.save()
-            modelContext.persistToJSON()
             deletedTasks.removeAll { $0.uuid == uuid }
             selectedIDs.remove(uuid)
-            reloadDeletedTasks()
         }
+        try? modelContext.save()
+        modelContext.persistToJSON()
+        reloadDeletedTasks()
     }
 
     private func permanentlyDelete(_ task: TaskItem) {
         withAnimation {
             modelContext.delete(task)
-            try? modelContext.save()
-            modelContext.persistToJSON()
-            reloadDeletedTasks()
         }
+        try? modelContext.save()
+        modelContext.persistToJSON()
+        reloadDeletedTasks()
     }
 
     private func permanentlyDeleteSelected() {
@@ -201,10 +203,10 @@ struct DeletedTasksFolderView: View {
             for task in toDelete { modelContext.delete(task) }
             selectedIDs.removeAll()
             isSelecting = false
-            try? modelContext.save()
-            modelContext.persistToJSON()
-            reloadDeletedTasks()
         }
+        try? modelContext.save()
+        modelContext.persistToJSON()
+        reloadDeletedTasks()
     }
 
     private func permanentlyDeleteAll() {
@@ -212,10 +214,10 @@ struct DeletedTasksFolderView: View {
             for task in deletedTasks { modelContext.delete(task) }
             selectedIDs.removeAll()
             isSelecting = false
-            try? modelContext.save()
-            modelContext.persistToJSON()
-            reloadDeletedTasks()
         }
+        try? modelContext.save()
+        modelContext.persistToJSON()
+        reloadDeletedTasks()
     }
 }
 
