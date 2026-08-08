@@ -2,7 +2,7 @@
 //  TaskRowView.swift
 //  BraineeApp
 //
-//  Строка задачи: название как у папки + опциональные поля по настройкам отображения.
+//  Строка задачи: название + компактная meta-строка (дедлайн, статус, приоритет, теги).
 
 import SwiftUI
 import SwiftData
@@ -29,7 +29,6 @@ struct TaskRowView: View {
             .padding(.top, 1)
 
             VStack(alignment: .leading, spacing: DesignSystem.Space.x1) {
-                // Шрифт как у названия папки (body 16).
                 Text(task.title)
                     .font(DesignSystem.Typography.body(16))
                     .strikethrough(task.isCompleted)
@@ -47,18 +46,8 @@ struct TaskRowView: View {
                         .lineLimit(2)
                 }
 
-                if displaySettings.showDeadline, let deadline = task.deadline {
-                    Text(deadline.formatted(date: .abbreviated, time: .omitted))
-                        .font(DesignSystem.Typography.caption())
-                        .foregroundStyle(
-                            task.isOverdue
-                                ? DesignSystem.Colors.danger
-                                : DesignSystem.Colors.textSecondary
-                        )
-                }
-
-                if displaySettings.showPriority || displaySettings.showTags {
-                    trailingMeta
+                if hasMeta {
+                    metaRow
                 }
             }
 
@@ -67,23 +56,69 @@ struct TaskRowView: View {
         .opacity(task.isCompleted ? 0.55 : 1)
     }
 
-    @ViewBuilder
-    private var trailingMeta: some View {
-        HStack(spacing: DesignSystem.Space.x2) {
-            if displaySettings.showPriority {
-                Text(task.priority.title)
-                    .font(DesignSystem.Typography.caption(12))
-                    .fontWeight(.medium)
-                    .foregroundStyle(PriorityStyle.color(for: task.priority))
-            }
+    private var hasMeta: Bool {
+        (displaySettings.showDeadline && task.deadline != nil)
+            || displaySettings.showStatus
+            || displaySettings.showPriority
+            || (displaySettings.showTags && !task.tags.isEmpty)
+    }
 
-            if displaySettings.showTags, let firstTag = task.tags.first {
-                Text(firstTag.name)
-                    .font(DesignSystem.Typography.caption(12))
-                    .foregroundStyle(DesignSystem.Colors.textSecondary)
-                    .lineLimit(1)
+    private var metaRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: DesignSystem.Space.x1) {
+                if displaySettings.showDeadline, let text = task.deadlineDisplayText {
+                    MetaChip(
+                        text: text,
+                        foreground: task.isOverdue
+                            ? DesignSystem.Colors.danger
+                            : DesignSystem.Colors.textSecondary
+                    )
+                }
+
+                if displaySettings.showStatus {
+                    MetaChip(
+                        text: task.status.title,
+                        foreground: DesignSystem.Colors.accent
+                    )
+                }
+
+                if displaySettings.showPriority {
+                    MetaChip(
+                        text: task.priority.title,
+                        foreground: PriorityStyle.color(for: task.priority)
+                    )
+                }
+
+                if displaySettings.showTags {
+                    ForEach(task.tags.prefix(3), id: \.uuid) { tag in
+                        MetaChip(
+                            text: tag.name,
+                            foreground: DesignSystem.Colors.textSecondary
+                        )
+                    }
+                }
             }
         }
+    }
+}
+
+/// Чип meta-поля на серой подложке — как теги в других разделах.
+private struct MetaChip: View {
+    let text: String
+    let foreground: Color
+
+    var body: some View {
+        Text(text)
+            .font(DesignSystem.Typography.caption(12))
+            .fontWeight(.medium)
+            .foregroundStyle(foreground)
+            .lineLimit(1)
+            .padding(.horizontal, DesignSystem.Space.x2)
+            .padding(.vertical, DesignSystem.Space.x1)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(DesignSystem.Colors.chip)
+            )
     }
 }
 
@@ -93,8 +128,8 @@ struct TaskRowView: View {
             task: TaskItem(
                 title: "Подготовить презентацию",
                 deadline: .now,
+                hasDeadlineTime: true,
                 priority: .highest,
-                category: .career,
                 taskDetails: "Слайды и тезисы"
             ),
             onToggle: {}

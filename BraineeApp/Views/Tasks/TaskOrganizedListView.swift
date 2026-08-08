@@ -15,7 +15,6 @@ struct TaskOrganizedListView: View {
 
     let groups: [TaskGroup]
     let tasks: [TaskItem]
-    let viewMode: TaskViewMode
     var displaySettings: TaskListDisplaySettings = .default
 
     var onToggle: (TaskItem) -> Void
@@ -28,27 +27,28 @@ struct TaskOrganizedListView: View {
     @State private var editingGroupName = ""
     @State private var groupPendingDeletion: TaskGroup?
     @State private var showingDeleteGroupConfirm = false
+    /// Свёрнутые группы (по uuid).
+    @State private var collapsedGroupIDs: Set<UUID> = []
 
-    private var visibleTasks: [TaskItem] {
-        let active = tasks.filter { !$0.isSoftDeleted }
-        switch viewMode {
-        case .dayPlan:
-            return active.filter(\.isDueToday)
-        case .byDate:
-            return active
-        }
-    }
+    /// Задачи уже приходят из @Query без soft-deleted.
+    private var visibleTasks: [TaskItem] { tasks }
 
     private var sortedGroups: [TaskGroup] {
         groups.sorted { $0.sortOrder < $1.sortOrder }
     }
 
-    private var ungroupedTasks: [TaskItem] {
-        sortedTasks(visibleTasks.filter { $0.group == nil })
-    }
-
-    private var dayPlanTasks: [TaskItem] {
-        sortedTasks(visibleTasks)
+    /// Один проход: задачи по uuid группы.
+    private var tasksGroupedByFolder: (byGroup: [UUID: [TaskItem]], ungrouped: [TaskItem]) {
+        var byGroup: [UUID: [TaskItem]] = [:]
+        var ungrouped: [TaskItem] = []
+        for task in visibleTasks {
+            if let groupID = task.group?.uuid {
+                byGroup[groupID, default: []].append(task)
+            } else {
+                ungrouped.append(task)
+            }
+        }
+        return (byGroup, sortedTasks(ungrouped))
     }
 
     private var ungroupedDropID: UUID {
@@ -56,14 +56,7 @@ struct TaskOrganizedListView: View {
     }
 
     var body: some View {
-        Group {
-            switch viewMode {
-            case .dayPlan:
-                dayPlanContent
-            case .byDate:
-                byDateContent
-            }
-        }
+        byDateContent
         .appScreenBackground()
         .alert("Удалить группу?", isPresented: $showingDeleteGroupConfirm) {
             Button("Отмена", role: .cancel) {
@@ -85,36 +78,20 @@ struct TaskOrganizedListView: View {
     }
 
     @ViewBuilder
-    private var dayPlanContent: some View {
-        if dayPlanTasks.isEmpty {
-            emptyState
-        } else {
-            ScrollView {
-                GroupedSection(title: "Сегодня") {
-                    taskStack(dayPlanTasks)
-                }
-                .groupedScreenPadding()
-                .padding(.vertical, DesignSystem.Space.x2 + 2)
-            }
-        }
-    }
-
-    @ViewBuilder
     private var byDateContent: some View {
         if visibleTasks.isEmpty && sortedGroups.isEmpty {
             emptyState
         } else {
             ScrollView {
+                let organized = tasksGroupedByFolder
                 // VStack надёжнее LazyVStack для dropDestination между папками.
                 VStack(alignment: .leading, spacing: DesignSystem.Space.sectionGap) {
                     ForEach(sortedGroups) { group in
-                        let groupTasks = sortedTasks(
-                            visibleTasks.filter { $0.group?.uuid == group.uuid }
-                        )
+                        let groupTasks = sortedTasks(organized.byGroup[group.uuid] ?? [])
                         groupSection(group: group, tasks: groupTasks)
                     }
 
-                    ungroupedSection
+                    ungroupedSection(tasks: organized.ungrouped)
                 }
                 .groupedScreenPadding()
                 .padding(.vertical, DesignSystem.Space.x2 + 2)
@@ -124,28 +101,7 @@ struct TaskOrganizedListView: View {
 
     @ViewBuilder
     private var emptyState: some View {
-        switch viewMode {
-        case .dayPlan:
-            VStack(alignment: .leading, spacing: DesignSystem.Space.x3) {
-                GroupedSection(title: "Сегодня") {
-                    VStack(alignment: .leading, spacing: DesignSystem.Space.x2) {
-                        Text("На сегодня задач нет")
-                            .font(DesignSystem.Typography.headline())
-                            .foregroundStyle(DesignSystem.Colors.textPrimary)
-                        Text("Добавьте задачи с дедлайном на сегодня")
-                            .font(DesignSystem.Typography.caption())
-                            .foregroundStyle(DesignSystem.Colors.textSecondary)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(DesignSystem.Space.x4)
-                }
-            }
-            .groupedScreenPadding()
-            .padding(.vertical, DesignSystem.Space.x4)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        case .byDate:
-            EmptyTasksView()
-        }
+        EmptyTasksView()
     }
 
     private func groupSection(group: TaskGroup, tasks groupTasks: [TaskItem]) -> some View {
@@ -153,16 +109,22 @@ struct TaskOrganizedListView: View {
         let shape = RoundedRectangle(cornerRadius: DesignSystem.Radius.group, style: .continuous)
 
         // Без GroupedCard/clipShape: иначе dropDestination часто не ловит жест.
+        let taskCount = groupTasks.count
+        // Пустую группу не держим свёрнутой — иначе скрывается подсказка «Перетащите…».
+        let isCollapsed = taskCount > 0 && collapsedGroupIDs.contains(group.uuid)
+
         return VStack(alignment: .leading, spacing: 0) {
-            groupHeader(group, taskCount: groupTasks.count)
+            groupHeader(group, taskCount: taskCount, isCollapsed: isCollapsed)
             InsetDivider(leading: DesignSystem.Space.rowIconInset)
 
-            if groupTasks.isEmpty {
-                emptyFolderHint(name: group.name)
-                    .padding(.horizontal, DesignSystem.Space.x3)
-                    .padding(.vertical, DesignSystem.Space.x4)
-            } else {
-                taskStack(groupTasks)
+            if !isCollapsed {
+                if groupTasks.isEmpty {
+                    emptyFolderHint(name: group.name)
+                        .padding(.horizontal, DesignSystem.Space.x3)
+                        .padding(.vertical, DesignSystem.Space.x4)
+                } else {
+                    taskStack(groupTasks)
+                }
             }
         }
         .background(shape.fill(DesignSystem.Colors.surface))
@@ -185,7 +147,7 @@ struct TaskOrganizedListView: View {
         }
     }
 
-    private var ungroupedSection: some View {
+    private func ungroupedSection(tasks ungrouped: [TaskItem]) -> some View {
         let isTargeted = dropTargetGroupUUID == ungroupedDropID
         let shape = RoundedRectangle(cornerRadius: DesignSystem.Radius.group, style: .continuous)
 
@@ -198,8 +160,8 @@ struct TaskOrganizedListView: View {
                 Text("Без папки")
                     .font(DesignSystem.Typography.body(16))
                     .foregroundStyle(DesignSystem.Colors.textPrimary)
-                if !ungroupedTasks.isEmpty {
-                    Text("\(ungroupedTasks.count)")
+                if !ungrouped.isEmpty {
+                    Text("\(ungrouped.count)")
                         .font(DesignSystem.Typography.caption())
                         .foregroundStyle(DesignSystem.Colors.textSecondary)
                 }
@@ -208,14 +170,14 @@ struct TaskOrganizedListView: View {
             .padding(.horizontal, DesignSystem.Space.x3)
             .padding(.vertical, DesignSystem.Space.x2 + 2)
 
-            if ungroupedTasks.isEmpty && viewMode == .byDate {
+            if ungrouped.isEmpty {
                 InsetDivider(leading: DesignSystem.Space.rowIconInset)
                 emptyFolderHint(name: nil)
                     .padding(.horizontal, DesignSystem.Space.x3)
                     .padding(.vertical, DesignSystem.Space.x4)
-            } else if !ungroupedTasks.isEmpty {
+            } else if !ungrouped.isEmpty {
                 InsetDivider(leading: DesignSystem.Space.rowIconInset)
-                taskStack(ungroupedTasks)
+                taskStack(ungrouped)
             }
         }
         .background(shape.fill(DesignSystem.Colors.surface))
@@ -246,7 +208,7 @@ struct TaskOrganizedListView: View {
     }
 
     @ViewBuilder
-    private func groupHeader(_ group: TaskGroup, taskCount: Int) -> some View {
+    private func groupHeader(_ group: TaskGroup, taskCount: Int, isCollapsed: Bool) -> some View {
         if editingGroupUUID == group.uuid {
             HStack(spacing: DesignSystem.Space.x2) {
                 Image(systemName: DesignSystem.Icon.folder)
@@ -279,6 +241,8 @@ struct TaskOrganizedListView: View {
             .padding(.vertical, DesignSystem.Space.x2 + 2)
         } else {
             HStack(spacing: DesignSystem.Space.x2) {
+                collapseButton(for: group, taskCount: taskCount, isCollapsed: isCollapsed)
+
                 Image(systemName: DesignSystem.Icon.folder)
                     .font(.system(size: 16, weight: .regular))
                     .foregroundStyle(DesignSystem.Colors.accent)
@@ -315,6 +279,31 @@ struct TaskOrganizedListView: View {
             .padding(.horizontal, DesignSystem.Space.x3)
             .padding(.vertical, DesignSystem.Space.x2 + 2)
         }
+    }
+
+    private func collapseButton(for group: TaskGroup, taskCount: Int, isCollapsed: Bool) -> some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.18)) {
+                if collapsedGroupIDs.contains(group.uuid) {
+                    collapsedGroupIDs.remove(group.uuid)
+                } else {
+                    collapsedGroupIDs.insert(group.uuid)
+                }
+            }
+        } label: {
+            Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(
+                    taskCount == 0
+                        ? DesignSystem.Colors.textSecondary.opacity(0.35)
+                        : DesignSystem.Colors.accent
+                )
+                .frame(width: DesignSystem.Space.x5, height: DesignSystem.Space.x5)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(taskCount == 0)
+        .accessibilityLabel(isCollapsed ? "Развернуть группу" : "Свернуть группу")
     }
 
     private func beginRenameGroup(_ group: TaskGroup) {
@@ -404,12 +393,7 @@ struct TaskOrganizedListView: View {
     }
 
     private func sortedTasks(_ items: [TaskItem]) -> [TaskItem] {
-        switch viewMode {
-        case .byDate:
-            items.sorted(by: TaskSortHelper.byDateMode)
-        case .dayPlan:
-            items.sorted(by: TaskSortHelper.byDayPlan)
-        }
+        items.sorted(by: TaskSortHelper.byDateMode)
     }
 
     @discardableResult
@@ -433,8 +417,8 @@ struct TaskOrganizedListView: View {
                 return item.group == nil
             }
             task.sortOrder = (targetTasks.map(\.sortOrder).max() ?? -1) + 1
-            modelContext.persistToJSON()
         }
+        modelContext.persistToJSON()
     }
 }
 

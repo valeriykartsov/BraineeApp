@@ -18,7 +18,7 @@ struct TaskItemLogicTests {
         let task = TaskItem(
             title: "Просрочка",
             deadline: TestHelpers.daysFromNow(-1),
-            category: .career
+            category: .tasks
         )
         container.mainContext.insert(task)
         #expect(task.isOverdue == true)
@@ -31,7 +31,7 @@ struct TaskItemLogicTests {
             title: "Сделано",
             isCompleted: true,
             deadline: TestHelpers.daysFromNow(-2),
-            category: .sport
+            category: .tasks
         )
         container.mainContext.insert(task)
         #expect(task.isOverdue == false)
@@ -43,7 +43,7 @@ struct TaskItemLogicTests {
         let task = TaskItem(
             title: "Сегодня",
             deadline: Date(),
-            category: .mental
+            category: .tasks
         )
         container.mainContext.insert(task)
         #expect(task.isDueToday == true)
@@ -53,7 +53,7 @@ struct TaskItemLogicTests {
     @Test func безДедлайна_неПросроченаИНеНаСегодня() throws {
         // Без даты — ни просрочка, ни «сегодня».
         let container = try TestHelpers.makeContainer()
-        let task = TaskItem(title: "Без даты", category: .career)
+        let task = TaskItem(title: "Без даты", category: .tasks)
         container.mainContext.insert(task)
         #expect(task.isOverdue == false)
         #expect(task.isDueToday == false)
@@ -64,7 +64,7 @@ struct TaskItemLogicTests {
         // иначе после перезапуска удалённая задача снова появлялась в разделе.
         let container = try TestHelpers.makeContainer()
         let context = container.mainContext
-        let task = TaskItem(title: "Удалить мягко", category: .career)
+        let task = TaskItem(title: "Удалить мягко", category: .tasks)
         context.insert(task)
 
         task.isSoftDeleted = true
@@ -106,7 +106,7 @@ struct TaskItemLogicTests {
         let container = try TestHelpers.makeContainer()
         let task = TaskItem(
             title: "Вернуть",
-            category: .sport,
+            category: .tasks,
             isSoftDeleted: true,
             deletedAt: Date()
         )
@@ -120,19 +120,19 @@ struct TaskItemLogicTests {
     }
 
     @Test func редактированиеПолей_меняетДанные() throws {
-        // После правки название, приоритет и категория обновляются.
+        // После правки название и приоритет обновляются.
         let container = try TestHelpers.makeContainer()
-        let task = TaskItem(title: "Старое", priority: .low, category: .career)
+        let task = TaskItem(title: "Старое", priority: .low, category: .tasks)
         container.mainContext.insert(task)
 
         task.title = "Новое"
         task.priority = .highest
-        task.category = .mental
+        task.category = .tasks
         task.taskDetails = "Описание"
 
         #expect(task.title == "Новое")
         #expect(task.priority == .highest)
-        #expect(task.category == .mental)
+        #expect(task.category == .tasks)
         #expect(task.taskDetails == "Описание")
     }
 }

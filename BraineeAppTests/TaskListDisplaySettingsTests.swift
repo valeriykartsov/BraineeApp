@@ -23,6 +23,7 @@ struct TaskListDisplaySettingsTests {
         #expect(settings.showDetails)
         #expect(settings.showDeadline)
         #expect(settings.showPriority)
+        #expect(settings.showStatus)
         #expect(settings.showTags)
     }
 
@@ -62,6 +63,7 @@ struct TaskListDisplaySettingsTests {
             showDetails: false,
             showDeadline: false,
             showPriority: false,
+            showStatus: false,
             showTags: false
         )
         settings.save(defaults: defaults)
@@ -70,6 +72,7 @@ struct TaskListDisplaySettingsTests {
         #expect(loaded.showDetails == false)
         #expect(loaded.showDeadline == false)
         #expect(loaded.showPriority == false)
+        #expect(loaded.showStatus == false)
         #expect(loaded.showTags == false)
         #expect(TaskListDisplaySettings.titleAlwaysVisible)
     }

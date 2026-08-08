@@ -13,8 +13,9 @@ enum AppNavigationChrome {
     /// Размер large title для разделов и профиля.
     static let largeTitleSize: CGFloat = 28
 
+    /// Обновляет только UINavigationBar. Не трогает UIView.appearance() — иначе лаги layout.
     @MainActor
-    static func apply() {
+    static func apply(accentRaw: String? = nil) {
 #if canImport(UIKit)
         let background = UIColor(DesignSystem.Colors.background)
         let titleColor = UIColor(DesignSystem.Colors.textPrimary)
@@ -34,7 +35,8 @@ enum AppNavigationChrome {
             .foregroundColor: titleColor
         ]
 
-        let accent = UIColor(DesignSystem.Colors.accent)
+        let palette = AccentPalette.resolved(from: accentRaw ?? UserDefaults.standard.string(forKey: AccentPalette.storageKey))
+        let accent = UIColor(palette.color)
 
         let nav = UINavigationBar.appearance()
         nav.standardAppearance = appearance
@@ -44,9 +46,6 @@ enum AppNavigationChrome {
         // Чуть поднимаем inline-заголовок; large title становится компактнее за счёт меньшего шрифта.
         nav.setTitleVerticalPositionAdjustment(-2, for: .default)
         nav.setTitleVerticalPositionAdjustment(-2, for: .compact)
-
-        // Кнопки системных алертов (UIAlertController) берут tint отсюда, не из SwiftUI.
-        UIView.appearance().tintColor = accent
 #endif
     }
 }

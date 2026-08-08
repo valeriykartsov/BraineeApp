@@ -157,6 +157,53 @@ struct MyTasksDocumentTests {
         #expect(decoded.tasks[0].categoryRaw == "sport")
     }
 
+    @Test func миграцияРазделов_всеСтановятсяTasks() {
+        // Старые career/sport/mental и группы сливаются в единый раздел «Задачи».
+        let groupID = UUID()
+        var document = MyTasksDocument(
+            version: 2,
+            lastSavedAt: nil,
+            tags: [],
+            groups: [
+                GroupRecord(id: groupID, name: "Папка", categoryRaw: "sport", sortOrder: 0, createdAt: .now)
+            ],
+            tasks: [
+                TaskRecord(
+                    id: UUID(),
+                    title: "Карьера",
+                    isCompleted: false,
+                    deadline: nil,
+                    priorityRaw: 1,
+                    categoryRaw: "career",
+                    createdAt: .now,
+                    taskDetails: "",
+                    sortOrder: 0,
+                    groupID: groupID,
+                    tagIDs: []
+                ),
+                TaskRecord(
+                    id: UUID(),
+                    title: "Ментальное",
+                    isCompleted: false,
+                    deadline: nil,
+                    priorityRaw: 1,
+                    categoryRaw: "mental",
+                    createdAt: .now,
+                    taskDetails: "",
+                    sortOrder: 1,
+                    groupID: nil,
+                    tagIDs: []
+                )
+            ]
+        )
+        document.normalizeRecords()
+        #expect(document.version == MyTasksDocument.currentVersion)
+        #expect(document.habits.isEmpty)
+        #expect(document.tasks.allSatisfy { $0.categoryRaw == TaskCategory.unifiedRaw })
+        #expect(document.groups.allSatisfy { $0.categoryRaw == TaskCategory.unifiedRaw })
+        #expect(document.tasks[0].groupID == groupID)
+    }
+
     // MARK: - Helpers
 
     private func makeTask(
@@ -171,7 +218,7 @@ struct MyTasksDocumentTests {
             isCompleted: false,
             deadline: nil,
             priorityRaw: TaskPriority.medium.rawValue,
-            categoryRaw: TaskCategory.career.rawValue,
+            categoryRaw: TaskCategory.unifiedRaw,
             createdAt: .now,
             taskDetails: "",
             sortOrder: 0,

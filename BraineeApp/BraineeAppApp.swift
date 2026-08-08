@@ -16,6 +16,7 @@ struct BraineeAppApp: App {
             TaskGroup.self,
             TaskTag.self,
             UserProfile.self,
+            Habit.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
 

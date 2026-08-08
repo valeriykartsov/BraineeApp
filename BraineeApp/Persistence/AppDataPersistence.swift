@@ -72,6 +72,7 @@ enum AppDataPersistence {
         try? context.delete(model: TaskGroup.self)
         try? context.delete(model: TaskTag.self)
         try? context.delete(model: UserProfile.self)
+        try? context.delete(model: Habit.self)
     }
 
     private static func importTasks(_ document: MyTasksDocument, into context: ModelContext) {
@@ -86,7 +87,7 @@ enum AppDataPersistence {
         for record in document.groups {
             let group = TaskGroup(
                 name: record.name,
-                category: TaskCategory(rawValue: record.categoryRaw) ?? .career,
+                category: .tasks,
                 sortOrder: record.sortOrder,
                 uuid: record.id,
                 createdAt: record.createdAt
@@ -97,12 +98,16 @@ enum AppDataPersistence {
 
         for record in document.tasks {
             let tags = record.tagIDs.compactMap { tagByID[$0] }
+            let status = TaskStatus(rawValue: record.statusRaw)
+                ?? TaskStatus.fromCompletion(record.isCompleted)
             let task = TaskItem(
                 title: record.title,
-                isCompleted: record.isCompleted,
+                isCompleted: status == .done,
                 deadline: record.deadline,
+                hasDeadlineTime: record.hasDeadlineTime,
                 priority: TaskPriority(rawValue: record.priorityRaw) ?? .medium,
-                category: TaskCategory(rawValue: record.categoryRaw) ?? .career,
+                category: .tasks,
+                status: status,
                 createdAt: record.createdAt,
                 taskDetails: record.taskDetails,
                 sortOrder: record.sortOrder,
@@ -113,6 +118,17 @@ enum AppDataPersistence {
                 tags: tags
             )
             context.insert(task)
+        }
+
+        for record in document.habits {
+            let habit = Habit(
+                title: record.title,
+                sortOrder: record.sortOrder,
+                uuid: record.id,
+                createdAt: record.createdAt,
+                completedDayKeys: record.completedDays
+            )
+            context.insert(habit)
         }
     }
 
@@ -134,6 +150,7 @@ enum AppDataPersistence {
         let tags = (try? context.fetch(FetchDescriptor<TaskTag>())) ?? []
         let groups = (try? context.fetch(FetchDescriptor<TaskGroup>())) ?? []
         let tasks = (try? context.fetch(FetchDescriptor<TaskItem>())) ?? []
+        let habits = (try? context.fetch(FetchDescriptor<Habit>())) ?? []
 
         return MyTasksDocument(
             version: MyTasksDocument.currentVersion,
@@ -154,8 +171,10 @@ enum AppDataPersistence {
                     title: $0.title,
                     isCompleted: $0.isCompleted,
                     deadline: $0.deadline,
+                    hasDeadlineTime: $0.hasDeadlineTime,
                     priorityRaw: $0.priorityRaw,
                     categoryRaw: $0.categoryRaw,
+                    statusRaw: $0.statusRaw,
                     createdAt: $0.createdAt,
                     taskDetails: $0.taskDetails,
                     sortOrder: $0.sortOrder,
@@ -163,6 +182,15 @@ enum AppDataPersistence {
                     tagIDs: $0.tags.map(\.uuid),
                     isDeleted: $0.isSoftDeleted,
                     deletedAt: $0.isSoftDeleted ? ($0.deletedAt ?? .now) : nil
+                )
+            },
+            habits: habits.map {
+                HabitRecord(
+                    id: $0.uuid,
+                    title: $0.title,
+                    sortOrder: $0.sortOrder,
+                    createdAt: $0.createdAt,
+                    completedDays: $0.completedDayKeys
                 )
             }
         )
@@ -203,7 +231,8 @@ struct JSONPersistenceModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .onChange(of: scenePhase) { _, phase in
-                if phase == .background || phase == .inactive {
+                // Только background: inactive (шторка/переключатель приложений) иначе даёт лишний тяжёлый export.
+                if phase == .background {
                     modelContext.persistToJSON()
                 }
             }

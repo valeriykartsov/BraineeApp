@@ -19,14 +19,31 @@ struct IconTapButton: View {
         compact ? DesignSystem.Space.x8 : DesignSystem.Space.x11
     }
 
+    private var isEditPencil: Bool {
+        systemName == DesignSystem.Icon.pencil
+    }
+
+    private var iconSize: CGFloat {
+        if isEditPencil {
+            return compact ? DesignSystem.Icon.pencilSizeCompact : DesignSystem.Icon.pencilSize
+        }
+        return compact ? 15 : 16
+    }
+
     var body: some View {
         Button(role: role, action: action) {
-            Image(systemName: systemName)
-                .font(DesignSystem.Typography.body(compact ? 15 : 16))
-                .fontWeight(.medium)
-                .foregroundStyle(resolvedTint)
-                .frame(minWidth: hitSize, minHeight: hitSize)
-                .contentShape(Rectangle())
+            Group {
+                if isEditPencil {
+                    EditPencilIcon(size: iconSize, color: resolvedTint)
+                } else {
+                    Image(systemName: systemName)
+                        .font(.system(size: iconSize, weight: .medium))
+                        .foregroundStyle(resolvedTint)
+                        .symbolRenderingMode(.monochrome)
+                }
+            }
+            .frame(minWidth: hitSize, minHeight: hitSize)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.borderless)
         .accessibilityLabel(accessibilityLabel)

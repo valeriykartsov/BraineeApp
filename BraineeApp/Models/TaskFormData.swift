@@ -9,8 +9,9 @@ import Foundation
 struct TaskFormData {
     var title: String
     var deadline: Date?
+    var hasDeadlineTime: Bool
     var priority: TaskPriority
-    var category: TaskCategory
+    var status: TaskStatus
     var taskDetails: String
     var selectedTags: [TaskTag]
 }

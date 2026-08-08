@@ -13,7 +13,7 @@ enum TestHelpers {
     static func makeContainer() throws -> ModelContainer {
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
         return try ModelContainer(
-            for: TaskItem.self, TaskGroup.self, TaskTag.self, UserProfile.self,
+            for: TaskItem.self, TaskGroup.self, TaskTag.self, UserProfile.self, Habit.self,
             configurations: configuration
         )
     }

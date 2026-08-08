@@ -16,8 +16,8 @@ struct SoftDeleteAndGroupTests {
         // Как в UI: удалили папку — задачи остаются без группы (nullify).
         let container = try TestHelpers.makeContainer()
         let context = container.mainContext
-        let group = TaskGroup(name: "Папка", category: .career)
-        let task = TaskItem(title: "В папке", category: .career, group: group)
+        let group = TaskGroup(name: "Папка", category: .tasks)
+        let task = TaskItem(title: "В папке", category: .tasks, group: group)
         context.insert(group)
         context.insert(task)
         try context.save()
@@ -39,7 +39,7 @@ struct SoftDeleteAndGroupTests {
         let context = container.mainContext
         let task = TaskItem(
             title: "Навсегда",
-            category: .career,
+            category: .tasks,
             isSoftDeleted: true,
             deletedAt: Date()
         )
@@ -57,7 +57,7 @@ struct SoftDeleteAndGroupTests {
         // Граничный случай: удалили единственную задачу — список пуст, краша нет.
         let container = try TestHelpers.makeContainer()
         let context = container.mainContext
-        let task = TaskItem(title: "Единственная", category: .sport)
+        let task = TaskItem(title: "Единственная", category: .tasks)
         context.insert(task)
         try context.save()
 
