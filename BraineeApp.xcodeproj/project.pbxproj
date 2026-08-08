@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		B1A00D9B30234520004676EF /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B1A00D9A30234520004676EF /* WidgetKit.framework */; };
+		B1A00D9C30234520004676EF /* BraineeAppWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B1A00D4930234520004676EF /* BraineeAppWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		A0140D5D30234522004676EF /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -21,13 +26,46 @@
 			remoteGlobalIDString = A0140D4830234520004676EF;
 			remoteInfo = BraineeApp;
 		};
+		B1A00D5D30234522004676F0 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A0140D4130234520004676EF /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B1A00D4830234520004676EF;
+			remoteInfo = BraineeAppWidget;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		B1A00D4730234520004676F0 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				B1A00D9C30234520004676EF /* BraineeAppWidget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		A0140D4930234520004676EF /* BraineeApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BraineeApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A0140D5C30234522004676EF /* BraineeAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BraineeAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A0140D6630234522004676EF /* BraineeAppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BraineeAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		B1A00D4930234520004676EF /* BraineeAppWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = BraineeAppWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		B1A00D9A30234520004676EF /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		B1A00DA030234520004676EF /* Exceptions for "BraineeAppWidget" folder in "BraineeAppWidget" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = B1A00D4830234520004676EF /* BraineeAppWidget */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		A0140D4B30234520004676EF /* BraineeApp */ = {
@@ -43,6 +81,19 @@
 		A0140D6930234522004676EF /* BraineeAppUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = BraineeAppUITests;
+			sourceTree = "<group>";
+		};
+		B1A00D4B30234520004676EF /* BraineeAppWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				B1A00DA030234520004676EF /* Exceptions for "BraineeAppWidget" folder in "BraineeAppWidget" target */,
+			);
+			path = BraineeAppWidget;
+			sourceTree = "<group>";
+		};
+		B1A00D4C30234520004676EF /* BraineeShared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = BraineeShared;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -69,6 +120,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B1A00D4630234520004676EF /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B1A00D9B30234520004676EF /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -76,9 +135,12 @@
 			isa = PBXGroup;
 			children = (
 				A0140D4B30234520004676EF /* BraineeApp */,
+				B1A00D4C30234520004676EF /* BraineeShared */,
+				B1A00D4B30234520004676EF /* BraineeAppWidget */,
 				A0140D5F30234522004676EF /* BraineeAppTests */,
 				A0140D6930234522004676EF /* BraineeAppUITests */,
 				A0140D4A30234520004676EF /* Products */,
+				A0CC3D0130277EAF001CFCA2 /* Recovered References */,
 			);
 			sourceTree = "<group>";
 		};
@@ -86,10 +148,19 @@
 			isa = PBXGroup;
 			children = (
 				A0140D4930234520004676EF /* BraineeApp.app */,
+				B1A00D4930234520004676EF /* BraineeAppWidget.appex */,
 				A0140D5C30234522004676EF /* BraineeAppTests.xctest */,
 				A0140D6630234522004676EF /* BraineeAppUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		A0CC3D0130277EAF001CFCA2 /* Recovered References */ = {
+			isa = PBXGroup;
+			children = (
+				B1A00D9A30234520004676EF /* WidgetKit.framework */,
+			);
+			name = "Recovered References";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -102,13 +173,16 @@
 				A0140D4530234520004676EF /* Sources */,
 				A0140D4630234520004676EF /* Frameworks */,
 				A0140D4730234520004676EF /* Resources */,
+				B1A00D4730234520004676F0 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				B1A00D5E30234522004676F0 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				A0140D4B30234520004676EF /* BraineeApp */,
+				B1A00D4C30234520004676EF /* BraineeShared */,
 			);
 			name = BraineeApp;
 			packageProductDependencies = (
@@ -163,6 +237,29 @@
 			productReference = A0140D6630234522004676EF /* BraineeAppUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		B1A00D4830234520004676EF /* BraineeAppWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B1A00D7030234522004676F0 /* Build configuration list for PBXNativeTarget "BraineeAppWidget" */;
+			buildPhases = (
+				B1A00D4530234520004676EF /* Sources */,
+				B1A00D4630234520004676EF /* Frameworks */,
+				B1A00D4730234520004676F1 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				B1A00D4B30234520004676EF /* BraineeAppWidget */,
+				B1A00D4C30234520004676EF /* BraineeShared */,
+			);
+			name = BraineeAppWidget;
+			packageProductDependencies = (
+			);
+			productName = BraineeAppWidget;
+			productReference = B1A00D4930234520004676EF /* BraineeAppWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -184,6 +281,9 @@
 						CreatedOnToolsVersion = 16.2;
 						TestTargetID = A0140D4830234520004676EF;
 					};
+					B1A00D4830234520004676EF = {
+						CreatedOnToolsVersion = 16.2;
+					};
 				};
 			};
 			buildConfigurationList = A0140D4430234520004676EF /* Build configuration list for PBXProject "BraineeApp" */;
@@ -201,6 +301,7 @@
 			projectRoot = "";
 			targets = (
 				A0140D4830234520004676EF /* BraineeApp */,
+				B1A00D4830234520004676EF /* BraineeAppWidget */,
 				A0140D5B30234522004676EF /* BraineeAppTests */,
 				A0140D6530234522004676EF /* BraineeAppUITests */,
 			);
@@ -223,6 +324,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		A0140D6430234522004676EF /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B1A00D4730234520004676F1 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -253,6 +361,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B1A00D4530234520004676EF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -265,6 +380,11 @@
 			isa = PBXTargetDependency;
 			target = A0140D4830234520004676EF /* BraineeApp */;
 			targetProxy = A0140D6730234522004676EF /* PBXContainerItemProxy */;
+		};
+		B1A00D5E30234522004676F0 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B1A00D4830234520004676EF /* BraineeAppWidget */;
+			targetProxy = B1A00D5D30234522004676F0 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -557,6 +677,64 @@
 			};
 			name = Release;
 		};
+		B1A00D7130234522004676F0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = BraineeAppWidget/BraineeAppWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = HAHXQ54NAZ;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = BraineeAppWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = BraineeApp;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = valeravalera.BraineeApp.Widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		B1A00D7230234522004676F0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = BraineeAppWidget/BraineeAppWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = HAHXQ54NAZ;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = BraineeAppWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = BraineeApp;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = valeravalera.BraineeApp.Widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -592,6 +770,15 @@
 			buildConfigurations = (
 				A0140D7730234522004676EF /* Debug */,
 				A0140D7830234522004676EF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B1A00D7030234522004676F0 /* Build configuration list for PBXNativeTarget "BraineeAppWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B1A00D7130234522004676F0 /* Debug */,
+				B1A00D7230234522004676F0 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

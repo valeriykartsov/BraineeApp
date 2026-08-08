@@ -16,6 +16,7 @@ struct TaskOrganizedListView: View {
     let groups: [TaskGroup]
     let tasks: [TaskItem]
     var displaySettings: TaskListDisplaySettings = .default
+    @Binding var collapsedGroupIDs: Set<UUID>
 
     var onToggle: (TaskItem) -> Void
     var onDelete: (TaskItem) -> Void
@@ -27,8 +28,8 @@ struct TaskOrganizedListView: View {
     @State private var editingGroupName = ""
     @State private var groupPendingDeletion: TaskGroup?
     @State private var showingDeleteGroupConfirm = false
-    /// Свёрнутые группы (по uuid).
-    @State private var collapsedGroupIDs: Set<UUID> = []
+    /// Одна открытая свайпом строка удаления.
+    @State private var swipedTaskUUID: UUID?
 
     /// Задачи уже приходят из @Query без soft-deleted.
     private var visibleTasks: [TaskItem] { tasks }
@@ -335,35 +336,53 @@ struct TaskOrganizedListView: View {
     }
 
     private func taskRow(_ task: TaskItem) -> some View {
-        HStack(spacing: DesignSystem.Space.x2) {
-            TaskRowView(task: task, displaySettings: displaySettings) {
-                onToggle(task)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(Rectangle())
-            .onTapGesture {
-                onEdit(task)
-            }
-            // contextMenu только слева — long-press не конфликтует с drag справа.
-            .contextMenu {
-                Button {
-                    onEdit(task)
-                } label: {
-                    Label("Редактировать", systemImage: DesignSystem.Icon.pencil)
+        SwipeToDeleteRow(
+            isOpen: swipedTaskUUID == task.uuid,
+            onOpen: { swipedTaskUUID = task.uuid },
+            onClose: {
+                if swipedTaskUUID == task.uuid {
+                    swipedTaskUUID = nil
                 }
-                Button(role: .destructive) {
-                    onDelete(task)
-                } label: {
-                    Label("Удалить", systemImage: DesignSystem.Icon.trash)
+            },
+            onDelete: { onDelete(task) }
+        ) {
+            HStack(spacing: DesignSystem.Space.x2) {
+                TaskRowView(task: task, displaySettings: displaySettings) {
+                    onToggle(task)
                 }
-            }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if swipedTaskUUID != nil {
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+                            swipedTaskUUID = nil
+                        }
+                    } else {
+                        onEdit(task)
+                    }
+                }
+                // contextMenu только слева — long-press не конфликтует с drag справа.
+                .contextMenu {
+                    Button {
+                        onEdit(task)
+                    } label: {
+                        Label("Редактировать", systemImage: DesignSystem.Icon.pencil)
+                    }
+                    Button(role: .destructive) {
+                        onDelete(task)
+                    } label: {
+                        Label("Удалить", systemImage: DesignSystem.Icon.trash)
+                    }
+                }
 
-            TaskDragHandle(taskUUID: task.uuid) {
-                taskDragPreview(task)
+                TaskDragHandle(taskUUID: task.uuid) {
+                    taskDragPreview(task)
+                }
             }
+            .padding(.horizontal, DesignSystem.Space.x3)
+            .padding(.vertical, DesignSystem.Space.x2)
+            .background(DesignSystem.Colors.surface)
         }
-        .padding(.horizontal, DesignSystem.Space.x3)
-        .padding(.vertical, DesignSystem.Space.x2)
     }
 
     /// Миниатюра при переносе: только название — без полей из настроек отображения.

@@ -9,6 +9,10 @@ import SwiftData
 
 @main
 struct BraineeAppApp: App {
+#if canImport(UIKit)
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+#endif
+
     /// SwiftData живёт только в памяти; постоянные данные — в JSON (см. AppDataPersistence).
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([

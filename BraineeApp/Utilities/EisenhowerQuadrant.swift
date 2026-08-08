@@ -40,11 +40,18 @@ enum EisenhowerQuadrant: String, CaseIterable, Identifiable {
         deadline: Date?,
         priority: TaskPriority,
         isCompleted: Bool = false,
+        hasDeadlineTime: Bool = false,
         now: Date = .now,
         calendar: Calendar = .current
     ) -> EisenhowerQuadrant {
         let isImportant = priority == .high || priority == .highest
-        let isUrgent = Self.isUrgent(deadline: deadline, isCompleted: isCompleted, now: now, calendar: calendar)
+        let isUrgent = Self.isUrgent(
+            deadline: deadline,
+            hasDeadlineTime: hasDeadlineTime,
+            isCompleted: isCompleted,
+            now: now,
+            calendar: calendar
+        )
 
         switch (isImportant, isUrgent) {
         case (true, true): return .doFirst
@@ -59,14 +66,16 @@ enum EisenhowerQuadrant: String, CaseIterable, Identifiable {
             deadline: task.deadline,
             priority: task.priority,
             isCompleted: task.isCompleted,
+            hasDeadlineTime: task.hasDeadlineTime,
             now: now,
             calendar: calendar
         )
     }
 
-    /// Срочно: просрочено (невыполненная) или дедлайн в пределах сегодня…+2 дня. Без дедлайна — не срочно.
+    /// Срочно: просрочено (дата или дата+время) или дедлайн в пределах сегодня…+2 дня. Без дедлайна — не срочно.
     static func isUrgent(
         deadline: Date?,
+        hasDeadlineTime: Bool = false,
         isCompleted: Bool,
         now: Date = .now,
         calendar: Calendar = .current
@@ -75,8 +84,12 @@ enum EisenhowerQuadrant: String, CaseIterable, Identifiable {
         let today = calendar.startOfDay(for: now)
         let deadlineDay = calendar.startOfDay(for: deadline)
 
-        if !isCompleted, deadlineDay < today {
-            return true
+        if !isCompleted {
+            if hasDeadlineTime {
+                if deadline < now { return true }
+            } else if deadlineDay < today {
+                return true
+            }
         }
 
         guard let urgentEnd = calendar.date(byAdding: .day, value: urgentDayLimit, to: today) else {

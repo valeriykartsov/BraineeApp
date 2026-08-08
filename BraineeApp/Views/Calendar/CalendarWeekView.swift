@@ -77,6 +77,7 @@ struct CalendarWeekView: View {
                         editingTask = nil
                     }
                 )
+                .id(task.uuid)
             }
             .onAppear {
                 displaySettings = TaskListDisplaySettings.load()
@@ -249,6 +250,7 @@ struct CalendarWeekView: View {
         task.title = formData.title
         task.deadline = formData.deadline
         task.hasDeadlineTime = formData.hasDeadlineTime
+        task.reminderOffsets = formData.reminderOffsets
         task.priority = formData.priority
         task.status = formData.status
         task.category = .tasks

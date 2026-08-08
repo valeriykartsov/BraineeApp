@@ -51,6 +51,13 @@ struct AppRootView: View {
                 isReady = true
                 // Подтянуть иконку Springboard под сохранённый акцент (без алерта).
                 AppIconSwitcher.syncWithCurrentAccent()
+#if canImport(UIKit)
+                OrientationLockSettings.apply(
+                    lockPortrait: OrientationLockSettings.isPortraitLocked
+                )
+#endif
+                AppNotifications.requestPermissionOnFirstLaunchIfNeeded()
+                await AppNotifications.refresh(from: modelContext)
             } catch {
                 loadError = error.localizedDescription
             }

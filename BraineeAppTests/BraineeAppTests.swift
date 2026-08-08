@@ -10,7 +10,7 @@ import Testing
 struct BraineeAppTests {
     @Test func тестовыйTargetПодключён_импортРаботает() {
         // Smoke-тест: @testable import BraineeApp доступен из юнит-тестов.
-        #expect(MyTasksDocument.currentVersion == 6)
+        #expect(MyTasksDocument.currentVersion == 8)
         #expect(TaskInputValidation.detailsMaxLength == 200)
     }
 }

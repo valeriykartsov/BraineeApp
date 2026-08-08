@@ -7,6 +7,17 @@
 import Foundation
 import CoreGraphics
 
+/// Полоса одного месяца в contribution-сетке.
+struct HabitCalendarMonthBand: Equatable {
+    let year: Int
+    let month: Int
+    let label: String
+    /// Индекс первой колонки (включительно).
+    let columnStart: Int
+    /// Индекс после последней колонки.
+    let columnEndExclusive: Int
+}
+
 enum HabitProgress {
     /// Доля выполненных привычек в день (0…1). Без привычек — 0.
     static func completionRatio(
@@ -19,7 +30,44 @@ enum HabitProgress {
         return Double(completed) / Double(habits.count)
     }
 
-    /// Недели: `weeksBefore` слева + текущая; `weeksAfter` справа (у GitHub обычно 0).
+    /// Дни окна: `previousMonths` предыдущих + полный текущий месяц (до конца месяца).
+    /// Сетка выровнена по неделям (как GitHub contribution).
+    static func threeMonthContributionDays(
+        previousMonths: Int = 2,
+        centeredOn center: Date = .now,
+        calendar: Calendar = .current
+    ) -> [Date] {
+        let today = calendar.startOfDay(for: center)
+        let monthComps = calendar.dateComponents([.year, .month], from: today)
+        guard let currentMonthStart = calendar.date(from: monthComps),
+              let windowStart = calendar.date(byAdding: .month, value: -previousMonths, to: currentMonthStart),
+              let nextMonthStart = calendar.date(byAdding: .month, value: 1, to: currentMonthStart),
+              let windowEnd = calendar.date(byAdding: .day, value: -1, to: nextMonthStart) else {
+            return []
+        }
+
+        let startWeekOffset = (calendar.component(.weekday, from: windowStart) - calendar.firstWeekday + 7) % 7
+        guard let gridStart = calendar.date(byAdding: .day, value: -startWeekOffset, to: windowStart) else {
+            return []
+        }
+
+        let endWeekOffset = (calendar.component(.weekday, from: windowEnd) - calendar.firstWeekday + 7) % 7
+        let daysToWeekEnd = 6 - endWeekOffset
+        guard let gridEnd = calendar.date(byAdding: .day, value: daysToWeekEnd, to: windowEnd) else {
+            return []
+        }
+
+        var days: [Date] = []
+        var cursor = gridStart
+        while cursor <= gridEnd {
+            days.append(cursor)
+            guard let next = calendar.date(byAdding: .day, value: 1, to: cursor) else { break }
+            cursor = next
+        }
+        return days
+    }
+
+    /// Недели: `weeksBefore` слева + текущая; `weeksAfter` справа (legacy / тесты).
     static func contributionDays(
         weeksBefore: Int,
         weeksAfter: Int,
@@ -38,47 +86,6 @@ enum HabitProgress {
         return (0..<totalDays).compactMap { offset in
             calendar.date(byAdding: .day, value: offset, to: gridStart)
         }
-    }
-
-    /// Сколько недель помещается в ширину; текущая неделя справа.
-    /// Учитывает реальные отступы между месяцами, чтобы сетка не вылезала за край.
-    static func weekSpan(
-        forAvailableWidth width: CGFloat,
-        labelColumnWidth: CGFloat = 22,
-        gap: CGFloat = 3,
-        monthGap: CGFloat = 8,
-        minCell: CGFloat = 10,
-        centeredOn: Date = .now,
-        calendar: Calendar = .current
-    ) -> (weeksBefore: Int, weeksAfter: Int, cellSize: CGFloat) {
-        let gridWidth = max(width - labelColumnWidth - gap, minCell)
-        var weekCount = max(7, Int((gridWidth + gap) / (minCell + gap)))
-
-        while weekCount >= 7 {
-            let weeksBefore = weekCount - 1
-            let days = contributionDays(
-                weeksBefore: weeksBefore,
-                weeksAfter: 0,
-                centeredOn: centeredOn,
-                calendar: calendar
-            )
-            let columns = columns(from: days)
-            let boundaries = monthBoundaryIndices(after: columns, calendar: calendar)
-            let gapsWidth = gapWidth(
-                weekCount: weekCount,
-                boundaryCount: boundaries.count,
-                gap: gap,
-                monthGap: monthGap
-            )
-            let cellSize = (gridWidth - gapsWidth) / CGFloat(weekCount)
-            if cellSize >= minCell {
-                // Чуть уменьшаем, чтобы float-округление не выталкивало последний столбец.
-                return (weeksBefore, 0, floor(cellSize * 10) / 10)
-            }
-            weekCount -= 1
-        }
-
-        return (6, 0, minCell)
     }
 
     static func columns(from days: [Date]) -> [[Date]] {
@@ -100,16 +107,135 @@ enum HabitProgress {
     /// Индексы колонок, после которых нужен дополнительный отступ (смена месяца).
     static func monthBoundaryIndices(
         after columns: [[Date]],
+        centeredOn center: Date = .now,
         calendar: Calendar = .current
     ) -> Set<Int> {
+        let bands = monthBands(for: columns, centeredOn: center, calendar: calendar)
         var result = Set<Int>()
-        for index in 0..<(columns.count - 1) {
-            guard let current = columns[index].first,
-                  let next = columns[index + 1].first else { continue }
-            if !calendar.isDate(current, equalTo: next, toGranularity: .month) {
-                result.insert(index)
+        for band in bands.dropLast() {
+            let lastColumn = band.columnEndExclusive - 1
+            if lastColumn >= 0 {
+                result.insert(lastColumn)
             }
         }
         return result
+    }
+
+    /// Диапазон колонок месяца: `[start, endExclusive)`.
+    static func monthColumnRanges(
+        for columns: [[Date]],
+        centeredOn center: Date = .now,
+        calendar: Calendar = .current
+    ) -> [(start: Int, endExclusive: Int)] {
+        monthBands(for: columns, centeredOn: center, calendar: calendar).map {
+            (start: $0.columnStart, endExclusive: $0.columnEndExclusive)
+        }
+    }
+
+    /// Полосы месяцев с подписями (для центрирования над блоками).
+    static func monthBands(
+        for columns: [[Date]],
+        centeredOn center: Date = .now,
+        previousMonths: Int = 2,
+        calendar: Calendar = .current
+    ) -> [HabitCalendarMonthBand] {
+        guard !columns.isEmpty else { return [] }
+
+        let today = calendar.startOfDay(for: center)
+        let monthComps = calendar.dateComponents([.year, .month], from: today)
+        guard let currentMonthStart = calendar.date(from: monthComps),
+              let windowStart = calendar.date(byAdding: .month, value: -previousMonths, to: currentMonthStart),
+              let nextMonthStart = calendar.date(byAdding: .month, value: 1, to: currentMonthStart),
+              let windowEnd = calendar.date(byAdding: .day, value: -1, to: nextMonthStart) else {
+            return []
+        }
+
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.dateFormat = "LLL"
+
+        var bands: [HabitCalendarMonthBand] = []
+        var index = 0
+        while index < columns.count {
+            let week = columns[index]
+            guard let monthDate = monthAnchor(for: week, windowStart: windowStart, windowEnd: windowEnd, calendar: calendar) else {
+                index += 1
+                continue
+            }
+            let comps = calendar.dateComponents([.year, .month], from: monthDate)
+            var end = index + 1
+            while end < columns.count {
+                guard let nextAnchor = monthAnchor(
+                    for: columns[end],
+                    windowStart: windowStart,
+                    windowEnd: windowEnd,
+                    calendar: calendar
+                ) else { break }
+                let nextComps = calendar.dateComponents([.year, .month], from: nextAnchor)
+                if nextComps.year != comps.year || nextComps.month != comps.month { break }
+                end += 1
+            }
+            let label = formatter.string(from: monthDate).replacingOccurrences(of: ".", with: "")
+            bands.append(
+                HabitCalendarMonthBand(
+                    year: comps.year ?? 0,
+                    month: comps.month ?? 0,
+                    label: label,
+                    columnStart: index,
+                    columnEndExclusive: end
+                )
+            )
+            index = end
+        }
+        return bands
+    }
+
+    /// Размер ячейки, чтобы все недели трёх месяцев поместились в ширину.
+    static func cellSizeForThreeMonthWindow(
+        availableWidth: CGFloat,
+        labelColumnWidth: CGFloat = 22,
+        gap: CGFloat = 3,
+        monthGap: CGFloat = 8,
+        minCell: CGFloat = 8,
+        centeredOn: Date = .now,
+        calendar: Calendar = .current
+    ) -> (columns: [[Date]], bands: [HabitCalendarMonthBand], cellSize: CGFloat, gridWidth: CGFloat) {
+        let days = threeMonthContributionDays(centeredOn: centeredOn, calendar: calendar)
+        let columns = columns(from: days)
+        let bands = monthBands(for: columns, centeredOn: centeredOn, calendar: calendar)
+        let weekCount = max(columns.count, 1)
+        let boundaryCount = max(bands.count - 1, 0)
+        let gaps = gapWidth(
+            weekCount: weekCount,
+            boundaryCount: boundaryCount,
+            gap: gap,
+            monthGap: monthGap
+        )
+        let gridAvailable = max(availableWidth - labelColumnWidth - gap, minCell)
+        let raw = max(0, (gridAvailable - gaps) / CGFloat(weekCount))
+        // Подгоняем под ширину: лучше чуть мельче, чем обрезать правый край.
+        let cellSize = max(4, floor(raw * 10) / 10)
+        let gridWidth = CGFloat(weekCount) * cellSize + gaps
+        return (columns, bands, cellSize, gridWidth)
+    }
+
+    // MARK: - Private
+
+    /// Месяц колонки: первый день недели, попадающий в окно [start, end].
+    private static func monthAnchor(
+        for week: [Date],
+        windowStart: Date,
+        windowEnd: Date,
+        calendar: Calendar
+    ) -> Date? {
+        let start = calendar.startOfDay(for: windowStart)
+        let end = calendar.startOfDay(for: windowEnd)
+        if let inWindow = week.first(where: {
+            let day = calendar.startOfDay(for: $0)
+            return day >= start && day <= end
+        }) {
+            return inWindow
+        }
+        return week.first.map { calendar.startOfDay(for: $0) }
     }
 }

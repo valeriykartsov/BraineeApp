@@ -17,6 +17,7 @@ enum TaskViewMode: String, CaseIterable, Identifiable {
 
 struct TaskSectionView: View {
     @Environment(\.modelContext) private var modelContext
+    @ObservedObject private var deepLinkRouter = NotificationDeepLinkRouter.shared
 
     /// Активна вкладка «Задачи» — при уходе возвращаем вид «Список».
     var isActive: Bool = true
@@ -38,6 +39,8 @@ struct TaskSectionView: View {
     @State private var showingDisplaySettings = false
     @State private var newGroupName = ""
     @State private var displaySettings = TaskListDisplaySettings.load()
+    /// Свёрнутые группы списка (управляется и кнопкой «все»).
+    @State private var collapsedGroupIDs: Set<UUID> = []
 
     var body: some View {
         NavigationStack {
@@ -60,6 +63,7 @@ struct TaskSectionView: View {
                             groups: groups,
                             tasks: tasks,
                             displaySettings: displaySettings,
+                            collapsedGroupIDs: $collapsedGroupIDs,
                             onToggle: toggleTask,
                             onDelete: deleteTask,
                             onEdit: { editingTask = $0 },
@@ -97,6 +101,8 @@ struct TaskSectionView: View {
                         editingTask = nil
                     }
                 )
+                // Стабильный id — форма не пересоздаётся при обновлениях SwiftData во время ввода.
+                .id(task.uuid)
             }
             .sheet(isPresented: $showingDisplaySettings) {
                 TaskListDisplaySettingsView(settings: $displaySettings)
@@ -114,6 +120,7 @@ struct TaskSectionView: View {
             }
             .onAppear {
                 displaySettings = TaskListDisplaySettings.load()
+                openTaskFromDeepLinkIfNeeded()
             }
             .onChange(of: isActive) { _, active in
                 if !active {
@@ -122,7 +129,12 @@ struct TaskSectionView: View {
                     editingTask = nil
                     showingCreateGroup = false
                     showingDisplaySettings = false
+                } else {
+                    openTaskFromDeepLinkIfNeeded()
                 }
+            }
+            .onChange(of: deepLinkRouter.pendingTaskUUID) { _, _ in
+                openTaskFromDeepLinkIfNeeded()
             }
         }
     }
@@ -158,6 +170,10 @@ struct TaskSectionView: View {
                             .contentShape(Rectangle())
                     }
                     .accessibilityLabel("Сортировка канбана")
+                }
+
+                if viewMode == .list {
+                    collapseAllGroupsButton
                 }
 
                 toolbarIconButton(
@@ -202,12 +218,63 @@ struct TaskSectionView: View {
         .accessibilityLabel(label)
     }
 
+    private var collapsibleGroupIDs: Set<UUID> {
+        GroupCollapseLogic.collapsibleIDs(groups: Array(groups), tasks: Array(tasks))
+    }
+
+    private var nextCollapseActionIsExpand: Bool {
+        GroupCollapseLogic.nextActionIsExpand(
+            collapsibleIDs: collapsibleGroupIDs,
+            collapsedIDs: collapsedGroupIDs
+        )
+    }
+
+    private var collapseAllGroupsButton: some View {
+        Button {
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.84)) {
+                if nextCollapseActionIsExpand {
+                    collapsedGroupIDs = GroupCollapseLogic.expanding(
+                        collapsibleIDs: collapsibleGroupIDs,
+                        collapsedIDs: collapsedGroupIDs
+                    )
+                } else {
+                    collapsedGroupIDs = GroupCollapseLogic.collapsing(
+                        collapsibleIDs: collapsibleGroupIDs,
+                        collapsedIDs: collapsedGroupIDs
+                    )
+                }
+            }
+        } label: {
+            Image(systemName: "chevron.down")
+                .font(.system(size: 15, weight: .semibold))
+                .rotationEffect(.degrees(nextCollapseActionIsExpand ? -90 : 0))
+                .animation(.spring(response: 0.34, dampingFraction: 0.84), value: nextCollapseActionIsExpand)
+                .frame(width: DesignSystem.Space.x10, height: DesignSystem.Space.x10)
+                .contentShape(Rectangle())
+        }
+        .disabled(collapsibleGroupIDs.isEmpty)
+        .opacity(collapsibleGroupIDs.isEmpty ? 0.35 : 1)
+        .accessibilityLabel(
+            nextCollapseActionIsExpand ? "Развернуть все группы" : "Свернуть все группы"
+        )
+    }
+
+    /// Открывает карточку задачи после тапа по пушу (когда вкладка активна и данные загружены).
+    private func openTaskFromDeepLinkIfNeeded() {
+        guard isActive, let uuid = deepLinkRouter.pendingTaskUUID else { return }
+        guard let task = tasks.first(where: { $0.uuid == uuid }) else { return }
+        showingAddTask = false
+        editingTask = task
+        deepLinkRouter.clearPendingTask()
+    }
+
     private func addTask(_ formData: TaskFormData) {
         let nextOrder = (tasks.map(\.sortOrder).max() ?? -1) + 1
         let task = TaskItem(
             title: formData.title,
             deadline: formData.deadline,
             hasDeadlineTime: formData.hasDeadlineTime,
+            reminderOffsets: formData.reminderOffsets,
             priority: formData.priority,
             category: .tasks,
             status: .new,
@@ -223,6 +290,7 @@ struct TaskSectionView: View {
         task.title = formData.title
         task.deadline = formData.deadline
         task.hasDeadlineTime = formData.hasDeadlineTime
+        task.reminderOffsets = formData.reminderOffsets
         task.priority = formData.priority
         task.status = formData.status
         task.category = .tasks

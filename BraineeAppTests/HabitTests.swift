@@ -2,7 +2,7 @@
 //  HabitTests.swift
 //  BraineeAppTests
 //
-//  Привычки: отметки по дням, лимит 7, процент за день, миграция JSON.
+//  Привычки: отметки по дням, лимит 7, прогресс за день, миграция JSON.
 
 import Foundation
 import Testing
@@ -59,51 +59,92 @@ struct HabitTests {
         #expect(document.version == MyTasksDocument.currentVersion)
     }
 
-    @Test func сеткаContribution_текущаяНеделяСправаКакGitHub() {
-        // Как у GitHub: текущая неделя — крайний правый столбец, слева только прошлое.
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: .now)
-        let width: CGFloat = 320
-        let span = HabitProgress.weekSpan(forAvailableWidth: width)
-        #expect(span.weeksAfter == 0)
-        #expect(span.weeksBefore >= 6)
+    @Test func окноТрёхМесяцев_полныйТекущийИДваПредыдущих() {
+        // Справа — полный текущий месяц (включая будущие дни), слева — 2 предыдущих.
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.firstWeekday = 2 // понедельник
+        let today = calendar.date(from: DateComponents(year: 2026, month: 8, day: 8))!
 
-        let days = HabitProgress.contributionDays(
-            weeksBefore: span.weeksBefore,
-            weeksAfter: span.weeksAfter
+        let days = HabitProgress.threeMonthContributionDays(
+            previousMonths: 2,
+            centeredOn: today,
+            calendar: calendar
         )
-        #expect(days.count == (span.weeksBefore + 1) * 7)
+        #expect(!days.isEmpty)
+
+        let june1 = calendar.date(from: DateComponents(year: 2026, month: 6, day: 1))!
+        let aug31 = calendar.date(from: DateComponents(year: 2026, month: 8, day: 31))!
+        #expect(days.contains(where: { calendar.isDate($0, inSameDayAs: june1) }))
+        #expect(days.contains(where: { calendar.isDate($0, inSameDayAs: aug31) }))
         #expect(days.contains(where: { calendar.isDate($0, inSameDayAs: today) }))
-        // Сегодня не левее последней недели: правый край сетки — текущая неделя.
-        let lastSeven = Array(days.suffix(7))
-        #expect(lastSeven.contains(where: { calendar.isDate($0, inSameDayAs: today) }))
 
-        // Сетка с учётом month-gap не шире доступной области.
         let columns = HabitProgress.columns(from: days)
-        let boundaries = HabitProgress.monthBoundaryIndices(after: columns)
-        let weekCount = span.weeksBefore + 1
-        let gaps = HabitProgress.gapWidth(
-            weekCount: weekCount,
-            boundaryCount: boundaries.count,
-            gap: 3,
-            monthGap: 8
+        let bands = HabitProgress.monthBands(
+            for: columns,
+            centeredOn: today,
+            previousMonths: 2,
+            calendar: calendar
         )
-        let gridWidth = CGFloat(weekCount) * span.cellSize + gaps
+        #expect(bands.count == 3)
+        #expect(bands.map(\.month) == [6, 7, 8])
+        // Текущий месяц — последняя полоса и занимает несколько колонок (полный месяц).
+        #expect(bands.last?.month == 8)
+        #expect((bands.last?.columnEndExclusive ?? 0) - (bands.last?.columnStart ?? 0) >= 4)
+        // Хвост недели после 31 августа может заходить в сентябрь, но отдельной полосы «сент» нет.
+        #expect(bands.last?.columnEndExclusive == columns.count)
+    }
+
+    @Test func подписиМесяцев_триПолосыСЦентрами() {
+        // Три полосы месяцев — для выравнивания подписи по центру блока.
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.firstWeekday = 2
+        let today = calendar.date(from: DateComponents(year: 2026, month: 8, day: 8))!
+        let days = HabitProgress.threeMonthContributionDays(centeredOn: today, calendar: calendar)
+        let columns = HabitProgress.columns(from: days)
+        let ranges = HabitProgress.monthColumnRanges(
+            for: columns,
+            centeredOn: today,
+            calendar: calendar
+        )
+        #expect(ranges.count == 3)
+        #expect(ranges[0].start == 0)
+        #expect(ranges[2].endExclusive == columns.count)
+    }
+
+    @Test func размерЯчеекТрёхМесяцев_помещаетсяВШирину() {
+        // Сетка трёх месяцев не шире доступной области.
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.firstWeekday = 2
+        let today = calendar.date(from: DateComponents(year: 2026, month: 8, day: 8))!
+        let width: CGFloat = 320
+        let layout = HabitProgress.cellSizeForThreeMonthWindow(
+            availableWidth: width,
+            labelColumnWidth: 22,
+            gap: 3,
+            monthGap: 8,
+            minCell: 8,
+            centeredOn: today,
+            calendar: calendar
+        )
         let available = width - 22 - 3
-        #expect(gridWidth <= available + 0.5)
+        #expect(layout.gridWidth <= available + 0.5)
+        #expect(layout.bands.count == 3)
+        #expect(layout.cellSize >= 4)
     }
 
     @Test func отступМеждуМесяцами_наГраницеМесяцев() {
         // Между колонками разных месяцев помечаем границу для визуального gap.
-        let calendar = Calendar.current
-        let jan = calendar.date(from: DateComponents(year: 2026, month: 1, day: 26))!
-        let feb = calendar.date(from: DateComponents(year: 2026, month: 2, day: 2))!
-        let columns: [[Date]] = [
-            (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: jan) },
-            (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: feb) }
-        ]
-        let boundaries = HabitProgress.monthBoundaryIndices(after: columns)
-        #expect(boundaries.contains(0))
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.firstWeekday = 2
+        let today = calendar.date(from: DateComponents(year: 2026, month: 8, day: 8))!
+        let days = HabitProgress.threeMonthContributionDays(centeredOn: today, calendar: calendar)
+        let columns = HabitProgress.columns(from: days)
+        let boundaries = HabitProgress.monthBoundaryIndices(
+            after: columns,
+            centeredOn: today,
+            calendar: calendar
+        )
+        #expect(boundaries.count == 2)
     }
 
     @Test func перестановкаСортировки_обновляетПорядок() throws {
