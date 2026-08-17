@@ -133,25 +133,29 @@ enum AppNotifications {
         let settings = NotificationSettings.load(defaults: defaults)
         center.removeAllPendingNotificationRequests()
 
-        guard settings.isEnabled else { return }
-        let status = await authorizationStatus(center: center)
-        guard status == .authorized || status == .provisional else { return }
+        if settings.isEnabled {
+            let status = await authorizationStatus(center: center)
+            if status == .authorized || status == .provisional {
+                if settings.tasksEnabled {
+                    scheduleTasksReminder(tasks: tasks, center: center)
+                }
+                if settings.habitsEnabled, !habits.isEmpty {
+                    scheduleHabitsReminder(settings: settings, habits: habits, center: center)
+                }
+                if settings.deadlineApproachingEnabled || settings.deadlineOverdueEnabled {
+                    scheduleDeadlineReminders(
+                        settings: settings,
+                        tasks: tasks,
+                        center: center,
+                        now: now,
+                        calendar: calendar
+                    )
+                }
+            }
+        }
 
-        if settings.tasksEnabled {
-            scheduleTasksReminder(tasks: tasks, center: center)
-        }
-        if settings.habitsEnabled, !habits.isEmpty {
-            scheduleHabitsReminder(settings: settings, habits: habits, center: center)
-        }
-        if settings.deadlineApproachingEnabled || settings.deadlineOverdueEnabled {
-            scheduleDeadlineReminders(
-                settings: settings,
-                tasks: tasks,
-                center: center,
-                now: now,
-                calendar: calendar
-            )
-        }
+        // Наклейка на иконке считается из задач и не зависит от пуш-расписания.
+        await AppBadgeSync.sync(tasks: tasks, defaults: defaults, center: center)
     }
 
     static func refresh(from context: ModelContext) async {

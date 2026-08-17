@@ -2,7 +2,8 @@
 //  HabitsView.swift
 //  BraineeApp
 //
-//  Привычки: contribution-календарь, прогресс сегодня, список до 7 штук.
+//  Привычки: contribution-календарь, прогресс за день, список до 7 штук.
+//  День отметок можно листать назад до 14 суток.
 
 import SwiftUI
 import SwiftData
@@ -18,10 +19,13 @@ struct HabitsView: View {
     @State private var habitPendingDeletion: Habit?
     @State private var showingDeleteConfirm = false
     @State private var draggingUUID: UUID?
+    /// День, за который отмечаем привычки и считаем прогресс (сегодня…−14).
+    @State private var selectedDay = HabitDaySelection.startOfDay(.now)
+    @State private var isLimitsHintExpanded = false
     @Namespace private var habitReorderNamespace
 
-    private var todayProgress: Double {
-        HabitProgress.completionRatio(for: .now, habits: habits)
+    private var selectedDayProgress: Double {
+        HabitProgress.completionRatio(for: selectedDay, habits: habits)
     }
 
     private var canAddMore: Bool {
@@ -30,6 +34,14 @@ struct HabitsView: View {
 
     private var springAnimation: Animation {
         .spring(response: 0.32, dampingFraction: 0.82)
+    }
+
+    private var canGoToPreviousDay: Bool {
+        HabitDaySelection.canMoveBack(selectedDay)
+    }
+
+    private var canGoToNextDay: Bool {
+        HabitDaySelection.canMoveForward(selectedDay)
     }
 
     var body: some View {
@@ -83,6 +95,7 @@ struct HabitsView: View {
                         modelContext.persistToJSON()
                     },
                     onDelete: {
+                        // Подтверждение уже в форме; удаляем после «Удалить».
                         deleteHabit(habit)
                     }
                 )
@@ -100,36 +113,135 @@ struct HabitsView: View {
             } message: {
                 Text("История отметок этой привычки будет удалена.")
             }
+            .onAppear {
+                selectedDay = HabitDaySelection.clamp(selectedDay)
+            }
         }
     }
 
     private var progressSection: some View {
         GroupedSection(title: "Прогресс") {
             VStack(alignment: .leading, spacing: DesignSystem.Space.x3) {
-                HabitContributionCalendar(habits: habits)
+                HabitContributionCalendar(habits: habits, selectedDay: selectedDay)
                     .padding(.top, DesignSystem.Space.x1)
 
                 VStack(alignment: .leading, spacing: DesignSystem.Space.x1) {
                     HStack {
-                        Text("Сегодня")
+                        Text(HabitDaySelection.title(for: selectedDay))
                             .font(DesignSystem.Typography.caption())
                             .foregroundStyle(DesignSystem.Colors.textSecondary)
                         Spacer()
-                        Text(todayProgressLabel)
+                        Text(selectedDayProgressLabel)
                             .font(DesignSystem.Typography.caption())
                             .foregroundStyle(DesignSystem.Colors.textSecondary)
                     }
-                    AppProgressBar(value: todayProgress)
+                    AppProgressBar(value: selectedDayProgress)
                 }
+
+                limitsHint
+
+                daySwitcher
             }
             .padding(.horizontal, DesignSystem.Space.x3)
             .padding(.vertical, DesignSystem.Space.x3)
         }
     }
 
-    private var todayProgressLabel: String {
+    private var limitsHint: some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Space.x2) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isLimitsHintExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: DesignSystem.Space.x2) {
+                    Image(systemName: "info.circle")
+                        .font(.system(size: 14, weight: .regular))
+                        .foregroundStyle(DesignSystem.Colors.accent)
+                    Text("Подсказка по ограничениям")
+                        .font(DesignSystem.Typography.caption())
+                        .foregroundStyle(DesignSystem.Colors.textSecondary)
+                    Spacer(minLength: DesignSystem.Space.x2)
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(DesignSystem.Colors.textSecondary.opacity(0.8))
+                        .rotationEffect(.degrees(isLimitsHintExpanded ? 180 : 0))
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Подсказка по ограничениям")
+            .accessibilityHint(isLimitsHintExpanded ? "Свернуть" : "Развернуть")
+
+            if isLimitsHintExpanded {
+                VStack(alignment: .leading, spacing: DesignSystem.Space.x1) {
+                    Text("• Не больше \(Habit.maxCount) привычек.")
+                    Text("• Отметки можно ставить и менять за сегодня и \(HabitDaySelection.maxDaysBack) предыдущих дней.")
+                    Text("• Будущие дни недоступны для отметок.")
+                    Text("• Данные хранятся только на этом устройстве.")
+                }
+                .font(DesignSystem.Typography.caption())
+                .foregroundStyle(DesignSystem.Colors.textSecondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .padding(.horizontal, DesignSystem.Space.x2)
+        .padding(.vertical, DesignSystem.Space.x2)
+        .background(DesignSystem.Colors.chip.opacity(0.4))
+        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Radius.card, style: .continuous))
+    }
+
+    private var daySwitcher: some View {
+        HStack(spacing: DesignSystem.Space.x2) {
+            Button {
+                selectedDay = HabitDaySelection.shifting(selectedDay, by: -1)
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(
+                        canGoToPreviousDay
+                            ? DesignSystem.Colors.accent
+                            : DesignSystem.Colors.textSecondary.opacity(0.35)
+                    )
+                    .frame(width: 36, height: 36)
+                    .contentShape(Rectangle())
+            }
+            .disabled(!canGoToPreviousDay)
+            .accessibilityLabel("Предыдущий день")
+
+            Text(HabitDaySelection.title(for: selectedDay))
+                .font(DesignSystem.Typography.body(15))
+                .foregroundStyle(DesignSystem.Colors.textPrimary)
+                .frame(maxWidth: .infinity)
+                .multilineTextAlignment(.center)
+                .accessibilityLabel("Выбранный день")
+
+            Button {
+                selectedDay = HabitDaySelection.shifting(selectedDay, by: 1)
+            } label: {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(
+                        canGoToNextDay
+                            ? DesignSystem.Colors.accent
+                            : DesignSystem.Colors.textSecondary.opacity(0.35)
+                    )
+                    .frame(width: 36, height: 36)
+                    .contentShape(Rectangle())
+            }
+            .disabled(!canGoToNextDay)
+            .accessibilityLabel("Следующий день")
+        }
+        .padding(.horizontal, DesignSystem.Space.x1)
+        .padding(.vertical, DesignSystem.Space.x1)
+        .background(DesignSystem.Colors.chip.opacity(0.55))
+        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Radius.group, style: .continuous))
+    }
+
+    private var selectedDayProgressLabel: String {
         guard !habits.isEmpty else { return "0%" }
-        let percent = Int((todayProgress * 100).rounded())
+        let percent = Int((selectedDayProgress * 100).rounded())
         return "\(percent)%"
     }
 
@@ -158,22 +270,23 @@ struct HabitsView: View {
                     }
                 }
                 .animation(springAnimation, value: habits.map(\.uuid))
+                .animation(springAnimation, value: Habit.dayKey(for: selectedDay))
             }
         }
     }
 
     private func habitRow(_ habit: Habit) -> some View {
-        let doneToday = habit.isCompleted(on: .now)
+        let doneOnSelectedDay = habit.isCompleted(on: selectedDay)
         let isDragging = draggingUUID == habit.uuid
 
         return HStack(spacing: DesignSystem.Space.x2) {
             Button {
                 toggleHabit(habit)
             } label: {
-                Image(systemName: doneToday ? DesignSystem.Icon.checkboxOn : DesignSystem.Icon.checkboxOff)
+                Image(systemName: doneOnSelectedDay ? DesignSystem.Icon.checkboxOn : DesignSystem.Icon.checkboxOff)
                     .font(.system(size: 18, weight: .regular))
                     .foregroundStyle(
-                        doneToday
+                        doneOnSelectedDay
                             ? DesignSystem.Colors.accent
                             : DesignSystem.Colors.textSecondary
                     )
@@ -181,12 +294,17 @@ struct HabitsView: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(
+                doneOnSelectedDay
+                    ? "Снять отметку за \(HabitDaySelection.title(for: selectedDay))"
+                    : "Отметить за \(HabitDaySelection.title(for: selectedDay))"
+            )
 
             Text(habit.title)
                 .font(DesignSystem.Typography.body(16))
-                .strikethrough(doneToday)
+                .strikethrough(doneOnSelectedDay)
                 .foregroundStyle(
-                    doneToday
+                    doneOnSelectedDay
                         ? DesignSystem.Colors.textSecondary
                         : DesignSystem.Colors.textPrimary
                 )
@@ -212,8 +330,7 @@ struct HabitsView: View {
                     compact: true,
                     accessibilityLabel: "Удалить привычку"
                 ) {
-                    habitPendingDeletion = habit
-                    showingDeleteConfirm = true
+                    requestDelete(habit)
                 }
             }
 
@@ -261,11 +378,17 @@ struct HabitsView: View {
             .shadow(color: .black.opacity(0.18), radius: 10, y: 4)
     }
 
+    private func requestDelete(_ habit: Habit) {
+        habitPendingDeletion = habit
+        showingDeleteConfirm = true
+    }
+
     private func toggleHabit(_ habit: Habit) {
+        let day = HabitDaySelection.clamp(selectedDay)
         withAnimation {
-            habit.toggleCompletion(on: .now)
+            habit.toggleCompletion(on: day)
         }
-        if habit.isCompleted(on: .now) {
+        if habit.isCompleted(on: day) {
             HapticFeedback.success()
         }
         modelContext.persistToJSON()

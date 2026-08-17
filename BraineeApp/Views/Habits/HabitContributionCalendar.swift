@@ -9,6 +9,8 @@ import SwiftUI
 
 struct HabitContributionCalendar: View {
     let habits: [Habit]
+    /// День, выбранный переключателем в разделе Привычки — подсвечивается в сетке.
+    var selectedDay: Date = .now
 
     @AppStorage(AccentPalette.storageKey) private var accentPaletteRaw = AccentPalette.orange.rawValue
     @State private var measuredWidth: CGFloat = 0
@@ -21,6 +23,10 @@ struct HabitContributionCalendar: View {
 
     private var accentColor: Color {
         AccentPalette.resolved(from: accentPaletteRaw).color
+    }
+
+    private var selectedDayStart: Date {
+        Calendar.current.startOfDay(for: selectedDay)
     }
 
     private var layoutHeight: CGFloat {
@@ -122,13 +128,25 @@ struct HabitContributionCalendar: View {
                     ForEach(Array(columns.enumerated()), id: \.offset) { columnIndex, week in
                         VStack(spacing: cellGap) {
                             ForEach(week, id: \.self) { day in
+                                let dayStart = Calendar.current.startOfDay(for: day)
+                                let isSelected = Calendar.current.isDate(dayStart, inSameDayAs: selectedDayStart)
+                                let isToday = Calendar.current.isDateInToday(day)
                                 RoundedRectangle(cornerRadius: 2, style: .continuous)
                                     .fill(cellColor(for: day))
                                     .frame(width: cellSize, height: cellSize)
                                     .overlay {
-                                        if Calendar.current.isDateInToday(day) {
+                                        if isSelected {
                                             RoundedRectangle(cornerRadius: 2, style: .continuous)
-                                                .strokeBorder(accentColor, lineWidth: 1)
+                                                .strokeBorder(accentColor, lineWidth: 2)
+                                        } else if isToday {
+                                            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                                                .strokeBorder(accentColor.opacity(0.55), lineWidth: 1)
+                                        }
+                                    }
+                                    .overlay {
+                                        if isSelected {
+                                            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                                                .fill(accentColor.opacity(0.18))
                                         }
                                     }
                             }

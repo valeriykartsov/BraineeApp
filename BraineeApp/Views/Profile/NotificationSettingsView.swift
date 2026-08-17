@@ -50,6 +50,48 @@ struct NotificationSettingsView: View {
                     .padding(DesignSystem.Space.x3)
                 }
 
+                GroupedSection(title: "Наклейка на иконке") {
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(Array(AppIconBadgeMode.allCases.enumerated()), id: \.element.id) { index, mode in
+                            Button {
+                                settings.iconBadgeMode = mode
+                                persistAndRefresh()
+                            } label: {
+                                HStack(alignment: .top, spacing: DesignSystem.Space.x2) {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(mode.title)
+                                            .font(DesignSystem.Typography.body(16))
+                                            .foregroundStyle(DesignSystem.Colors.textPrimary)
+                                        Text(mode.subtitle)
+                                            .font(DesignSystem.Typography.caption())
+                                            .foregroundStyle(DesignSystem.Colors.textSecondary)
+                                            .multilineTextAlignment(.leading)
+                                    }
+                                    Spacer(minLength: DesignSystem.Space.x2)
+                                    if settings.iconBadgeMode == mode {
+                                        Image(systemName: DesignSystem.Icon.check)
+                                            .font(.system(size: 14, weight: .semibold))
+                                            .foregroundStyle(DesignSystem.Colors.accent)
+                                    }
+                                }
+                                .padding(DesignSystem.Space.x3)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+
+                            if index < AppIconBadgeMode.allCases.count - 1 {
+                                InsetDivider(leading: DesignSystem.Space.x3)
+                            }
+                        }
+
+                        Text("Тот же счётчик показывается на вкладке «Задачи». На Home Screen система рисует красный кружок — его также можно отключить в настройках iOS → Уведомления → BraineeApp → Наклейки.")
+                            .font(DesignSystem.Typography.caption())
+                            .foregroundStyle(DesignSystem.Colors.textSecondary)
+                            .padding(.horizontal, DesignSystem.Space.x3)
+                            .padding(.bottom, DesignSystem.Space.x3)
+                    }
+                }
+
                 if settings.isEnabled {
                     GroupedSection(title: "Задачи") {
                         toggleRow(
