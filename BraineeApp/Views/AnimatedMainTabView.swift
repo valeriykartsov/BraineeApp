@@ -6,13 +6,22 @@
 //  Контент табов не уничтожается при переключении — без лагов от пересоздания @Query.
 
 import SwiftUI
+import SwiftData
 
 struct AnimatedMainTabView: View {
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.modelContext) private var modelContext
+
     @AppStorage("appTheme") private var appThemeRaw = AppTheme.system.rawValue
     @AppStorage(AccentPalette.storageKey) private var accentPaletteRaw = AccentPalette.orange.rawValue
     @AppStorage(TabBarSettings.showCalendarKey) private var showCalendar = true
     @AppStorage(TabBarSettings.showMatrixKey) private var showMatrix = false
     @AppStorage(TabBarSettings.showHabitsKey) private var showHabits = false
+    @AppStorage(NotificationSettings.iconBadgeModeKey) private var iconBadgeModeRaw = AppIconBadgeMode.overdue.rawValue
+
+    @Query(filter: #Predicate<TaskItem> { !$0.isSoftDeleted })
+    private var tasks: [TaskItem]
+
     @ObservedObject private var deepLinkRouter = NotificationDeepLinkRouter.shared
     @State private var selectedTab: MainTab = .tasks
     @Namespace private var tabUnderlineNamespace
@@ -39,6 +48,15 @@ struct AnimatedMainTabView: View {
 
     private var tabVisibilityToken: String {
         "\(showCalendar)-\(showMatrix)-\(showHabits)"
+    }
+
+    private var iconBadgeMode: AppIconBadgeMode {
+        AppIconBadgeMode.resolved(from: iconBadgeModeRaw)
+    }
+
+    private var tasksTabBadgeText: String? {
+        let count = AppBadgeCounter.count(tasks: Array(tasks), mode: iconBadgeMode)
+        return AppBadgeCounter.displayText(for: count)
     }
 
     var body: some View {
@@ -93,6 +111,14 @@ struct AnimatedMainTabView: View {
                 selectedTab = .tasks
             }
         }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                Task { await AppNotifications.refresh(from: modelContext) }
+            }
+        }
+        .onChange(of: iconBadgeModeRaw) { _, _ in
+            Task { await AppBadgeSync.sync(tasks: Array(tasks)) }
+        }
     }
 
     private var tabBar: some View {
@@ -106,9 +132,26 @@ struct AnimatedMainTabView: View {
                     }
                 } label: {
                     VStack(spacing: 3) {
-                        Image(systemName: isActive ? tab.selectedSystemImage : tab.systemImage)
-                            .font(.system(size: 20, weight: isActive ? .semibold : .regular))
-                            .frame(height: 22)
+                        ZStack(alignment: .topTrailing) {
+                            Image(systemName: isActive ? tab.selectedSystemImage : tab.systemImage)
+                                .font(.system(size: 20, weight: isActive ? .semibold : .regular))
+                                .frame(width: 28, height: 22)
+
+                            if tab == .tasks, let badge = tasksTabBadgeText {
+                                Text(badge)
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 4)
+                                    .padding(.vertical, 1)
+                                    .background(
+                                        Capsule(style: .continuous)
+                                            .fill(DesignSystem.Colors.danger)
+                                    )
+                                    .offset(x: 10, y: -5)
+                                    .accessibilityLabel("\(badge) по выбранному режиму наклейки")
+                            }
+                        }
+                        .frame(height: 22)
 
                         Text(tab.title)
                             .font(.system(size: 9, weight: .medium))

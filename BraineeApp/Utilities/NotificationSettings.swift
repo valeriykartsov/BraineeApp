@@ -21,9 +21,13 @@ struct NotificationSettings: Codable, Equatable {
     var deadlineApproachingEnabled: Bool
     /// Напоминание о просроченном дедлайне.
     var deadlineOverdueEnabled: Bool
+    /// Что показывать на иконке и на вкладке «Задачи».
+    var iconBadgeMode: AppIconBadgeMode
 
     static let storageKey = "notificationSettings"
     static let didRequestPermissionKey = "notificationDidRequestPermission"
+    /// Дублируем raw mode для @AppStorage на таб-баре (мгновенный refresh UI).
+    static let iconBadgeModeKey = "appIconBadgeMode"
 
     static let `default` = NotificationSettings(
         isEnabled: false,
@@ -32,13 +36,15 @@ struct NotificationSettings: Codable, Equatable {
         habitsHour: 9,
         habitsMinute: 0,
         deadlineApproachingEnabled: true,
-        deadlineOverdueEnabled: true
+        deadlineOverdueEnabled: true,
+        iconBadgeMode: .overdue
     )
 
     enum CodingKeys: String, CodingKey {
         case isEnabled, tasksEnabled, habitsEnabled
         case habitsHour, habitsMinute
         case deadlineApproachingEnabled, deadlineOverdueEnabled
+        case iconBadgeMode
     }
 
     init(
@@ -48,7 +54,8 @@ struct NotificationSettings: Codable, Equatable {
         habitsHour: Int,
         habitsMinute: Int,
         deadlineApproachingEnabled: Bool,
-        deadlineOverdueEnabled: Bool
+        deadlineOverdueEnabled: Bool,
+        iconBadgeMode: AppIconBadgeMode
     ) {
         self.isEnabled = isEnabled
         self.tasksEnabled = tasksEnabled
@@ -57,6 +64,7 @@ struct NotificationSettings: Codable, Equatable {
         self.habitsMinute = Self.clampedMinute(habitsMinute)
         self.deadlineApproachingEnabled = deadlineApproachingEnabled
         self.deadlineOverdueEnabled = deadlineOverdueEnabled
+        self.iconBadgeMode = iconBadgeMode
     }
 
     init(from decoder: Decoder) throws {
@@ -68,19 +76,30 @@ struct NotificationSettings: Codable, Equatable {
         habitsMinute = Self.clampedMinute(try container.decodeIfPresent(Int.self, forKey: .habitsMinute) ?? 0)
         deadlineApproachingEnabled = try container.decodeIfPresent(Bool.self, forKey: .deadlineApproachingEnabled) ?? true
         deadlineOverdueEnabled = try container.decodeIfPresent(Bool.self, forKey: .deadlineOverdueEnabled) ?? true
+        if let raw = try container.decodeIfPresent(String.self, forKey: .iconBadgeMode) {
+            iconBadgeMode = AppIconBadgeMode.resolved(from: raw)
+        } else {
+            iconBadgeMode = .overdue
+        }
     }
 
     static func load(defaults: UserDefaults = .standard) -> NotificationSettings {
-        guard let data = defaults.data(forKey: storageKey),
-              let decoded = try? JSONDecoder().decode(NotificationSettings.self, from: data) else {
-            return .default
+        let loaded: NotificationSettings
+        if let data = defaults.data(forKey: storageKey),
+           let decoded = try? JSONDecoder().decode(NotificationSettings.self, from: data) {
+            loaded = decoded
+        } else {
+            loaded = .default
         }
-        return decoded
+        // Держим @AppStorage-ключ в синхроне для таб-бара.
+        defaults.set(loaded.iconBadgeMode.rawValue, forKey: iconBadgeModeKey)
+        return loaded
     }
 
     func save(defaults: UserDefaults = .standard) {
         guard let data = try? JSONEncoder().encode(self) else { return }
         defaults.set(data, forKey: Self.storageKey)
+        defaults.set(iconBadgeMode.rawValue, forKey: Self.iconBadgeModeKey)
     }
 
     /// Время напоминания о привычках как Date (сегодня + час/минута).

@@ -27,6 +27,7 @@ struct NotificationSettingsTests {
         #expect(settings.habitsMinute == 0)
         #expect(settings.deadlineApproachingEnabled == true)
         #expect(settings.deadlineOverdueEnabled == true)
+        #expect(settings.iconBadgeMode == .overdue)
     }
 
     @Test func saveLoad_сохраняетВсеФлагиИВремя() {
@@ -39,10 +40,12 @@ struct NotificationSettingsTests {
         settings.habitsMinute = 30
         settings.deadlineApproachingEnabled = false
         settings.deadlineOverdueEnabled = true
+        settings.iconBadgeMode = .todayAndOverdue
         settings.save(defaults: defaults)
 
         let loaded = NotificationSettings.load(defaults: defaults)
         #expect(loaded == settings)
+        #expect(defaults.string(forKey: NotificationSettings.iconBadgeModeKey) == AppIconBadgeMode.todayAndOverdue.rawValue)
     }
 
     @Test func старыйJSONБезПолей_читаетСДефолтами() throws {
@@ -54,6 +57,7 @@ struct NotificationSettingsTests {
         #expect(loaded.isEnabled == true)
         #expect(loaded.tasksEnabled == true)
         #expect(loaded.habitsHour == 9)
+        #expect(loaded.iconBadgeMode == .overdue)
     }
 
     @Test func времяПривычек_изDatePickerОбновляетЧасИМинуту() {
