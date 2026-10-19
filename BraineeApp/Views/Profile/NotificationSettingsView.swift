@@ -93,22 +93,43 @@ struct NotificationSettingsView: View {
                 }
 
                 if settings.isEnabled {
-                    GroupedSection(title: "Задачи") {
-                        toggleRow(
-                            title: "Напоминания о задачах",
-                            subtitle: "Ежедневно, если есть незакрытые задачи",
-                            isOn: Binding(
+                    GroupedSection(title: "Использование приложения") {
+                        VStack(alignment: .leading, spacing: DesignSystem.Space.x3) {
+                            Toggle(isOn: Binding(
                                 get: { settings.tasksEnabled },
                                 set: {
                                     settings.tasksEnabled = $0
                                     persistAndRefresh()
                                 }
-                            )
-                        )
-                    }
+                            )) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Напоминание о задачах")
+                                        .font(DesignSystem.Typography.body(16))
+                                        .foregroundStyle(DesignSystem.Colors.textPrimary)
+                                    Text("Ежедневный пуш, если есть незакрытые задачи")
+                                        .font(DesignSystem.Typography.caption())
+                                        .foregroundStyle(DesignSystem.Colors.textSecondary)
+                                }
+                            }
+                            .tint(DesignSystem.Colors.accent)
 
-                    GroupedSection(title: "Привычки") {
-                        VStack(alignment: .leading, spacing: DesignSystem.Space.x3) {
+                            if settings.tasksEnabled {
+                                DatePicker(
+                                    "Время (задачи)",
+                                    selection: Binding(
+                                        get: { settings.tasksReminderDate },
+                                        set: {
+                                            settings.tasksReminderDate = $0
+                                            persistAndRefresh()
+                                        }
+                                    ),
+                                    displayedComponents: .hourAndMinute
+                                )
+                                .tint(DesignSystem.Colors.accent)
+                            }
+
+                            AppDivider()
+
                             Toggle(isOn: Binding(
                                 get: { settings.habitsEnabled },
                                 set: {
@@ -117,10 +138,10 @@ struct NotificationSettingsView: View {
                                 }
                             )) {
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text("Напоминания о привычках")
+                                    Text("Напоминание о привычках")
                                         .font(DesignSystem.Typography.body(16))
                                         .foregroundStyle(DesignSystem.Colors.textPrimary)
-                                    Text("Ежедневное напоминание")
+                                    Text("Ежедневный пуш — отметить привычки")
                                         .font(DesignSystem.Typography.caption())
                                         .foregroundStyle(DesignSystem.Colors.textSecondary)
                                 }
@@ -129,7 +150,7 @@ struct NotificationSettingsView: View {
 
                             if settings.habitsEnabled {
                                 DatePicker(
-                                    "Время напоминания",
+                                    "Время (привычки)",
                                     selection: Binding(
                                         get: { settings.habitsReminderDate },
                                         set: {

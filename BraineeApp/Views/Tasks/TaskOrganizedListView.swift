@@ -347,9 +347,14 @@ struct TaskOrganizedListView: View {
             onDelete: { onDelete(task) }
         ) {
             HStack(spacing: DesignSystem.Space.x2) {
-                TaskRowView(task: task, displaySettings: displaySettings) {
-                    onToggle(task)
-                }
+                TaskRowView(
+                    task: task,
+                    displaySettings: displaySettings,
+                    showsActionButtons: true,
+                    onToggle: { onToggle(task) },
+                    onEdit: { onEdit(task) },
+                    onDelete: { onDelete(task) }
+                )
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
                 .onTapGesture {

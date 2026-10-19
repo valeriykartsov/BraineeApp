@@ -137,7 +137,7 @@ enum AppNotifications {
             let status = await authorizationStatus(center: center)
             if status == .authorized || status == .provisional {
                 if settings.tasksEnabled {
-                    scheduleTasksReminder(tasks: tasks, center: center)
+                    scheduleTasksReminder(tasks: tasks, settings: settings, center: center)
                 }
                 if settings.habitsEnabled, !habits.isEmpty {
                     scheduleHabitsReminder(settings: settings, habits: habits, center: center)
@@ -168,19 +168,20 @@ enum AppNotifications {
 
     private static func scheduleTasksReminder(
         tasks: [TaskItem],
+        settings: NotificationSettings,
         center: UNUserNotificationCenter
     ) {
         let activeCount = tasks.filter { !$0.isCompleted }.count
         guard activeCount > 0 else { return }
 
         var date = DateComponents()
-        date.hour = 10
-        date.minute = 0
+        date.hour = settings.tasksHour
+        date.minute = settings.tasksMinute
         let content = UNMutableNotificationContent()
         content.title = "Задачи"
         content.body = activeCount == 1
-            ? "У вас 1 незакрытая задача"
-            : "У вас \(activeCount) незакрытых задач"
+            ? "Загляните в Brainee: 1 незакрытая задача"
+            : "Загляните в Brainee: \(activeCount) незакрытых задач"
         content.sound = .default
 
         let trigger = UNCalendarNotificationTrigger(dateMatching: date, repeats: true)
@@ -199,8 +200,8 @@ enum AppNotifications {
         let content = UNMutableNotificationContent()
         content.title = "Привычки"
         content.body = habits.count == 1
-            ? "Не забудьте отметить привычку «\(habits[0].title)»"
-            : "Время отметить привычки (\(habits.count))"
+            ? "Загляните в Brainee: отметьте «\(habits[0].title)»"
+            : "Загляните в Brainee: время отметить привычки (\(habits.count))"
         content.sound = .default
 
         let trigger = UNCalendarNotificationTrigger(dateMatching: date, repeats: true)

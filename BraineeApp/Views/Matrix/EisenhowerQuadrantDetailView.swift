@@ -28,16 +28,22 @@ struct EisenhowerQuadrantDetailView: View {
                 } else {
                     VStack(spacing: 0) {
                         ForEach(Array(tasks.enumerated()), id: \.element.uuid) { index, task in
-                            Button {
-                                editingTask = task
-                            } label: {
-                                TaskRowView(task: task, displaySettings: displaySettings) {
-                                    toggleTask(task)
-                                }
-                                .padding(.horizontal, DesignSystem.Space.x3)
-                                .padding(.vertical, DesignSystem.Space.x2)
+                            TaskRowView(
+                                task: task,
+                                displaySettings: displaySettings,
+                                showsActionButtons: true,
+                                onToggle: { toggleTask(task) },
+                                onEdit: { editingTask = task },
+                                onDelete: { softDelete(task) }
+                            )
+                            .padding(.horizontal, DesignSystem.Space.x3)
+                            .padding(.vertical, DesignSystem.Space.x2)
+                            .contentShape(Rectangle())
+                            .onTapGesture { editingTask = task }
+                            .contextMenu {
+                                Button("Редактировать") { editingTask = task }
+                                Button("Удалить", role: .destructive) { softDelete(task) }
                             }
-                            .buttonStyle(.plain)
 
                             if index < tasks.count - 1 {
                                 InsetDivider(leading: DesignSystem.Space.rowIconInset)

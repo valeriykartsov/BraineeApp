@@ -2,7 +2,8 @@
 //  TaskRowView.swift
 //  BraineeApp
 //
-//  Строка задачи: название + компактная meta-строка (дедлайн, статус, приоритет, теги).
+//  Строка задачи: чекбокс, название, meta; опционально изменить/удалить.
+//  Просроченные подсвечиваются бледно-красным фоном.
 
 import SwiftUI
 import SwiftData
@@ -10,50 +11,89 @@ import SwiftData
 struct TaskRowView: View {
     @Bindable var task: TaskItem
     var displaySettings: TaskListDisplaySettings = .default
+    var showsActionButtons: Bool = false
     var onToggle: () -> Void
+    var onEdit: (() -> Void)? = nil
+    var onDelete: (() -> Void)? = nil
 
     var body: some View {
-        HStack(alignment: .top, spacing: DesignSystem.Space.x2) {
-            Button(action: onToggle) {
-                Image(systemName: task.isCompleted ? DesignSystem.Icon.checkboxOn : DesignSystem.Icon.checkboxOff)
-                    .font(.system(size: 18, weight: .regular))
-                    .foregroundStyle(
-                        task.isCompleted
-                            ? DesignSystem.Colors.accent
-                            : DesignSystem.Colors.textSecondary
-                    )
-                    .frame(width: DesignSystem.Space.x5, height: DesignSystem.Space.x5)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .padding(.top, 1)
+        TimelineView(.periodic(from: .now, by: 30)) { context in
+            let overdue = !task.isCompleted && task.isOverdue(at: context.date)
+            HStack(alignment: .top, spacing: DesignSystem.Space.x2) {
+                Button(action: onToggle) {
+                    Image(systemName: task.isCompleted ? DesignSystem.Icon.checkboxOn : DesignSystem.Icon.checkboxOff)
+                        .font(.system(size: 18, weight: .regular))
+                        .foregroundStyle(
+                            task.isCompleted
+                                ? DesignSystem.Colors.accent
+                                : (overdue ? DesignSystem.Colors.danger : DesignSystem.Colors.textSecondary)
+                        )
+                        .frame(width: DesignSystem.Space.x5, height: DesignSystem.Space.x5)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 1)
+                .accessibilityLabel(task.isCompleted ? "Снять выполнение" : "Отметить выполненной")
 
-            VStack(alignment: .leading, spacing: DesignSystem.Space.x1) {
-                Text(task.title)
-                    .font(DesignSystem.Typography.body(16))
-                    .strikethrough(task.isCompleted)
-                    .foregroundStyle(
-                        task.isCompleted
-                            ? DesignSystem.Colors.textSecondary
-                            : DesignSystem.Colors.textPrimary
-                    )
-                    .multilineTextAlignment(.leading)
+                VStack(alignment: .leading, spacing: DesignSystem.Space.x1) {
+                    Text(task.title)
+                        .font(DesignSystem.Typography.body(16))
+                        .strikethrough(task.isCompleted)
+                        .foregroundStyle(
+                            task.isCompleted
+                                ? DesignSystem.Colors.textSecondary
+                                : DesignSystem.Colors.textPrimary
+                        )
+                        .multilineTextAlignment(.leading)
 
-                if displaySettings.showDetails, !task.taskDetails.isEmpty {
-                    Text(task.taskDetails)
-                        .font(DesignSystem.Typography.caption())
-                        .foregroundStyle(DesignSystem.Colors.textSecondary)
-                        .lineLimit(2)
+                    if displaySettings.showDetails, !task.taskDetails.isEmpty {
+                        Text(task.taskDetails)
+                            .font(DesignSystem.Typography.caption())
+                            .foregroundStyle(DesignSystem.Colors.textSecondary)
+                            .lineLimit(2)
+                    }
+
+                    if hasMeta {
+                        metaRow(now: context.date, overdue: overdue)
+                    }
                 }
 
-                if hasMeta {
-                    metaRow
+                Spacer(minLength: DesignSystem.Space.x2)
+
+                if showsActionButtons {
+                    HStack(spacing: 0) {
+                        if let onEdit {
+                            IconTapButton(
+                                systemName: DesignSystem.Icon.pencil,
+                                tint: DesignSystem.Colors.accent,
+                                compact: true,
+                                accessibilityLabel: "Изменить задачу"
+                            ) {
+                                onEdit()
+                            }
+                        }
+                        if let onDelete {
+                            IconTapButton(
+                                systemName: DesignSystem.Icon.trash,
+                                tint: DesignSystem.Colors.accent,
+                                compact: true,
+                                accessibilityLabel: "Удалить задачу"
+                            ) {
+                                onDelete()
+                            }
+                        }
+                    }
+                    .padding(.top, -2)
                 }
             }
-
-            Spacer(minLength: DesignSystem.Space.x2)
+            .opacity(task.isCompleted ? 0.55 : 1)
+            .padding(.vertical, overdue ? DesignSystem.Space.x1 : 0)
+            .padding(.horizontal, overdue ? DesignSystem.Space.x1 : 0)
+            .background(
+                RoundedRectangle(cornerRadius: DesignSystem.Radius.card, style: .continuous)
+                    .fill(overdue ? DesignSystem.Colors.dangerSoft : Color.clear)
+            )
         }
-        .opacity(task.isCompleted ? 0.55 : 1)
     }
 
     private var hasMeta: Bool {
@@ -63,19 +103,19 @@ struct TaskRowView: View {
             || (displaySettings.showTags && !task.tags.isEmpty)
     }
 
-    private var metaRow: some View {
+    private func metaRow(now: Date, overdue: Bool) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: DesignSystem.Space.x1) {
                 if displaySettings.showDeadline, let text = task.deadlineDisplayText {
-                    // Периодическое обновление: просрочка по времени появляется без перезапуска экрана.
-                    TimelineView(.periodic(from: .now, by: 30)) { context in
-                        MetaChip(
-                            text: text,
-                            foreground: task.isOverdue(at: context.date)
-                                ? DesignSystem.Colors.danger
-                                : DesignSystem.Colors.textSecondary
-                        )
-                    }
+                    MetaChip(
+                        text: text,
+                        foreground: overdue
+                            ? DesignSystem.Colors.danger
+                            : DesignSystem.Colors.textSecondary,
+                        background: overdue
+                            ? DesignSystem.Colors.danger.opacity(0.12)
+                            : DesignSystem.Colors.chip
+                    )
                 }
 
                 if displaySettings.showStatus {
@@ -109,6 +149,7 @@ struct TaskRowView: View {
 private struct MetaChip: View {
     let text: String
     let foreground: Color
+    var background: Color = DesignSystem.Colors.chip
 
     var body: some View {
         Text(text)
@@ -120,7 +161,7 @@ private struct MetaChip: View {
             .padding(.vertical, DesignSystem.Space.x1)
             .background(
                 Capsule(style: .continuous)
-                    .fill(DesignSystem.Colors.chip)
+                    .fill(background)
             )
     }
 }
@@ -130,12 +171,15 @@ private struct MetaChip: View {
         TaskRowView(
             task: TaskItem(
                 title: "Подготовить презентацию",
-                deadline: .now,
+                deadline: Calendar.current.date(byAdding: .day, value: -1, to: .now),
                 hasDeadlineTime: true,
                 priority: .highest,
                 taskDetails: "Слайды и тезисы"
             ),
-            onToggle: {}
+            showsActionButtons: true,
+            onToggle: {},
+            onEdit: {},
+            onDelete: {}
         )
         .padding(DesignSystem.Space.x4)
     }

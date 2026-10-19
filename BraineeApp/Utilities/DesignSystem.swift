@@ -82,6 +82,11 @@ enum DesignSystem {
             dark: Color(hex: 0x38383A)
         )
         static let danger = Color(hex: 0xD32F2F)
+        /// Фон просроченной задачи — очень бледный красный.
+        static let dangerSoft = Color.themeAdaptive(
+            light: Color(hex: 0xFFF0F0),
+            dark: Color(hex: 0x2A1515)
+        )
         static let success = Color(hex: 0x2E7D32)
     }
 

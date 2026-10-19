@@ -9,8 +9,12 @@ import Foundation
 struct NotificationSettings: Codable, Equatable {
     /// Мастер-свитчер «Разрешить уведомления».
     var isEnabled: Bool
-    /// Напоминания о незакрытых задачах.
+    /// Напоминание заглянуть в задачи (использование приложения).
     var tasksEnabled: Bool
+    /// Час напоминания о задачах (0…23).
+    var tasksHour: Int
+    /// Минута напоминания о задачах (0…59).
+    var tasksMinute: Int
     /// Ежедневное напоминание о привычках.
     var habitsEnabled: Bool
     /// Час напоминания о привычках (0…23).
@@ -32,6 +36,8 @@ struct NotificationSettings: Codable, Equatable {
     static let `default` = NotificationSettings(
         isEnabled: false,
         tasksEnabled: true,
+        tasksHour: 10,
+        tasksMinute: 0,
         habitsEnabled: true,
         habitsHour: 9,
         habitsMinute: 0,
@@ -41,8 +47,8 @@ struct NotificationSettings: Codable, Equatable {
     )
 
     enum CodingKeys: String, CodingKey {
-        case isEnabled, tasksEnabled, habitsEnabled
-        case habitsHour, habitsMinute
+        case isEnabled, tasksEnabled, tasksHour, tasksMinute
+        case habitsEnabled, habitsHour, habitsMinute
         case deadlineApproachingEnabled, deadlineOverdueEnabled
         case iconBadgeMode
     }
@@ -50,6 +56,8 @@ struct NotificationSettings: Codable, Equatable {
     init(
         isEnabled: Bool,
         tasksEnabled: Bool,
+        tasksHour: Int,
+        tasksMinute: Int,
         habitsEnabled: Bool,
         habitsHour: Int,
         habitsMinute: Int,
@@ -59,6 +67,8 @@ struct NotificationSettings: Codable, Equatable {
     ) {
         self.isEnabled = isEnabled
         self.tasksEnabled = tasksEnabled
+        self.tasksHour = Self.clampedHour(tasksHour)
+        self.tasksMinute = Self.clampedMinute(tasksMinute)
         self.habitsEnabled = habitsEnabled
         self.habitsHour = Self.clampedHour(habitsHour)
         self.habitsMinute = Self.clampedMinute(habitsMinute)
@@ -71,6 +81,8 @@ struct NotificationSettings: Codable, Equatable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         isEnabled = try container.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? false
         tasksEnabled = try container.decodeIfPresent(Bool.self, forKey: .tasksEnabled) ?? true
+        tasksHour = Self.clampedHour(try container.decodeIfPresent(Int.self, forKey: .tasksHour) ?? 10)
+        tasksMinute = Self.clampedMinute(try container.decodeIfPresent(Int.self, forKey: .tasksMinute) ?? 0)
         habitsEnabled = try container.decodeIfPresent(Bool.self, forKey: .habitsEnabled) ?? true
         habitsHour = Self.clampedHour(try container.decodeIfPresent(Int.self, forKey: .habitsHour) ?? 9)
         habitsMinute = Self.clampedMinute(try container.decodeIfPresent(Int.self, forKey: .habitsMinute) ?? 0)
@@ -100,6 +112,21 @@ struct NotificationSettings: Codable, Equatable {
         guard let data = try? JSONEncoder().encode(self) else { return }
         defaults.set(data, forKey: Self.storageKey)
         defaults.set(iconBadgeMode.rawValue, forKey: Self.iconBadgeModeKey)
+    }
+
+    /// Время напоминания о задачах как Date (сегодня + час/минута).
+    var tasksReminderDate: Date {
+        get {
+            var components = Calendar.current.dateComponents([.year, .month, .day], from: .now)
+            components.hour = tasksHour
+            components.minute = tasksMinute
+            return Calendar.current.date(from: components) ?? .now
+        }
+        set {
+            let components = Calendar.current.dateComponents([.hour, .minute], from: newValue)
+            tasksHour = Self.clampedHour(components.hour ?? 10)
+            tasksMinute = Self.clampedMinute(components.minute ?? 0)
+        }
     }
 
     /// Время напоминания о привычках как Date (сегодня + час/минута).
