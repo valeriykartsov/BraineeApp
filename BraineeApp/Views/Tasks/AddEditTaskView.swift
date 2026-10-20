@@ -81,11 +81,34 @@ struct AddEditTaskView: View {
         onSave: @escaping (TaskFormData) -> Void,
         onDelete: ((TaskItem) -> Void)? = nil
     ) {
-        self.editingTaskUUID = task?.uuid
+        self.init(
+            editingTaskUUID: task?.uuid,
+            snapshot: task.map(TaskFormSnapshot.init) ?? TaskFormSnapshot(),
+            deadline: task?.deadline,
+            onSave: onSave,
+            onDelete: onDelete
+        )
+    }
+
+    /// Новая задача с заранее заполненными полями (черновик LLM-3). Сохраняется так же, как обычная.
+    init(
+        prefill: TaskFormSnapshot,
+        deadline: Date?,
+        onSave: @escaping (TaskFormData) -> Void
+    ) {
+        self.init(editingTaskUUID: nil, snapshot: prefill, deadline: deadline, onSave: onSave, onDelete: nil)
+    }
+
+    private init(
+        editingTaskUUID: UUID?,
+        snapshot: TaskFormSnapshot,
+        deadline: Date?,
+        onSave: @escaping (TaskFormData) -> Void,
+        onDelete: ((TaskItem) -> Void)?
+    ) {
+        self.editingTaskUUID = editingTaskUUID
         self.onSave = onSave
         self.onDelete = onDelete
-
-        let snapshot = task.map(TaskFormSnapshot.init) ?? TaskFormSnapshot()
         self.initialSnapshot = snapshot
 
         _title = State(initialValue: snapshot.title)
@@ -98,7 +121,7 @@ struct AddEditTaskView: View {
         _hasDeadlineTime = State(initialValue: snapshot.hasDeadlineTime)
         _reminderOffsets = State(initialValue: snapshot.reminderOffsets)
         _selectedTagUUIDs = State(initialValue: snapshot.selectedTagUUIDs)
-        _deadline = State(initialValue: task?.deadline ?? Date())
+        _deadline = State(initialValue: deadline ?? Date())
     }
 
     var body: some View {
