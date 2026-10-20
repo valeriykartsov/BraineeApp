@@ -9,6 +9,9 @@ import SwiftData
 
 @Model
 final class TaskItem {
+    /// Один uuid — одна запись: повторная вставка обновляет существующую (upsert), а не создаёт дубль (D-17).
+    #Unique<TaskItem>([\.uuid])
+
     var title: String
     var isCompleted: Bool
     var deadline: Date?

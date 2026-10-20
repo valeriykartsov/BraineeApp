@@ -9,6 +9,9 @@ import SwiftData
 
 @Model
 final class TaskGroup {
+    /// Один uuid — одна запись: повторная вставка обновляет существующую (upsert), а не создаёт дубль (D-17).
+    #Unique<TaskGroup>([\.uuid])
+
     var name: String
     var categoryRaw: String
     var sortOrder: Int

@@ -9,6 +9,9 @@ import SwiftData
 
 @Model
 final class TaskTag {
+    /// Один uuid — одна запись: повторная вставка обновляет существующую (upsert), а не создаёт дубль (D-17).
+    #Unique<TaskTag>([\.uuid])
+
     var name: String
     var createdAt: Date
     var uuid: UUID

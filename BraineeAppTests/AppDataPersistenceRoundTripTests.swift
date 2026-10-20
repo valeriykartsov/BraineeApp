@@ -74,18 +74,35 @@ struct AppDataPersistenceRoundTripTests {
         #expect(habit.completedDayKeys == ["2026-01-01", "2026-01-03"])
     }
 
-    // ТЕКУЩЕЕ поведение: повторный импорт в тот же контекст создаёт дубликаты.
-    // Поэтому bootstrap сначала очищает SwiftData (clearAllData), а будущий мигратор (SD-2)
-    // обязан делать upsert по uuid.
-    @Test func повторныйИмпортБезОчистки_сейчасСоздаётДубликаты() throws {
+    // Повторный импорт в тот же контекст не создаёт дубликатов: #Unique по uuid
+    // превращает вставку в upsert (D-17), связи с группой и тегами сохраняются.
+    @Test func повторныйИмпортБезОчистки_неСоздаётДубликатов() throws {
         let context = container.mainContext
         let original = PersistenceFixtures.fullTasksDocument()
 
         AppDataPersistence.importTasks(original, into: context)
+        try context.save()
         AppDataPersistence.importTasks(original, into: context)
         try context.save()
 
-        #expect(try context.fetch(FetchDescriptor<TaskItem>()).count == original.tasks.count * 2)
+        #expect(try context.fetchCount(FetchDescriptor<TaskItem>()) == original.tasks.count)
+        #expect(try context.fetchCount(FetchDescriptor<TaskGroup>()) == original.groups.count)
+        #expect(try context.fetchCount(FetchDescriptor<TaskTag>()) == original.tags.count)
+        #expect(try context.fetchCount(FetchDescriptor<Habit>()) == original.habits.count)
+        RecordAssert.sameContent(AppDataPersistence.exportTasks(from: context), original)
+    }
+
+    // Повторный импорт профиля с тем же id не создаёт второй профиль.
+    @Test func повторныйИмпортПрофиля_неСоздаётДубликата() throws {
+        let context = container.mainContext
+        let original = PersistenceFixtures.profileDocument()
+
+        AppDataPersistence.importProfile(original, into: context)
+        try context.save()
+        AppDataPersistence.importProfile(original, into: context)
+        try context.save()
+
+        #expect(try context.fetchCount(FetchDescriptor<UserProfile>()) == 1)
     }
 
     // Профиль: имя, аватар, возраст, пол и дата создания переживают импорт и экспорт.

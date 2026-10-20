@@ -9,6 +9,9 @@ import SwiftData
 
 @Model
 final class Habit {
+    /// Один uuid — одна запись: повторная вставка обновляет существующую (upsert), а не создаёт дубль (D-17).
+    #Unique<Habit>([\.uuid])
+
     var title: String
     var sortOrder: Int
     var uuid: UUID

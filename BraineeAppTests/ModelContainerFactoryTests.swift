@@ -203,10 +203,48 @@ final class ModelContainerFactoryTests {
         }
     }
 
-    // Схема V1 содержит ровно пять сущностей; имена сущностей — имена классов (важно при заморозке V1).
+    // В persistent-хранилище вставка записи с существующим uuid обновляет её, а не создаёт дубль,
+    // в том числе после повторного открытия файла.
+    @Test func persistentХранилище_вставкаСТемЖеUUID_обновляетЗапись() throws {
+        try writeFixture()
+
+        let container = try ModelContainerFactory.make(.persistent(url: storeURL))
+        try withExtendedLifetime(container) { () throws in
+            let context = ModelContext(container)
+            context.insert(TaskItem(title: "Новое название", uuid: taskID))
+            context.insert(TaskGroup(name: "Другая папка", uuid: groupID))
+            context.insert(TaskTag(name: "другой", uuid: tagAID))
+            context.insert(Habit(title: "Бег", uuid: habitID))
+            context.insert(UserProfile(uuid: profileID, displayName: "Другое имя"))
+            try context.save()
+        }
+
+        let reopened = try ModelContainerFactory.make(.persistent(url: storeURL))
+        try withExtendedLifetime(reopened) { () throws in
+            let context = ModelContext(reopened)
+            #expect(try context.fetchCount(FetchDescriptor<TaskItem>()) == 2)
+            #expect(try context.fetchCount(FetchDescriptor<TaskGroup>()) == 1)
+            #expect(try context.fetchCount(FetchDescriptor<TaskTag>()) == 2)
+            #expect(try context.fetchCount(FetchDescriptor<Habit>()) == 1)
+            #expect(try context.fetchCount(FetchDescriptor<UserProfile>()) == 1)
+
+            let tasks = try context.fetch(FetchDescriptor<TaskItem>())
+            #expect(tasks.first { $0.uuid == taskID }?.title == "Новое название")
+            #expect(try fetchOne(TaskGroup.self, in: context).name == "Другая папка")
+            #expect(try fetchOne(Habit.self, in: context).title == "Бег")
+            #expect(try fetchOne(UserProfile.self, in: context).displayName == "Другое имя")
+            let tags = try context.fetch(FetchDescriptor<TaskTag>())
+            #expect(tags.first { $0.uuid == tagAID }?.name == "другой")
+        }
+    }
+
+    // Схема V1 содержит ровно пять сущностей с уникальным uuid; имена сущностей — имена классов (важно при заморозке V1).
     @Test func схемаV1_содержитВсеСущности() {
         let names = Set(ModelContainerFactory.schema.entities.map(\.name))
         #expect(names == ["TaskItem", "TaskGroup", "TaskTag", "UserProfile", "Habit"])
         #expect(SchemaV1.versionIdentifier == Schema.Version(1, 0, 0))
+        for entity in ModelContainerFactory.schema.entities {
+            #expect(entity.uniquenessConstraints == [["uuid"]], "\(entity.name): uuid должен быть уникальным")
+        }
     }
 }
