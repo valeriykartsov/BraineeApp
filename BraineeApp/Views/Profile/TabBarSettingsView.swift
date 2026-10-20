@@ -8,7 +8,7 @@ import SwiftUI
 
 struct TabBarSettingsView: View {
     @AppStorage(TabBarSettings.showCalendarKey) private var showCalendar = true
-    @AppStorage(TabBarSettings.showMatrixKey) private var showMatrix = false
+    @AppStorage(TabBarSettings.showLLMKey) private var showLLM = false
     @AppStorage(TabBarSettings.showHabitsKey) private var showHabits = false
 
     var body: some View {
@@ -21,15 +21,15 @@ struct TabBarSettingsView: View {
                     systemImage: DesignSystem.Icon.calendar,
                     isOn: $showCalendar
                 ) { newValue in
-                    persist(showCalendar: newValue, showMatrix: showMatrix, showHabits: showHabits)
+                    persist(showCalendar: newValue, showLLM: showLLM, showHabits: showHabits)
                 }
 
                 optionalToggle(
-                    title: "Матрица",
-                    systemImage: "square.grid.2x2",
-                    isOn: $showMatrix
+                    title: "LLM",
+                    systemImage: "sparkles",
+                    isOn: $showLLM
                 ) { newValue in
-                    persist(showCalendar: showCalendar, showMatrix: newValue, showHabits: showHabits)
+                    persist(showCalendar: showCalendar, showLLM: newValue, showHabits: showHabits)
                 }
 
                 optionalToggle(
@@ -37,7 +37,7 @@ struct TabBarSettingsView: View {
                     systemImage: "flame",
                     isOn: $showHabits
                 ) { newValue in
-                    persist(showCalendar: showCalendar, showMatrix: showMatrix, showHabits: newValue)
+                    persist(showCalendar: showCalendar, showLLM: showLLM, showHabits: newValue)
                 }
 
                 alwaysOnRow(title: "Профиль", systemImage: DesignSystem.Icon.person)
@@ -46,7 +46,7 @@ struct TabBarSettingsView: View {
                     .foregroundStyle(DesignSystem.Colors.textSecondary)
                     .textCase(nil)
             } footer: {
-                Text("Порядок в меню: Задачи → Календарь → Матрица → Привычки → Профиль. Задачи и Профиль всегда видны.")
+                Text("Порядок в меню: Задачи → Календарь → LLM → Привычки → Профиль. Задачи и Профиль всегда видны. Матрица Эйзенхауэра — в Профиле, «Дашборд → Дополнительно».")
                     .font(DesignSystem.Typography.caption())
                     .foregroundStyle(DesignSystem.Colors.textSecondary)
             }
@@ -97,10 +97,10 @@ struct TabBarSettingsView: View {
         }
     }
 
-    private func persist(showCalendar: Bool, showMatrix: Bool, showHabits: Bool) {
+    private func persist(showCalendar: Bool, showLLM: Bool, showHabits: Bool) {
         TabBarSettings(
             showCalendar: showCalendar,
-            showMatrix: showMatrix,
+            showLLM: showLLM,
             showHabits: showHabits
         ).save()
     }

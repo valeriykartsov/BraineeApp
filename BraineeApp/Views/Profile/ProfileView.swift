@@ -21,6 +21,7 @@ struct ProfileView: View {
     @State private var searchText = ""
     @State private var isSearchExpanded = false
     @State private var showingEditProfile = false
+    @State private var showingMatrix = false
     @State private var navigationResetID = UUID()
     @State private var backupFile: BackupFile?
     @State private var backupFileName = ""
@@ -63,13 +64,14 @@ struct ProfileView: View {
                         userSection
                     }
 
-                    if matches("дашборд", "статистика", "прогресс", "задачи") {
+                    if matches("дашборд", "статистика", "прогресс", "задачи", "дополнительно", "матрица", "эйзенхауэр") {
                         TaskDashboardView()
+                        extraSection
                     }
 
                     if matches(
                         "ещё", "удалённые", "удалить", "корзина", "панель", "вкладки",
-                        "матрица", "привычки", "календарь", "faq", "вопрос", "вопросы", "помощь", "справка",
+                        "привычки", "календарь", "faq", "вопрос", "вопросы", "помощь", "справка",
                         "тема", "оформление", "светлая", "тёмная", "акцент", "цвет",
                         "ориентация", "положение", "вертикал", "горизонтал",
                         "уведомлен", "напоминал", "дедлайн", "пуш",
@@ -184,6 +186,7 @@ struct ProfileView: View {
         isSearchExpanded = false
         isSearchFocused = false
         showingEditProfile = false
+        showingMatrix = false
         navigationResetID = UUID()
     }
 
@@ -263,6 +266,22 @@ struct ProfileView: View {
             Text(value)
                 .font(DesignSystem.Typography.body(15))
                 .foregroundStyle(DesignSystem.Colors.textPrimary)
+        }
+    }
+
+    /// Под дашбордом: дополнительные представления задач (NAV-1).
+    private var extraSection: some View {
+        GroupedSection(title: "Дополнительно") {
+            // Листом, а не переходом: у Матрицы своя навигация к квадрантам.
+            Button {
+                showingMatrix = true
+            } label: {
+                GroupedNavRow(title: "Матрица Эйзенхауэра", systemImage: "square.grid.2x2")
+            }
+            .buttonStyle(.plain)
+        }
+        .sheet(isPresented: $showingMatrix) {
+            EisenhowerMatrixView()
         }
     }
 
