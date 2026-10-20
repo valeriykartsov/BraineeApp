@@ -13,9 +13,9 @@ import SwiftData
 @MainActor
 struct TaskService {
     let context: ModelContext
-    /// Что сделать после изменения. В приложении — сохранить JSON, обновить виджет и уведомления;
-    /// в тестах подменяется, чтобы не трогать настоящие файлы.
-    var onChange: (ModelContext) -> Void = { $0.persistToJSON() }
+    /// Что сделать после изменения. В приложении — сохранить хранилище, обновить виджет и уведомления
+    /// (`AppSideEffects`); в тестах подменяется, чтобы не трогать виджет и уведомления.
+    var onChange: (ModelContext) -> Void = { $0.didChange() }
     /// Текущее время для updatedAt; в тестах подменяется фиксированной датой.
     var now: () -> Date = { .now }
 

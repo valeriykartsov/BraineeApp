@@ -13,9 +13,10 @@
 
 ## Как устроено сейчас
 
-- SwiftData — **постоянное хранилище** `Application Support/BraineeApp/BraineeApp.store` (`ModelContainerFactory`, схема `SchemaV1`, `#Unique` на `uuid`). Это источник правды; `Documents/BraineeApp/mytasks.json`/`profile.json` + Keychain пока пишутся параллельно (до SD-4).
+- SwiftData — **постоянное хранилище** `Application Support/BraineeApp/BraineeApp.store` (`ModelContainerFactory`, схема `SchemaV1`, `#Unique` на `uuid`). Это единственный источник правды. `Documents/BraineeApp/mytasks.json`/`profile.json` и Keychain-копии больше не пишутся (SD-4): они устарели и нужны только для переноса при первом запуске; не удалять без подтверждения (SD-6).
 - Старт: `AppRootView` → `AppDataPersistence.bootstrap`. Без маркера `Application Support/BraineeApp/swiftdata-migration.json` — перенос JSON (`JSONToSwiftDataMigrator`: бэкап → upsert → проверка → маркер); с маркером JSON не читается. Хранилище при старте **никогда** не очищается. Откат на старую сборку не поддерживается (D-19).
-- Любое изменение данных — только через сервисы `Domain/` (`TaskService`, `GroupService`, `TagService`, `HabitService`, `ProfileService`); они вызывают `modelContext.persistToJSON()` (JSON + Keychain + виджет + уведомления). Во View не менять модели и не вызывать `persistToJSON()` напрямую.
+- Любое изменение данных — только через сервисы `Domain/` (`TaskService`, `GroupService`, `TagService`, `HabitService`, `ProfileService`); они вызывают `modelContext.didChange()` (`AppSideEffects`: `save()` + виджет + уведомления). Во View не менять модели и не вызывать `didChange()` напрямую.
+- Бэкап: при уходе в фон `AutoBackup` пишет `BackupDocument` (формат ручного экспорта, D-16) в `Application Support/Backups/auto/` — не чаще раза в 24 часа, последние 7 файлов (D-04).
 - Новые поля JSON — только через `decodeIfPresent` + значение по умолчанию и `MyTasksDocument.normalizeRecords()`.
 - Флаг мягкого удаления в модели — `isSoftDeleted` (не `isDeleted`: конфликт с SwiftData); в JSON он называется `isDeleted`.
 - Зависимостей нет (только Apple SDK). Мин. iOS 18.2, Swift 5.

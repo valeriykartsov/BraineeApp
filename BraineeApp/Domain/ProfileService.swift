@@ -12,9 +12,9 @@ import SwiftData
 struct ProfileService {
     let context: ModelContext
     /// См. TaskService.onChange.
-    var onChange: (ModelContext) -> Void = { $0.persistToJSON() }
+    var onChange: (ModelContext) -> Void = { $0.didChange() }
 
-    /// Профиль один; если его нет (обычно он создаётся при загрузке JSON) — создаётся пустой.
+    /// Профиль один; если его нет (новая установка или в JSON его не было) — создаётся пустой.
     @discardableResult
     func ensureProfile() -> UserProfile {
         if let existing = (try? context.fetch(FetchDescriptor<UserProfile>()))?.first {
@@ -35,8 +35,9 @@ struct ProfileService {
         onChange(context)
     }
 
-    /// Тема и акцент хранятся в UserDefaults (@AppStorage во View), но дублируются в profile.json.
-    /// После их смены нужно сохранить профиль, чтобы копия в JSON не отставала.
+    /// Тема и акцент хранятся в UserDefaults (@AppStorage во View).
+    /// После их смены вызываем onChange, как после любого изменения; в автобэкап тема и акцент
+    /// попадают из UserDefaults (AppDataPersistence.exportProfile).
     func appearanceDidChange() {
         onChange(context)
     }

@@ -2,7 +2,7 @@
 //  AppDataPersistence.swift
 //  BraineeApp
 //
-//  Связь SwiftData и JSON: загрузка при старте (перенос JSON при первом запуске), экспорт после изменений.
+//  Связь SwiftData и JSON: загрузка при старте (перенос JSON при первом запуске), экспорт снимков для бэкапа.
 
 import Foundation
 import SwiftData
@@ -21,12 +21,11 @@ enum AppDataPersistence {
         defaults: UserDefaults = .standard
     ) throws {
         let migrator = migrator ?? JSONToSwiftDataMigrator()
-        // Тема и акцент по-прежнему берутся из profile.json и UserDefaults.
+        // Тема и акцент живут в UserDefaults; profile.json — только источник после переустановки.
         // Битый файл переименовывается и даёт ошибку один раз (BASE-3), как раньше.
+        // JSON больше не пишется (SD-4), поэтому результат applyAccentDefaults не сохраняем.
         var profileDocument = try AppDataStore.loadProfile(location: location)
-        if applyAccentDefaults(to: &profileDocument, defaults: defaults) {
-            try? AppDataStore.saveProfile(profileDocument, location: location)
-        }
+        applyAccentDefaults(to: &profileDocument, defaults: defaults)
         if defaults.object(forKey: "appTheme") == nil,
            profileDocument.appThemeRaw != AppTheme.system.rawValue {
             defaults.set(profileDocument.appThemeRaw, forKey: "appTheme")
@@ -82,18 +81,6 @@ enum AppDataPersistence {
             defaults.set(profile.accentPaletteRaw, forKey: AccentPalette.storageKey)
         }
         return false
-    }
-
-    /// Сохраняет текущее состояние SwiftData обратно в JSON и Keychain.
-    static func export(from context: ModelContext) {
-        try? context.save()
-
-        do {
-            try AppDataStore.saveTasks(exportTasks(from: context))
-            try AppDataStore.saveProfile(exportProfile(from: context))
-        } catch {
-            print("AppDataPersistence export failed: \(error)")
-        }
     }
 
     // Используется мигратором (SD-2); round-trip JSON ↔ SwiftData — в AppDataPersistenceRoundTripTests.
@@ -254,40 +241,5 @@ enum AppDataPersistence {
         )
         document.normalize()
         return document
-    }
-}
-
-extension ModelContext {
-    /// Удобный вызов после любого изменения задач, профиля или тегов.
-    func persistToJSON() {
-        AppDataPersistence.export(from: self)
-        let tasks = fetchActiveTasks()
-        let habits = fetchHabits()
-        WidgetSnapshotBuilder.publish(tasks: tasks, habits: habits)
-        Task {
-            await AppNotifications.refresh(tasks: tasks, habits: habits)
-        }
-    }
-}
-
-/// Автосохранение JSON, когда приложение уходит в фон.
-struct JSONPersistenceModifier: ViewModifier {
-    @Environment(\.modelContext) private var modelContext
-    @Environment(\.scenePhase) private var scenePhase
-
-    func body(content: Content) -> some View {
-        content
-            .onChange(of: scenePhase) { _, phase in
-                // Только background: inactive (шторка/переключатель приложений) иначе даёт лишний тяжёлый export.
-                if phase == .background {
-                    modelContext.persistToJSON()
-                }
-            }
-    }
-}
-
-extension View {
-    func persistOnBackground() -> some View {
-        modifier(JSONPersistenceModifier())
     }
 }

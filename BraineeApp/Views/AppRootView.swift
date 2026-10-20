@@ -22,7 +22,7 @@ struct AppRootView: View {
         ZStack {
             if isReady {
                 AnimatedMainTabView()
-                    .persistOnBackground()
+                    .saveOnBackground()
                     .opacity(showLaunch ? 0 : 1)
             } else if let loadError {
                 LoadErrorView(message: loadError)

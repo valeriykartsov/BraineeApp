@@ -12,7 +12,7 @@ import SwiftData
 struct GroupService {
     let context: ModelContext
     /// См. TaskService.onChange.
-    var onChange: (ModelContext) -> Void = { $0.persistToJSON() }
+    var onChange: (ModelContext) -> Void = { $0.didChange() }
     /// Текущее время для updatedAt; в тестах подменяется фиксированной датой.
     var now: () -> Date = { .now }
 
