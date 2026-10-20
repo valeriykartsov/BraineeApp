@@ -2,75 +2,37 @@
 //  PersistenceTestSupport.swift
 //  BraineeAppTests
 //
-//  Изолированное хранилище для тестов persistence: временная папка + отдельный Keychain service.
-//  Настоящие Documents/BraineeApp и Keychain приложения не затрагиваются.
+//  Изолированное окружение для тестов persistence: временная папка + отдельный Keychain service.
+//  Настоящие папки и Keychain приложения не затрагиваются.
 
 import Foundation
 import Security
 import Testing
 @testable import BraineeApp
 
+/// Временная папка и Keychain service, удаляются вместе с объектом.
 final class TemporaryDataStore {
-    let location: AppDataStoreLocation
+    let directory: URL
+    let keychainService: String
 
     init() throws {
-        let directory = FileManager.default.temporaryDirectory
+        directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("BraineeAppTests-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        location = AppDataStoreLocation(
-            directory: directory,
-            keychainService: "valeravalera.BraineeApp.tests.\(UUID().uuidString)"
-        )
+        keychainService = "valeravalera.BraineeApp.tests.\(UUID().uuidString)"
     }
 
     deinit {
-        try? FileManager.default.removeItem(at: location.directory)
+        try? FileManager.default.removeItem(at: directory)
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: location.keychainService
+            kSecAttrService as String: keychainService
         ]
         SecItemDelete(query as CFDictionary)
     }
 
-    var tasksFileURL: URL {
-        location.directory.appendingPathComponent(AppDataStore.tasksFileName)
-    }
-
-    var profileFileURL: URL {
-        location.directory.appendingPathComponent(AppDataStore.profileFileName)
-    }
-
-    var tasksFileExists: Bool {
-        FileManager.default.fileExists(atPath: tasksFileURL.path)
-    }
-
-    /// Пишет документ в файл как есть, минуя saveTasks (который перезаписал бы lastSavedAt).
-    func writeTasksFile(_ document: MyTasksDocument) throws {
-        try PersistenceFixtures.encoder.encode(document).write(to: tasksFileURL, options: .atomic)
-    }
-
-    func writeTasksKeychain(_ document: MyTasksDocument) throws {
-        let data = try PersistenceFixtures.encoder.encode(document)
-        try KeychainStorage.save(data, account: AppDataStore.tasksFileName, service: location.keychainService)
-    }
-
-    func writeProfileKeychain(_ document: ProfileDocument) throws {
-        let data = try PersistenceFixtures.encoder.encode(document)
-        try KeychainStorage.save(data, account: AppDataStore.profileFileName, service: location.keychainService)
-    }
-
-    /// Переименованные битые файлы: mytasks.json → mytasks.corrupt-*.json.
-    func corruptFiles(of fileName: String) -> [URL] {
-        let base = (fileName as NSString).deletingPathExtension
-        let names = (try? FileManager.default.contentsOfDirectory(atPath: location.directory.path)) ?? []
-        return names
-            .filter { $0.hasPrefix("\(base).corrupt-") }
-            .sorted()
-            .map { location.directory.appendingPathComponent($0) }
-    }
-
     func keychainData(account: String) -> Data? {
-        KeychainStorage.load(account: account, service: location.keychainService)
+        KeychainStorage.load(account: account, service: keychainService)
     }
 }
 

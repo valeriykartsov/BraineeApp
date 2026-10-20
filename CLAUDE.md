@@ -13,12 +13,12 @@
 
 ## Как устроено сейчас
 
-- SwiftData — **постоянное хранилище** `Application Support/BraineeApp/BraineeApp.store` (`ModelContainerFactory`, схема `SchemaV1`, `#Unique` на `uuid`). Это единственный источник правды. `Documents/BraineeApp/mytasks.json`/`profile.json` и Keychain-копии больше не пишутся (SD-4): они устарели и нужны только для переноса при первом запуске; не удалять без подтверждения (SD-6).
-- Старт: `AppRootView` → `AppDataPersistence.bootstrap`. Без маркера `Application Support/BraineeApp/swiftdata-migration.json` — перенос JSON (`JSONToSwiftDataMigrator`: бэкап → upsert → проверка → маркер); с маркером JSON не читается. Хранилище при старте **никогда** не очищается. Откат на старую сборку не поддерживается (D-19).
+- SwiftData — **постоянное хранилище** `Application Support/BraineeApp/BraineeApp.store` (`ModelContainerFactory`, схема `SchemaV1`, `#Unique` на `uuid`). Это единственный источник правды. Старый путь (`Documents/BraineeApp/*.json` + Keychain-копии) и мигратор удалены в SD-6 (D-21); Keychain — только для секретов.
+- Старт: `AppRootView` → `AppDataPersistence.bootstrap` (акцент при первой установке, `LegacyStorageCleanup` — удаление старых JSON/Keychain-копий, если есть маркер переноса `Application Support/BraineeApp/swiftdata-migration.json`, виджет). Хранилище при старте **никогда** не очищается. Откат на старую сборку не поддерживается (D-19).
 - Любое изменение данных — только через сервисы `Domain/` (`TaskService`, `GroupService`, `TagService`, `HabitService`, `ProfileService`); они вызывают `modelContext.didChange()` (`AppSideEffects`: `save()` + виджет + уведомления). Во View не менять модели и не вызывать `didChange()` напрямую.
-- Бэкап: при уходе в фон `AutoBackup` пишет `BackupDocument` (формат ручного экспорта, D-16) в `Application Support/Backups/auto/` — не чаще раза в 24 часа, последние 7 файлов (D-04). Восстановление — «Профиль → Хранение данных» (`BackupRestore`, D-20): замена всех данных, перед ней текущее состояние сохраняется в `Backups/pre-restore/`. Замена и сверка хранилища с документом — `StoreContents` (общий код с переносом JSON).
-- Новые поля JSON — только через `decodeIfPresent` + значение по умолчанию и `MyTasksDocument.normalizeRecords()`.
-- Флаг мягкого удаления в модели — `isSoftDeleted` (не `isDeleted`: конфликт с SwiftData); в JSON он называется `isDeleted`.
+- Бэкап: при уходе в фон `AutoBackup` пишет `BackupDocument` (формат ручного экспорта, D-16) в `Application Support/Backups/auto/` — не чаще раза в 24 часа, последние 7 файлов (D-04). Восстановление — «Профиль → Хранение данных» (`BackupRestore`, D-20): замена всех данных, перед ней текущее состояние сохраняется в `Backups/pre-restore/`. Замена и сверка хранилища с документом — `StoreContents`.
+- Новые поля в модели — новая версия схемы (`SchemaV2` + этап в `BraineeMigrationPlan`, V1 «заморозить», D-17) и поле в JSON бэкапа только через `decodeIfPresent` + значение по умолчанию и `MyTasksDocument.normalizeRecords()` (старые бэкапы должны читаться).
+- Флаг мягкого удаления в модели — `isSoftDeleted` (не `isDeleted`: конфликт с SwiftData); в JSON бэкапа он называется `isDeleted`.
 - Зависимостей нет (только Apple SDK). Мин. iOS 18.2, Swift 5.
 
 ## Принципы
@@ -32,7 +32,7 @@
 
 ## Данные — строгие ограничения
 
-- Не удалять и не перезаписывать пользовательские данные, Keychain-записи и старый путь хранения без явного подтверждения владельца.
+- Не удалять и не перезаписывать пользовательские данные, хранилище SwiftData, бэкапы (`Application Support/Backups/`) и Keychain-записи без явного подтверждения владельца.
 - Никакой очистки хранилища при старте (риск R1): `clearAllData` удалён в SD-3 и не должен возвращаться.
 - Любая миграция: бэкап → копирование → проверка → маркер → переключение. Повторный запуск не должен создавать дублей.
 - Секреты (API-ключи, токены) — только в Keychain; не в коде, логах, `Info.plist`, UserDefaults.
@@ -47,7 +47,7 @@ xcodebuild test -project BraineeApp.xcodeproj -scheme BraineeApp -destination 'p
 Если клон симулятора «застрял в создании», запускать на загруженном устройстве без клонирования: `-destination 'platform=iOS Simulator,id=<UDID>' -parallel-testing-enabled NO` (результаты тогда в формате `✔ Test … passed` / `✘`).
 Тесты — Swift Testing (`import Testing`), в `BraineeAppTests/`, имена на русском `чтоПроверяем_ожидаемыйРезультат`, перед тестом комментарий; хелпер `TestHelpers.makeContainer()`.
 `ModelContainer` в тестах хранить в свойстве тестовой структуры (`init() throws`), а не в локальной переменной: Swift может освободить её после последнего использования, и обращение к моделям роняет весь тестовый процесс.
-В тестах сервисов передавать `onChange` (например, счётчик), чтобы не писать настоящие JSON/Keychain.
+В тестах сервисов передавать `onChange` (например, счётчик): настоящий `didChange()` пересчитывает уведомления асинхронно, и задача может обратиться к моделям уже освобождённого тестового контейнера.
 
 ## Git
 

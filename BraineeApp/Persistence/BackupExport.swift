@@ -38,7 +38,7 @@ struct BackupDocument: Codable {
     /// Снимок текущего состояния SwiftData, включая задачи в корзине.
     static func make(from context: ModelContext, now: Date = .now) -> BackupDocument {
         var tasks = AppDataPersistence.exportTasks(from: context)
-        // Как в saveTasks: в бэкап попадает то же, что попало бы в mytasks.json.
+        // В бэкап попадают нормализованные записи — те же правила, что при чтении.
         tasks.normalizeRecords()
         tasks.lastSavedAt = now
         var profile = AppDataPersistence.exportProfile(from: context)
