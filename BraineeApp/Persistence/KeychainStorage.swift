@@ -8,9 +8,9 @@ import Foundation
 import Security
 
 enum KeychainStorage {
-    private static let service = "valeravalera.BraineeApp.storage"
+    static let defaultService = "valeravalera.BraineeApp.storage"
 
-    static func save(_ data: Data, account: String) throws {
+    static func save(_ data: Data, account: String, service: String = defaultService) throws {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -28,7 +28,7 @@ enum KeychainStorage {
         }
     }
 
-    static func load(account: String) -> Data? {
+    static func load(account: String, service: String = defaultService) -> Data? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
