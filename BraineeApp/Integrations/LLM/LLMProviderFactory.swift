@@ -45,6 +45,9 @@ struct DebugStubLLMProvider: LLMProvider {
         if user.contains("ошибка") { throw LLMError.offline }
         if user.contains("мусор") { return LLMResponse(text: "Не могу помочь.", model: "debug/stub") }
 
+        if system.contains(ReflectionService.modeMarker) {
+            return LLMResponse(text: "Заглушка: период прошёл ровно. Закройте одну просроченную задачу первой — станет легче.", model: "debug/stub")
+        }
         if system.contains(InboxDraftService.modeMarker) {
             // Четыре элемента: два нормальных, один без названия (отбросится), один с незнакомым тегом.
             return LLMResponse(text: """
