@@ -72,7 +72,8 @@ struct ProfileView: View {
                         "матрица", "привычки", "календарь", "faq", "вопрос", "вопросы", "помощь", "справка",
                         "тема", "оформление", "светлая", "тёмная", "акцент", "цвет",
                         "ориентация", "положение", "вертикал", "горизонтал",
-                        "уведомлен", "напоминал", "дедлайн", "пуш"
+                        "уведомлен", "напоминал", "дедлайн", "пуш",
+                        "llm", "openrouter", "ключ", "модель", "ассистент"
                     ) {
                         moreSection
                     }
@@ -289,6 +290,15 @@ struct ProfileView: View {
                 CalendarExportSettingsView()
             } label: {
                 GroupedNavRow(title: "Календарь", systemImage: "calendar")
+            }
+            .buttonStyle(.plain)
+
+            InsetDivider(leading: DesignSystem.Space.rowIconInset)
+
+            NavigationLink {
+                LLMSettingsView()
+            } label: {
+                GroupedNavRow(title: "LLM", systemImage: "sparkles")
             }
             .buttonStyle(.plain)
 
