@@ -2,44 +2,63 @@
 //  AppDataPersistence.swift
 //  BraineeApp
 //
-//  Связь SwiftData и JSON: загрузка при старте, экспорт после изменений.
+//  Связь SwiftData и JSON: загрузка при старте (перенос JSON при первом запуске), экспорт после изменений.
 
 import Foundation
 import SwiftData
 import SwiftUI
 
 enum AppDataPersistence {
-    /// Очищает память и загружает данные из JSON в SwiftData при запуске приложения.
-    static func bootstrap(into context: ModelContext) throws {
-        try AppDataStore.prepareStorage()
-        clearAllData(in: context)
-
-        let tasksDocument = try AppDataStore.loadTasks()
-        var profileDocument = try AppDataStore.loadProfile()
-
-        if applyAccentDefaults(to: &profileDocument) {
-            try? AppDataStore.saveProfile(profileDocument)
+    /// Загрузка при запуске (SD-3). Данные живут в постоянном хранилище SwiftData и при старте
+    /// не очищаются и не перезаписываются. При первом запуске (нет маркера) JSON переносится
+    /// мигратором: бэкап → копирование → проверка → маркер. Сбой переноса — ошибка, маркер не ставится,
+    /// следующий запуск повторит перенос.
+    @MainActor
+    static func bootstrap(
+        into context: ModelContext,
+        location: AppDataStoreLocation = .standard,
+        migrator: JSONToSwiftDataMigrator? = nil,
+        defaults: UserDefaults = .standard
+    ) throws {
+        let migrator = migrator ?? JSONToSwiftDataMigrator()
+        // Тема и акцент по-прежнему берутся из profile.json и UserDefaults.
+        // Битый файл переименовывается и даёт ошибку один раз (BASE-3), как раньше.
+        var profileDocument = try AppDataStore.loadProfile(location: location)
+        if applyAccentDefaults(to: &profileDocument, defaults: defaults) {
+            try? AppDataStore.saveProfile(profileDocument, location: location)
         }
-
-        importTasks(tasksDocument, into: context)
-        importProfile(profileDocument, into: context)
-
-        // Старый profile.json без id: uuid создан при импорте — сохраняем сразу,
-        // иначе при следующем запуске он сгенерировался бы заново.
-        if profileDocument.id == nil {
-            try? AppDataStore.saveProfile(exportProfile(from: context))
-        }
-
-        if UserDefaults.standard.object(forKey: "appTheme") == nil,
+        if defaults.object(forKey: "appTheme") == nil,
            profileDocument.appThemeRaw != AppTheme.system.rawValue {
-            UserDefaults.standard.set(profileDocument.appThemeRaw, forKey: "appTheme")
+            defaults.set(profileDocument.appThemeRaw, forKey: "appTheme")
         }
 
-        try context.save()
+        if !migrator.isCompleted {
+            // Битый mytasks.json без Keychain-копии переименовывается и даёт ошибку (BASE-3);
+            // при следующем запуске перенос идёт без него, а не падает каждый раз.
+            _ = try AppDataStore.loadTasks(location: location)
+            do {
+                try migrator.run(into: context.container)
+            } catch {
+                throw BootstrapError.migrationFailed(error.localizedDescription)
+            }
+        }
+
         WidgetSnapshotBuilder.publish(
             tasks: context.fetchActiveTasks(),
             habits: context.fetchHabits()
         )
+    }
+
+    enum BootstrapError: LocalizedError {
+        case migrationFailed(String)
+
+        var errorDescription: String? {
+            switch self {
+            case .migrationFailed(let reason):
+                "Не удалось перенести данные в новое хранилище. \(reason) "
+                    + "Исходные файлы не изменены; перенос повторится при следующем запуске."
+            }
+        }
     }
 
     /// Правила акцента при старте.
@@ -77,15 +96,7 @@ enum AppDataPersistence {
         }
     }
 
-    private static func clearAllData(in context: ModelContext) {
-        try? context.delete(model: TaskItem.self)
-        try? context.delete(model: TaskGroup.self)
-        try? context.delete(model: TaskTag.self)
-        try? context.delete(model: UserProfile.self)
-        try? context.delete(model: Habit.self)
-    }
-
-    // Не private: round-trip JSON ↔ SwiftData проверяется в AppDataPersistenceRoundTripTests.
+    // Используется мигратором (SD-2); round-trip JSON ↔ SwiftData — в AppDataPersistenceRoundTripTests.
     static func importTasks(_ document: MyTasksDocument, into context: ModelContext) {
         var tagByID: [UUID: TaskTag] = [:]
         for record in document.tags {

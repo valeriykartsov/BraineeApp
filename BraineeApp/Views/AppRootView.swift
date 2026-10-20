@@ -2,7 +2,7 @@
 //  AppRootView.swift
 //  BraineeApp
 //
-//  Корневой экран: загрузка JSON, splash-экран и переход к основному интерфейсу.
+//  Корневой экран: загрузка данных (перенос JSON при первом запуске), splash-экран и переход к основному интерфейсу.
 
 import SwiftUI
 import SwiftData
@@ -25,18 +25,7 @@ struct AppRootView: View {
                     .persistOnBackground()
                     .opacity(showLaunch ? 0 : 1)
             } else if let loadError {
-                VStack(alignment: .leading, spacing: DesignSystem.Space.x3) {
-                    Text("Ошибка загрузки")
-                        .font(DesignSystem.Typography.title(22))
-                        .foregroundStyle(DesignSystem.Colors.textPrimary)
-                    Text(loadError)
-                        .font(DesignSystem.Typography.body())
-                        .foregroundStyle(DesignSystem.Colors.textSecondary)
-                    AppDivider()
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .padding(DesignSystem.Space.x4)
-                .appScreenBackground()
+                LoadErrorView(message: loadError)
             }
 
             // При ошибке загрузки заставка тоже уходит, иначе она навсегда закрывает текст ошибки.
@@ -72,6 +61,26 @@ struct AppRootView: View {
                 }
             }
         }
+    }
+}
+
+/// Экран ошибки загрузки: битый файл, сбой переноса данных или хранилище не открылось.
+struct LoadErrorView: View {
+    let message: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Space.x3) {
+            Text("Ошибка загрузки")
+                .font(DesignSystem.Typography.title(22))
+                .foregroundStyle(DesignSystem.Colors.textPrimary)
+            Text(message)
+                .font(DesignSystem.Typography.body())
+                .foregroundStyle(DesignSystem.Colors.textSecondary)
+            AppDivider()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(DesignSystem.Space.x4)
+        .appScreenBackground()
     }
 }
 
