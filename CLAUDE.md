@@ -15,7 +15,7 @@
 
 - SwiftData — **только in-memory** (`BraineeAppApp.sharedModelContainer`). Источник правды — `Documents/BraineeApp/mytasks.json` и `profile.json` + копия в Keychain (`Persistence/AppDataStore.swift`).
 - Старт: `AppRootView` → `AppDataPersistence.bootstrap` (очищает SwiftData и импортирует JSON).
-- Любое изменение данных → `modelContext.persistToJSON()` (JSON + Keychain + виджет + уведомления).
+- Любое изменение данных — только через сервисы `Domain/` (`TaskService`, `GroupService`, `TagService`, `HabitService`, `ProfileService`); они вызывают `modelContext.persistToJSON()` (JSON + Keychain + виджет + уведомления). Во View не менять модели и не вызывать `persistToJSON()` напрямую.
 - Новые поля JSON — только через `decodeIfPresent` + значение по умолчанию и `MyTasksDocument.normalizeRecords()`.
 - Флаг мягкого удаления в модели — `isSoftDeleted` (не `isDeleted`: конфликт с SwiftData); в JSON он называется `isDeleted`.
 - Зависимостей нет (только Apple SDK). Мин. iOS 18.2, Swift 5.
@@ -46,7 +46,7 @@ xcodebuild test -project BraineeApp.xcodeproj -scheme BraineeApp -destination 'p
 Если клон симулятора «застрял в создании», запускать на загруженном устройстве без клонирования: `-destination 'platform=iOS Simulator,id=<UDID>' -parallel-testing-enabled NO` (результаты тогда в формате `✔ Test … passed` / `✘`).
 Тесты — Swift Testing (`import Testing`), в `BraineeAppTests/`, имена на русском `чтоПроверяем_ожидаемыйРезультат`, перед тестом комментарий; хелпер `TestHelpers.makeContainer()`.
 `ModelContainer` в тестах хранить в свойстве тестовой структуры (`init() throws`), а не в локальной переменной: Swift может освободить её после последнего использования, и обращение к моделям роняет весь тестовый процесс.
-Изменения задач — через `Domain/TaskService` (в тестах передавать `onChange`, чтобы не писать настоящие JSON/Keychain).
+В тестах сервисов передавать `onChange` (например, счётчик), чтобы не писать настоящие JSON/Keychain.
 
 ## Git
 

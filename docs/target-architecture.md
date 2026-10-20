@@ -53,7 +53,7 @@
 | Слой | Папка | Ответственность | Не должен |
 |---|---|---|---|
 | UI | `Views/` | Отображение, `@Query` для чтения, вызов сервисов | Менять модели напрямую и вызывать побочные эффекты |
-| Домен | `Domain/` (новая) | `TaskService`, `HabitService`, `TagService`, `GroupService`: создание/изменение/удаление, правила статусов, сортировка, tombstone | Знать о SwiftUI |
+| Домен | `Domain/` (создана в DOM-1/DOM-2) | `TaskService`, `GroupService`, `TagService`, `HabitService`, `ProfileService`: создание/изменение/удаление, правила статусов, сортировка, tombstone | Знать о SwiftUI |
 | Хранилище | `Persistence/` | `ModelContainer`, схема и её версии, миграция JSON → SwiftData, JSON-бэкап | Содержать бизнес-правила |
 | Побочные эффекты | `Utilities/` → позже `Integrations/` | Уведомления, виджет, бейдж, EventKit, outbox | Быть вызванными из View напрямую |
 | Внешние интеграции | `Integrations/LLM`, `Integrations/Calendar`, `Integrations/Sync` | HTTP-клиенты, EventKit, Keychain-секреты | Получать `ModelContext` (LLM) |
