@@ -294,7 +294,7 @@ struct LLMChatView: View {
         Task {
             defer { isSending = false }
             do {
-                let provider = try OpenRouterProvider.fromSettings()
+                let provider = try LLMProviderFactory.make()
                 let draft = try await TaskDraftGenerator(provider: provider).draft(from: text, context: context)
                 messages.append(LLMChatMessage(kind: .draft(draft)))
             } catch let error as LLMError {
