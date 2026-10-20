@@ -21,6 +21,26 @@ struct AppDataStoreLocation {
     }
 }
 
+/// Ошибки чтения, которые нельзя молча заменить пустыми данными (риск R2 из аудита).
+enum AppDataStoreError: LocalizedError {
+    /// Файл не разбирается как JSON, Keychain-копии нет. Файл сохранён под именем `preservedAs`.
+    case tasksFileCorrupted(preservedAs: String)
+    case profileFileCorrupted(preservedAs: String)
+
+    var errorDescription: String? {
+        switch self {
+        case .tasksFileCorrupted(let name):
+            "Файл задач повреждён и не читается, резервной копии в Keychain нет. "
+                + "Повреждённый файл сохранён как \(name) в папке BraineeApp. "
+                + "После перезапуска приложение откроется без задач."
+        case .profileFileCorrupted(let name):
+            "Файл профиля повреждён и не читается, резервной копии в Keychain нет. "
+                + "Повреждённый файл сохранён как \(name) в папке BraineeApp. "
+                + "После перезапуска приложение откроется с пустым профилем."
+        }
+    }
+}
+
 enum AppDataStore {
     static let folderName = "BraineeApp"
     static let tasksFileName = "mytasks.json"
@@ -51,9 +71,22 @@ enum AppDataStore {
     }
 
     /// Загружает задачи: сравнивает файл и Keychain, возвращает более свежую копию.
+    /// Битый файл не заменяется пустыми данными: он переименовывается, а без Keychain-копии — ошибка.
+    /// Ошибка чтения с диска (не битый JSON) пробрасывается, файл не трогаем — она может быть временной.
     static func loadTasks(location: AppDataStoreLocation = .standard) throws -> MyTasksDocument {
-        let fileDocument = loadTasksFromFile(location: location)
+        var fileDocument: MyTasksDocument?
+        var preservedName: String?
+        if let data = try readFileIfExists(named: tasksFileName, location: location) {
+            fileDocument = decodeTasksDocument(from: data)
+            if fileDocument == nil {
+                preservedName = try preserveCorruptFile(named: tasksFileName, location: location)
+            }
+        }
         let keychainDocument = loadTasksFromKeychain(location: location)
+
+        if let preservedName, keychainDocument == nil {
+            throw AppDataStoreError.tasksFileCorrupted(preservedAs: preservedName)
+        }
 
         let resolved = pickNewestTasksDocument(fileDocument, keychainDocument)
         guard var document = resolved else {
@@ -95,19 +128,27 @@ enum AppDataStore {
         }
     }
 
+    /// Профиль: файл, иначе Keychain-копия, иначе пустой. Битый файл — по тем же правилам, что и задачи.
     static func loadProfile(location: AppDataStoreLocation = .standard) throws -> ProfileDocument {
-        let url = location.directory.appendingPathComponent(profileFileName)
-        var document: ProfileDocument
-        if FileManager.default.fileExists(atPath: url.path) {
-            let data = try Data(contentsOf: url)
-            document = try decoder.decode(ProfileDocument.self, from: data)
-        } else if let backup = KeychainStorage.load(account: profileFileName, service: location.keychainService) {
-            document = try decoder.decode(ProfileDocument.self, from: backup)
-        } else {
-            document = .empty
+        var document: ProfileDocument?
+        var preservedName: String?
+        if let data = try readFileIfExists(named: profileFileName, location: location) {
+            document = try? decoder.decode(ProfileDocument.self, from: data)
+            if document == nil {
+                preservedName = try preserveCorruptFile(named: profileFileName, location: location)
+            }
         }
-        document.normalize()
-        return document
+        if document == nil,
+           let backup = KeychainStorage.load(account: profileFileName, service: location.keychainService) {
+            document = try? decoder.decode(ProfileDocument.self, from: backup)
+        }
+        if document == nil, let preservedName {
+            throw AppDataStoreError.profileFileCorrupted(preservedAs: preservedName)
+        }
+
+        var result = document ?? .empty
+        result.normalize()
+        return result
     }
 
     static func saveProfile(_ document: ProfileDocument, location: AppDataStoreLocation = .standard) throws {
@@ -120,13 +161,31 @@ enum AppDataStore {
         try KeychainStorage.save(data, account: profileFileName, service: location.keychainService)
     }
 
-    private static func loadTasksFromFile(location: AppDataStoreLocation) -> MyTasksDocument? {
-        let url = location.directory.appendingPathComponent(tasksFileName)
-        guard FileManager.default.fileExists(atPath: url.path),
-              let data = try? Data(contentsOf: url) else {
-            return nil
+    /// nil — файла нет. Ошибка чтения пробрасывается (раньше молча считалась «файла нет»).
+    private static func readFileIfExists(named fileName: String, location: AppDataStoreLocation) throws -> Data? {
+        let url = location.directory.appendingPathComponent(fileName)
+        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+        return try Data(contentsOf: url)
+    }
+
+    /// Переименовывает нечитаемый файл (mytasks.json → mytasks.corrupt-20261020-164300.json),
+    /// чтобы его содержимое не было перезаписано. Возвращает новое имя.
+    private static func preserveCorruptFile(named fileName: String, location: AppDataStoreLocation) throws -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        let base = (fileName as NSString).deletingPathExtension
+        var preservedName = "\(base).corrupt-\(formatter.string(from: .now)).json"
+        if FileManager.default.fileExists(atPath: location.directory.appendingPathComponent(preservedName).path) {
+            preservedName = "\(base).corrupt-\(formatter.string(from: .now))-\(UUID().uuidString.prefix(8)).json"
         }
-        return decodeTasksDocument(from: data)
+        try FileManager.default.moveItem(
+            at: location.directory.appendingPathComponent(fileName),
+            to: location.directory.appendingPathComponent(preservedName)
+        )
+        print("AppDataStore: corrupted \(fileName) preserved as \(preservedName)")
+        return preservedName
     }
 
     private static func loadTasksFromKeychain(location: AppDataStoreLocation) -> MyTasksDocument? {

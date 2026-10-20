@@ -39,7 +39,8 @@ struct AppRootView: View {
                 .appScreenBackground()
             }
 
-            if showLaunch || !isReady {
+            // При ошибке загрузки заставка тоже уходит, иначе она навсегда закрывает текст ошибки.
+            if showLaunch || (!isReady && loadError == nil) {
                 LaunchScreenView(playsLogoAnimation: true)
                     .transition(.opacity)
             }
@@ -65,7 +66,7 @@ struct AppRootView: View {
             // Даём доиграть анимации полос логотипа.
             try? await Task.sleep(for: .seconds(2.0))
 
-            if isReady {
+            if isReady || loadError != nil {
                 withAnimation(.easeOut(duration: 0.35)) {
                     showLaunch = false
                 }

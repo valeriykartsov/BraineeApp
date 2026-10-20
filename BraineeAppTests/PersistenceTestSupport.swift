@@ -59,6 +59,16 @@ final class TemporaryDataStore {
         try KeychainStorage.save(data, account: AppDataStore.profileFileName, service: location.keychainService)
     }
 
+    /// Переименованные битые файлы: mytasks.json → mytasks.corrupt-*.json.
+    func corruptFiles(of fileName: String) -> [URL] {
+        let base = (fileName as NSString).deletingPathExtension
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: location.directory.path)) ?? []
+        return names
+            .filter { $0.hasPrefix("\(base).corrupt-") }
+            .sorted()
+            .map { location.directory.appendingPathComponent($0) }
+    }
+
     func keychainData(account: String) -> Data? {
         KeychainStorage.load(account: account, service: location.keychainService)
     }
