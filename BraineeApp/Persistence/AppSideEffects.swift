@@ -12,7 +12,8 @@ import SwiftUI
 @MainActor
 enum AppSideEffects {
     /// `refreshNotifications: false` — только для тестов: пересчёт уведомлений идёт асинхронно
-    /// с моделями контекста и пережил бы тестовый контейнер.
+    /// с моделями контекста и пережил бы тестовый контейнер; экспорт в Календарь (CAL-2) тоже
+    /// пропускается, чтобы тесты не писали в настоящий календарь симулятора.
     static func didChange(in context: ModelContext, refreshNotifications: Bool = true) {
         do {
             try context.save()
@@ -23,6 +24,7 @@ enum AppSideEffects {
         let habits = context.fetchHabits()
         WidgetSnapshotBuilder.publish(tasks: tasks, habits: habits)
         guard refreshNotifications else { return }
+        CalendarExport.syncIfEnabled(tasks: tasks)
         Task {
             await AppNotifications.refresh(tasks: tasks, habits: habits)
         }

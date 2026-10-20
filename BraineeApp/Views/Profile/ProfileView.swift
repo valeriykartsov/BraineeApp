@@ -286,6 +286,15 @@ struct ProfileView: View {
             InsetDivider(leading: DesignSystem.Space.rowIconInset)
 
             NavigationLink {
+                CalendarExportSettingsView()
+            } label: {
+                GroupedNavRow(title: "Календарь", systemImage: "calendar")
+            }
+            .buttonStyle(.plain)
+
+            InsetDivider(leading: DesignSystem.Space.rowIconInset)
+
+            NavigationLink {
                 TabBarSettingsView()
             } label: {
                 GroupedNavRow(title: "Панель вкладок", systemImage: "square.grid.2x2")
