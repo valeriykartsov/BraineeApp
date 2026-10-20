@@ -2,18 +2,56 @@
 //  LLMChatView.swift
 //  BraineeApp
 //
-//  Чат вкладки «LLM» (LLM-3). Режим «Задача»: фраза → черновик → обычная форма задачи →
-//  сохранение через TaskService. Каждый запрос отправляется отдельно, без предыдущих сообщений (D-26).
+//  Чат вкладки «LLM». Режимы: «Задача» (LLM-3) — фраза → черновик; «Разбор» (LLM-6) — длинный
+//  текст → до 10 черновиков. Каждый черновик → обычная форма задачи → сохранение через TaskService. Каждый запрос отправляется отдельно, без предыдущих сообщений (D-26).
 //  История живёт только в памяти до закрытия приложения и нигде не сохраняется.
 
 import SwiftUI
 import SwiftData
 
+/// Режим чата: что сделать с текстом. Выбирает пользователь (D-29…D-34).
+enum LLMChatMode: CaseIterable, Identifiable {
+    case task
+    case inbox
+
+    var id: Self { self }
+
+    var title: String {
+        switch self {
+        case .task: "Задача"
+        case .inbox: "Разбор"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .task: "checklist"
+        case .inbox: "tray.full"
+        }
+    }
+
+    var placeholder: String {
+        switch self {
+        case .task: "Опишите задачу…"
+        case .inbox: "Вставьте список дел или мысли…"
+        }
+    }
+
+    var maxInputLength: Int {
+        switch self {
+        case .task: TaskDraftService.maxInputLength
+        case .inbox: InboxDraftService.maxInputLength
+        }
+    }
+}
+
 struct LLMChatMessage: Identifiable {
     enum Kind {
         case user(String)
         case draft(TaskDraft)
-        case error(String, retryText: String)
+        /// Несколько черновиков из «Разбора» и пометки об отброшенном.
+        case drafts([TaskDraft], notes: [String])
+        case error(String, retryText: String, mode: LLMChatMode)
     }
 
     let id = UUID()
@@ -32,6 +70,7 @@ struct LLMChatView: View {
     private var tags: [TaskTag]
 
     @State private var input = ""
+    @State private var mode: LLMChatMode = .task
     @State private var isSending = false
     @State private var openedDraft: TaskDraft?
     @State private var savedDraftIDs: Set<UUID> = []
@@ -42,7 +81,7 @@ struct LLMChatView: View {
     }
 
     private var canSend: Bool {
-        !isSending && !trimmedInput.isEmpty && trimmedInput.count <= TaskDraftService.maxInputLength
+        !isSending && !trimmedInput.isEmpty && trimmedInput.count <= mode.maxInputLength
     }
 
     var body: some View {
@@ -95,10 +134,12 @@ struct LLMChatView: View {
 
     private var hint: some View {
         VStack(alignment: .leading, spacing: DesignSystem.Space.x2) {
-            Text("Опишите задачу словами")
+            Text(mode == .task ? "Опишите задачу словами" : "Вставьте всё, что в голове")
                 .font(DesignSystem.Typography.headline(16))
                 .foregroundStyle(DesignSystem.Colors.textPrimary)
-            Text("Например: «Завтра в 10 позвонить в банк, важно». LLM подготовит черновик — вы проверите его в обычной форме и сохраните. Без сохранения ничего не меняется.")
+            Text(mode == .task
+                 ? "Например: «Завтра в 10 позвонить в банк, важно». LLM подготовит черновик — вы проверите его в обычной форме и сохраните. Без сохранения ничего не меняется."
+                 : "Список дел, заметку или поток мыслей — до \(InboxDraftService.maxInputLength) символов. LLM разберёт текст на отдельные задачи (до \(InboxDraftService.maxDrafts)); каждую вы проверяете и сохраняете отдельно.")
                 .font(DesignSystem.Typography.body(15))
                 .foregroundStyle(DesignSystem.Colors.textSecondary)
             Text("В OpenRouter уходят только ваш текст, сегодняшняя дата, часовой пояс и названия папок и тегов. История чата не сохраняется.")
@@ -126,13 +167,27 @@ struct LLMChatView: View {
             }
         case .draft(let draft):
             draftCard(draft)
-        case .error(let text, let retryText):
+        case .drafts(let drafts, let notes):
+            VStack(alignment: .leading, spacing: DesignSystem.Space.x2) {
+                Text("Черновиков: \(drafts.count). Сохраните нужные по одному.")
+                    .font(DesignSystem.Typography.caption())
+                    .foregroundStyle(DesignSystem.Colors.textSecondary)
+                ForEach(notes, id: \.self) { note in
+                    Label(note, systemImage: "info.circle")
+                        .font(DesignSystem.Typography.caption())
+                        .foregroundStyle(DesignSystem.Colors.textSecondary)
+                }
+                ForEach(drafts) { draft in
+                    draftCard(draft)
+                }
+            }
+        case .error(let text, let retryText, let retryMode):
             VStack(alignment: .leading, spacing: DesignSystem.Space.x2) {
                 Label(text, systemImage: "exclamationmark.triangle.fill")
                     .font(DesignSystem.Typography.body(15))
                     .foregroundStyle(DesignSystem.Colors.danger)
                 HStack(spacing: DesignSystem.Space.x4) {
-                    Button("Повторить") { send(retryText) }
+                    Button("Повторить") { send(retryText, mode: retryMode) }
                         .foregroundStyle(DesignSystem.Colors.accent)
                         .disabled(isSending)
                     Text("Задачу всегда можно создать вручную на вкладке «Задачи».")
@@ -235,25 +290,21 @@ struct LLMChatView: View {
     private var inputBar: some View {
         VStack(alignment: .leading, spacing: DesignSystem.Space.x2) {
             HStack(spacing: DesignSystem.Space.x2) {
-                Label("Задача", systemImage: "checklist")
-                    .font(DesignSystem.Typography.caption())
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, DesignSystem.Space.x2)
-                    .padding(.vertical, DesignSystem.Space.x1)
-                    .background(Capsule().fill(DesignSystem.Colors.accent))
-                    .accessibilityLabel("Режим: задача")
+                ForEach(LLMChatMode.allCases) { item in
+                    modeChip(item)
+                }
                 Spacer()
-                if trimmedInput.count > TaskDraftService.maxInputLength {
-                    Text("\(trimmedInput.count)/\(TaskDraftService.maxInputLength)")
+                if trimmedInput.count > mode.maxInputLength {
+                    Text("\(trimmedInput.count)/\(mode.maxInputLength)")
                         .font(DesignSystem.Typography.caption())
                         .foregroundStyle(DesignSystem.Colors.danger)
                 }
             }
 
             HStack(alignment: .bottom, spacing: DesignSystem.Space.x2) {
-                TextField("Опишите задачу…", text: $input, axis: .vertical)
+                TextField(mode.placeholder, text: $input, axis: .vertical)
                     .font(DesignSystem.Typography.body(16))
-                    .lineLimit(1...5)
+                    .lineLimit(1...(mode == .inbox ? 8 : 5))
                     .focused($isInputFocused)
                     .padding(.horizontal, DesignSystem.Space.x3)
                     .padding(.vertical, DesignSystem.Space.x2)
@@ -262,7 +313,7 @@ struct LLMChatView: View {
                             .fill(DesignSystem.Colors.chip)
                     )
                 Button {
-                    send(trimmedInput)
+                    send(trimmedInput, mode: mode)
                 } label: {
                     Image(systemName: "arrow.up.circle.fill")
                         .font(.system(size: 32))
@@ -277,13 +328,31 @@ struct LLMChatView: View {
         .background(DesignSystem.Colors.surface)
     }
 
+    private func modeChip(_ item: LLMChatMode) -> some View {
+        let isSelected = item == mode
+        return Button {
+            mode = item
+        } label: {
+            Label(item.title, systemImage: item.systemImage)
+                .font(DesignSystem.Typography.caption())
+                .foregroundStyle(isSelected ? .white : DesignSystem.Colors.textPrimary)
+                .padding(.horizontal, DesignSystem.Space.x2)
+                .padding(.vertical, DesignSystem.Space.x1)
+                .background(Capsule().fill(isSelected ? DesignSystem.Colors.accent : DesignSystem.Colors.chip))
+        }
+        .buttonStyle(.plain)
+        .disabled(isSending)
+        .accessibilityLabel("Режим: \(item.title)")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
     // MARK: - Действия
 
     private var draftContext: TaskDraftContext {
         TaskDraftContext.make(groups: groups, tags: tags)
     }
 
-    private func send(_ text: String) {
+    private func send(_ text: String, mode: LLMChatMode) {
         guard !isSending, !text.isEmpty else { return }
         if text == trimmedInput {
             input = ""
@@ -295,14 +364,19 @@ struct LLMChatView: View {
             defer { isSending = false }
             do {
                 let provider = try LLMProviderFactory.make()
-                let draft = try await TaskDraftGenerator(provider: provider).draft(from: text, context: context)
-                messages.append(LLMChatMessage(kind: .draft(draft)))
-            } catch let error as LLMError {
-                messages.append(LLMChatMessage(kind: .error(error.userMessage, retryText: text)))
-            } catch let error as TaskDraftError {
-                messages.append(LLMChatMessage(kind: .error(error.userMessage, retryText: text)))
+                switch mode {
+                case .task:
+                    let draft = try await TaskDraftGenerator(provider: provider).draft(from: text, context: context)
+                    messages.append(LLMChatMessage(kind: .draft(draft)))
+                case .inbox:
+                    let result = try await InboxDraftGenerator(provider: provider).drafts(from: text, context: context)
+                    messages.append(LLMChatMessage(kind: .drafts(result.drafts, notes: result.notes)))
+                }
             } catch {
-                messages.append(LLMChatMessage(kind: .error(LLMError.invalidResponse.userMessage, retryText: text)))
+                let message = (error as? LLMError)?.userMessage
+                    ?? (error as? TaskDraftError)?.userMessage
+                    ?? LLMError.invalidResponse.userMessage
+                messages.append(LLMChatMessage(kind: .error(message, retryText: text, mode: mode)))
             }
         }
     }

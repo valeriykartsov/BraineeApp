@@ -90,6 +90,20 @@ enum TaskDraftService {
     }
 
     static func systemPrompt(context: TaskDraftContext) -> String {
+        """
+        Ты помогаешь превратить фразу пользователя в одну задачу для списка дел.
+        \(contextLines(context))
+
+        Ответь ТОЛЬКО JSON-объектом без пояснений и без markdown:
+        \(draftSchema)
+
+        Правила:
+        \(fieldRules)
+        """
+    }
+
+    /// Дата, часовой пояс, папки и теги — общие для всех режимов с черновиками (D-26).
+    static func contextLines(_ context: TaskDraftContext) -> String {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = context.timeZone
         let today = dayString(context.now, calendar: calendar)
@@ -97,33 +111,40 @@ enum TaskDraftService {
         let groups = context.groupNames.isEmpty ? "(нет)" : context.groupNames.map { "«\($0)»" }.joined(separator: ", ")
         let tags = context.tagNames.isEmpty ? "(нет)" : context.tagNames.map { "«\($0)»" }.joined(separator: ", ")
         return """
-        Ты помогаешь превратить фразу пользователя в одну задачу для списка дел.
         Сегодня \(today) (\(weekday)), часовой пояс \(context.timeZone.identifier).
         Папки пользователя: \(groups).
         Теги пользователя: \(tags).
-
-        Ответь ТОЛЬКО JSON-объектом без пояснений и без markdown:
-        {"title": string, "details": string, "date": "YYYY-MM-DD" | null, "time": "HH:mm" | null, \
-        "priority": "low" | "medium" | "high" | "highest", "tags": [string], "group": string | null}
-
-        Правила:
-        - title — коротко, по-русски, с заглавной буквы, без даты и времени.
-        - details — подробности из фразы или пустая строка.
-        - date — только если срок назван или однозначно следует из фразы («завтра», «в пятницу»); иначе null.
-        - time — только если назван час; без date время не указывай.
-        - priority — "medium", если важность не указана.
-        - tags и group — только из списков выше, точными названиями; не придумывай новых.
         """
     }
+
+    /// JSON одного черновика.
+    static let draftSchema = """
+    {"title": string, "details": string, "date": "YYYY-MM-DD" | null, "time": "HH:mm" | null, \
+    "priority": "low" | "medium" | "high" | "highest", "tags": [string], "group": string | null}
+    """
+
+    /// Правила заполнения полей черновика.
+    static let fieldRules = """
+    - title — коротко, по-русски, с заглавной буквы, без даты и времени.
+    - details — подробности из фразы или пустая строка.
+    - date — только если срок назван или однозначно следует из фразы («завтра», «в пятницу»); иначе null.
+    - time — только если назван час; без date время не указывай.
+    - priority — "medium", если важность не указана.
+    - tags и group — только из списков выше, точными названиями; не придумывай новых.
+    """
 
     // MARK: - Разбор ответа
 
     static func parse(_ responseText: String, context: TaskDraftContext) throws -> TaskDraft {
         guard let data = extractJSONObject(from: responseText),
-              let raw = try? JSONDecoder().decode(RawDraft.self, from: data) else {
+              let raw = try? JSONDecoder().decode(RawTaskDraft.self, from: data) else {
             throw TaskDraftError.invalidJSON
         }
+        return try validate(raw, context: context)
+    }
 
+    /// Проверка одного черновика из ответа модели (общая для «Задачи» и «Разбора»).
+    static func validate(_ raw: RawTaskDraft, context: TaskDraftContext) throws -> TaskDraft {
         var notes: [String] = []
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = context.timeZone
@@ -217,7 +238,8 @@ enum TaskDraftService {
 
     // MARK: - Помощники
 
-    private struct RawDraft: Decodable {
+    /// Черновик в том виде, как его прислала модель: все поля необязательны, лишние игнорируются.
+    struct RawTaskDraft: Decodable {
         let title: String?
         let details: String?
         let date: String?
