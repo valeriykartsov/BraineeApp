@@ -27,6 +27,8 @@ struct ProfileView: View {
     @State private var isExportingBackup = false
     @State private var backupMessage: String?
     @State private var pendingBackupSummary = ""
+    @State private var isImportingBackup = false
+    @State private var pendingRestore: BackupRestore.Preview?
     @FocusState private var isSearchFocused: Bool
 
     private var profile: UserProfile? { profiles.first }
@@ -79,7 +81,7 @@ struct ProfileView: View {
                         TagLibraryView()
                     }
 
-                    if matches("хранение", "данные", "json", "папка", "бэкап", "резерв", "экспорт") {
+                    if matches("хранение", "данные", "json", "папка", "бэкап", "резерв", "экспорт", "восстан", "импорт") {
                         storageSection
                     }
                 }
@@ -149,6 +151,26 @@ struct ProfileView: View {
                 Button("OK", role: .cancel) {}
             } message: {
                 Text(backupMessage ?? "")
+            }
+            .alert(
+                "Восстановить из резервной копии?",
+                isPresented: Binding(
+                    get: { pendingRestore != nil },
+                    set: { if !$0 { pendingRestore = nil } }
+                ),
+                presenting: pendingRestore
+            ) { preview in
+                Button("Заменить данные", role: .destructive) {
+                    performRestore(preview)
+                }
+                Button("Отмена", role: .cancel) {}
+            } message: { preview in
+                Text(
+                    "Копия от \(preview.exportedAt.formatted(date: .abbreviated, time: .shortened)).\n"
+                        + "\(preview.summary)\n\n"
+                        + "Текущие задачи, папки, теги, привычки и профиль будут заменены. "
+                        + "Перед заменой они сохранятся в Backups/pre-restore. Аватар останется текущим."
+                )
             }
         }
         .id(navigationResetID)
@@ -307,7 +329,7 @@ struct ProfileView: View {
                         .foregroundStyle(DesignSystem.Colors.textSecondary)
                 }
 
-                Text("Данные хранятся локально в Documents/BraineeApp (mytasks.json, profile.json). Резервная копия — в Keychain.")
+                Text("Данные хранятся локально в хранилище приложения. Автобэкап — раз в сутки при сворачивании, последние 7 копий.")
                     .font(DesignSystem.Typography.caption())
                     .foregroundStyle(DesignSystem.Colors.textSecondary)
             }
@@ -325,6 +347,23 @@ struct ProfileView: View {
                 )
             }
             .buttonStyle(.plain)
+
+            InsetDivider(leading: DesignSystem.Space.rowIconInset)
+
+            Button {
+                isImportingBackup = true
+            } label: {
+                GroupedNavRow(
+                    title: "Восстановить из резервной копии",
+                    systemImage: "square.and.arrow.down",
+                    showsChevron: false
+                )
+            }
+            .buttonStyle(.plain)
+            // Отдельно от fileExporter на NavigationStack: два файловых диалога на одном View конфликтуют.
+            .fileImporter(isPresented: $isImportingBackup, allowedContentTypes: [.json]) { result in
+                prepareRestore(result)
+            }
         }
     }
 
@@ -355,6 +394,40 @@ struct ProfileView: View {
             }
         }
         backupFile = nil
+    }
+
+    /// Читает выбранный файл и показывает предпросмотр. Невалидный файл — сообщение, данные не трогаются.
+    private func prepareRestore(_ result: Result<URL, Error>) {
+        switch result {
+        case .success(let url):
+            let hasAccess = url.startAccessingSecurityScopedResource()
+            defer {
+                if hasAccess { url.stopAccessingSecurityScopedResource() }
+            }
+            do {
+                pendingRestore = try BackupRestore.preview(Data(contentsOf: url))
+            } catch {
+                backupMessage = "Файл не подходит для восстановления: \(error.localizedDescription)"
+            }
+        case .failure(let error):
+            if (error as? CocoaError)?.code != .userCancelled {
+                backupMessage = "Не удалось открыть файл: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    private func performRestore(_ preview: BackupRestore.Preview) {
+        try? modelContext.save()
+        do {
+            let safetyURL = try BackupRestore().restore(preview, into: modelContext.container)
+            modelContext.didChange()
+            AppIconSwitcher.syncWithCurrentAccent()
+            backupMessage = "Данные восстановлены.\n\(preview.summary)\n"
+                + "Прежние данные сохранены: \(safetyURL.lastPathComponent)"
+        } catch {
+            backupMessage = "Не удалось восстановить данные: \(error.localizedDescription)"
+        }
+        pendingRestore = nil
     }
 
     private var profileService: ProfileService {
