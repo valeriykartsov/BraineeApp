@@ -357,21 +357,16 @@ struct ProfileView: View {
         backupFile = nil
     }
 
+    private var profileService: ProfileService {
+        ProfileService(context: modelContext)
+    }
+
     private func ensureProfile() {
-        guard profiles.isEmpty else { return }
-        let newProfile = UserProfile(displayName: "")
-        modelContext.insert(newProfile)
-        modelContext.persistToJSON()
+        profileService.ensureProfile()
     }
 
     private func saveProfile(name: String, age: Int?, gender: UserGender, avatarData: Data?) {
-        ensureProfile()
-        guard let profile else { return }
-        profile.displayName = name
-        profile.age = age
-        profile.gender = gender
-        profile.avatarData = avatarData
-        modelContext.persistToJSON()
+        profileService.update(name: name, age: age, gender: gender, avatarData: avatarData)
     }
 }
 

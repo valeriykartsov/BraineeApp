@@ -34,7 +34,7 @@ struct AppearanceSettingsView: View {
                             get: { appTheme },
                             set: {
                                 appThemeRaw = $0.rawValue
-                                modelContext.persistToJSON()
+                                ProfileService(context: modelContext).appearanceDidChange()
                             }
                         )) {
                             ForEach(AppTheme.allCases) { theme in
@@ -134,7 +134,7 @@ struct AppearanceSettingsView: View {
         let previous = accentPalette
         accentPaletteRaw = selected.rawValue
         AppNavigationChrome.apply(accentRaw: selected.rawValue)
-        modelContext.persistToJSON()
+        ProfileService(context: modelContext).appearanceDidChange()
 
         guard selected != previous else { return }
 

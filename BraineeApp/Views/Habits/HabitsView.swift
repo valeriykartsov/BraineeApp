@@ -91,8 +91,7 @@ struct HabitsView: View {
                 AddEditHabitView(
                     habit: habit,
                     onSave: { title in
-                        habit.title = title
-                        modelContext.persistToJSON()
+                        habitService.rename(habit, to: title)
                     },
                     onDelete: {
                         // Подтверждение уже в форме; удаляем после «Удалить».
@@ -339,7 +338,7 @@ struct HabitsView: View {
                 onLift: { draggingUUID = habit.uuid },
                 onEnded: {
                     draggingUUID = nil
-                    modelContext.persistToJSON()
+                    habitService.saveOrder()
                 }
             ) {
                 habitDragPreview(habit)
@@ -352,7 +351,7 @@ struct HabitsView: View {
         .zIndex(isDragging ? 1 : 0)
         .dropDestination(for: String.self) { _, _ in
             draggingUUID = nil
-            modelContext.persistToJSON()
+            habitService.saveOrder()
             return true
         } isTargeted: { hovering in
             guard hovering, let draggingUUID, draggingUUID != habit.uuid else { return }
@@ -383,30 +382,28 @@ struct HabitsView: View {
         showingDeleteConfirm = true
     }
 
+    private var habitService: HabitService {
+        HabitService(context: modelContext)
+    }
+
     private func toggleHabit(_ habit: Habit) {
-        let day = HabitDaySelection.clamp(selectedDay)
+        var isCompleted = false
         withAnimation {
-            habit.toggleCompletion(on: day)
+            isCompleted = habitService.toggle(habit, on: selectedDay)
         }
-        if habit.isCompleted(on: day) {
+        if isCompleted {
             HapticFeedback.success()
         }
-        modelContext.persistToJSON()
     }
 
     private func addHabit(title: String) {
-        guard canAddMore, TaskInputValidation.canSaveTitle(title) else { return }
-        let nextOrder = (habits.map(\.sortOrder).max() ?? -1) + 1
-        let habit = Habit(title: title, sortOrder: nextOrder)
-        modelContext.insert(habit)
-        modelContext.persistToJSON()
+        habitService.create(title: title)
     }
 
     private func deleteHabit(_ habit: Habit) {
         withAnimation {
-            modelContext.delete(habit)
+            habitService.delete(habit)
         }
-        modelContext.persistToJSON()
         if editingHabit?.uuid == habit.uuid {
             editingHabit = nil
         }
@@ -414,19 +411,7 @@ struct HabitsView: View {
 
     /// Живое вытеснение: при наведении на другую строку порядок обновляется сразу.
     private func liveReorder(draggedID: UUID, onto targetID: UUID) {
-        var ordered = habits
-        guard let fromIndex = ordered.firstIndex(where: { $0.uuid == draggedID }),
-              let toIndex = ordered.firstIndex(where: { $0.uuid == targetID }),
-              fromIndex != toIndex else {
-            return
-        }
-        ordered.move(
-            fromOffsets: IndexSet(integer: fromIndex),
-            toOffset: toIndex > fromIndex ? toIndex + 1 : toIndex
-        )
-        for (index, habit) in ordered.enumerated() {
-            habit.sortOrder = index
-        }
+        habitService.move(draggedID, onto: targetID)
     }
 }
 

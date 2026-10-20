@@ -88,7 +88,7 @@ xcodebuild test -project BraineeApp.xcodeproj -scheme BraineeApp -destination 'p
 - **Зависимости:** DOM-1.
 - **Разбивка (2026-10-20):**
   - **DOM-2a — выполнено:** `GroupService` (создание, переименование, удаление), `TagService` (создание, переименование, удаление), `TaskService.move/restore/permanentlyDelete`; экраны `TaskSectionView`, `TaskOrganizedListView`, `TagLibraryView`, `DeletedTasksFolderView`. Добавлена защита: `permanentlyDelete` стирает только задачи из корзины.
-  - **DOM-2b — следующий:** `HabitService` (`HabitsView`), `ProfileService` (`ProfileView`, `AppearanceSettingsView`).
+  - **DOM-2b — выполнено:** `HabitService` (`HabitsView`: создание, переименование, отметка дня с правилом `HabitDaySelection.clamp`, удаление, перестановка с одним сохранением в конце), `ProfileService` (`ProfileView`, `AppearanceSettingsView`).
 
 ### DOM-3. Поля для синхронизации и отчётов (JSON v9)
 - **Цель:** добавить `updatedAt` (задачи, группы, теги, привычки), `completedAt` (задачи), `uuid` профиля.
