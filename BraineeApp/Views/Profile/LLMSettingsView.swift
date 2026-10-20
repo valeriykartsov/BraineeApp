@@ -20,6 +20,16 @@ struct LLMSettingsView: View {
     @State private var savedModel = LLMSettings.model()
     @State private var modelError: String?
 
+    @State private var keyInfo: OpenRouterKeyInfo?
+    @State private var keyInfoError: String?
+    @State private var isChecking = false
+    @State private var checkResult: CheckResult?
+
+    private enum CheckResult: Equatable {
+        case success(String)
+        case failure(String)
+    }
+
     @FocusState private var focusedField: Field?
 
     private enum Field {
@@ -81,6 +91,10 @@ struct LLMSettingsView: View {
                     .padding(DesignSystem.Space.x3)
                 }
 
+                if savedKeyMask != nil {
+                    connectionSection
+                }
+
                 Text("Провайдер — OpenRouter. Наружу отправляется только то, что нужно конкретному действию; приложение работает и без LLM.")
                     .font(DesignSystem.Typography.caption())
                     .foregroundStyle(DesignSystem.Colors.textSecondary)
@@ -97,6 +111,7 @@ struct LLMSettingsView: View {
 #endif
         .tint(DesignSystem.Colors.accent)
         .onAppear(perform: reloadKey)
+        .task(id: savedKeyMask) { await loadKeyInfo() }
         .alert("Удалить ключ?", isPresented: $showingDeleteConfirm) {
             Button("Удалить", role: .destructive, action: deleteKey)
             Button("Отмена", role: .cancel) {}
@@ -158,6 +173,90 @@ struct LLMSettingsView: View {
         }
     }
 
+    private var connectionSection: some View {
+        GroupedSection(title: "Соединение") {
+            VStack(alignment: .leading, spacing: DesignSystem.Space.x3) {
+                HStack(spacing: DesignSystem.Space.x2) {
+                    Button("Проверить соединение") {
+                        Task { await checkConnection() }
+                    }
+                    .font(DesignSystem.Typography.body(15))
+                    .foregroundStyle(DesignSystem.Colors.accent)
+                    .buttonStyle(.plain)
+                    .disabled(isChecking)
+                    if isChecking {
+                        ProgressView()
+                    }
+                }
+
+                switch checkResult {
+                case .success(let text):
+                    Label(text, systemImage: "checkmark.circle.fill")
+                        .font(DesignSystem.Typography.caption())
+                        .foregroundStyle(DesignSystem.Colors.success)
+                case .failure(let text):
+                    Label(text, systemImage: "exclamationmark.triangle.fill")
+                        .font(DesignSystem.Typography.caption())
+                        .foregroundStyle(DesignSystem.Colors.danger)
+                case nil:
+                    EmptyView()
+                }
+
+                if let keyInfo {
+                    VStack(alignment: .leading, spacing: DesignSystem.Space.x1) {
+                        Text(keyInfo.summary)
+                            .font(DesignSystem.Typography.body(15))
+                            .foregroundStyle(DesignSystem.Colors.textPrimary)
+                        if let free = keyInfo.freeModelsSummary {
+                            Text(free)
+                                .font(DesignSystem.Typography.caption())
+                                .foregroundStyle(DesignSystem.Colors.textSecondary)
+                        }
+                    }
+                } else if let keyInfoError {
+                    Text("Остаток лимита недоступен: \(keyInfoError)")
+                        .font(DesignSystem.Typography.caption())
+                        .foregroundStyle(DesignSystem.Colors.textSecondary)
+                }
+
+                Text("Остаток — по лимиту, заданному ключу на openrouter.ai. Проверка отправляет модели короткое слово «ping».")
+                    .font(DesignSystem.Typography.caption())
+                    .foregroundStyle(DesignSystem.Colors.textSecondary)
+            }
+            .padding(DesignSystem.Space.x3)
+        }
+    }
+
+    private func loadKeyInfo() async {
+        keyInfo = nil
+        keyInfoError = nil
+        guard savedKeyMask != nil, let provider = try? OpenRouterProvider.fromSettings() else { return }
+        do {
+            keyInfo = try await provider.fetchKeyInfo()
+        } catch let error as LLMError {
+            keyInfoError = error.userMessage
+        } catch {
+            keyInfoError = LLMError.invalidResponse.userMessage
+        }
+    }
+
+    private func checkConnection() async {
+        guard !isChecking else { return }
+        isChecking = true
+        defer { isChecking = false }
+        checkResult = nil
+        do {
+            let report = try await OpenRouterProvider.fromSettings().checkConnection()
+            keyInfo = report.keyInfo
+            keyInfoError = nil
+            checkResult = .success("Соединение работает · ответила модель \(report.model)")
+        } catch let error as LLMError {
+            checkResult = .failure(error.userMessage)
+        } catch {
+            checkResult = .failure(LLMError.invalidResponse.userMessage)
+        }
+    }
+
     private func inputField<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
         content()
             .font(DesignSystem.Typography.body(15))
@@ -172,7 +271,11 @@ struct LLMSettingsView: View {
     }
 
     private func reloadKey() {
-        savedKeyMask = secrets.value(for: .openRouterAPIKey).map(SecretStore.masked)
+        let mask = secrets.value(for: .openRouterAPIKey).map(SecretStore.masked)
+        if mask != savedKeyMask {
+            checkResult = nil
+        }
+        savedKeyMask = mask
     }
 
     private func saveKey() {
@@ -213,6 +316,7 @@ struct LLMSettingsView: View {
         modelInput = LLMSettings.model()
         savedModel = modelInput
         modelError = nil
+        checkResult = nil
         focusedField = nil
     }
 }
