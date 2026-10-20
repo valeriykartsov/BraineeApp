@@ -11,10 +11,15 @@ import SwiftData
 
 @MainActor
 struct BackupDocumentTests {
+    /// Контейнер живёт столько же, сколько тест (см. TaskServiceTests).
+    private let container: ModelContainer
+
+    init() throws {
+        container = try TestHelpers.makeContainer()
+    }
 
     // Бэкап из SwiftData → байты → чтение: все сущности и поля совпадают с исходными, включая корзину.
     @Test func бэкапИзКонтекста_читаетсяОбратноБезПотерь() throws {
-        let container = try TestHelpers.makeContainer()
         let context = container.mainContext
         let original = PersistenceFixtures.fullTasksDocument()
         AppDataPersistence.importTasks(original, into: context)
@@ -37,7 +42,6 @@ struct BackupDocumentTests {
 
     // Аватар не попадает в бэкап (D-16), даже если он есть в профиле, — файл не утяжеляется.
     @Test func аватар_неПопадаетВБэкап() throws {
-        let container = try TestHelpers.makeContainer()
         let context = container.mainContext
         AppDataPersistence.importProfile(PersistenceFixtures.profileDocument(), into: context)
         try context.save()
@@ -55,7 +59,6 @@ struct BackupDocumentTests {
 
     // Вложенный tasks — обычный MyTasksDocument: его можно извлечь и прочитать как mytasks.json.
     @Test func задачиВБэкапе_читаютсяКакMyTasksDocument() throws {
-        let container = try TestHelpers.makeContainer()
         let context = container.mainContext
         let original = PersistenceFixtures.fullTasksDocument()
         AppDataPersistence.importTasks(original, into: context)
@@ -71,7 +74,6 @@ struct BackupDocumentTests {
 
     // Пустое приложение тоже экспортируется (без краша, пустые списки).
     @Test func пустыеДанные_экспортируютсяБезОшибок() throws {
-        let container = try TestHelpers.makeContainer()
 
         let data = try BackupDocument.make(from: container.mainContext).encoded()
         let restored = try BackupDocument.decode(from: data)

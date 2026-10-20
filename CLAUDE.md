@@ -43,7 +43,10 @@ xcodebuild test -project BraineeApp.xcodeproj -scheme BraineeApp -destination 'p
 ```
 
 Без `OS=` имя «iPhone 16» неоднозначно (есть рантайм 18.1 ниже минимальной версии). Долгие сборки запускать в фоне.
+Если клон симулятора «застрял в создании», запускать на загруженном устройстве без клонирования: `-destination 'platform=iOS Simulator,id=<UDID>' -parallel-testing-enabled NO` (результаты тогда в формате `✔ Test … passed` / `✘`).
 Тесты — Swift Testing (`import Testing`), в `BraineeAppTests/`, имена на русском `чтоПроверяем_ожидаемыйРезультат`, перед тестом комментарий; хелпер `TestHelpers.makeContainer()`.
+`ModelContainer` в тестах хранить в свойстве тестовой структуры (`init() throws`), а не в локальной переменной: Swift может освободить её после последнего использования, и обращение к моделям роняет весь тестовый процесс.
+Изменения задач — через `Domain/TaskService` (в тестах передавать `onChange`, чтобы не писать настоящие JSON/Keychain).
 
 ## Git
 

@@ -268,78 +268,37 @@ struct TaskSectionView: View {
         deepLinkRouter.clearPendingTask()
     }
 
+    private var taskService: TaskService {
+        TaskService(context: modelContext)
+    }
+
     private func addTask(_ formData: TaskFormData) {
-        let nextOrder = (tasks.map(\.sortOrder).max() ?? -1) + 1
-        let task = TaskItem(
-            title: formData.title,
-            deadline: formData.deadline,
-            hasDeadlineTime: formData.hasDeadlineTime,
-            reminderOffsets: formData.reminderOffsets,
-            priority: formData.priority,
-            category: .tasks,
-            status: .new,
-            taskDetails: formData.taskDetails,
-            sortOrder: nextOrder,
-            tags: formData.selectedTags
-        )
-        modelContext.insert(task)
-        modelContext.persistToJSON()
+        taskService.create(from: formData)
     }
 
     private func updateTask(_ task: TaskItem, formData: TaskFormData) {
-        task.title = formData.title
-        task.deadline = formData.deadline
-        task.hasDeadlineTime = formData.hasDeadlineTime
-        task.reminderOffsets = formData.reminderOffsets
-        task.priority = formData.priority
-        task.status = formData.status
-        task.category = .tasks
-        task.taskDetails = formData.taskDetails
-        task.tags = formData.selectedTags
-        modelContext.persistToJSON()
+        taskService.update(task, from: formData)
     }
 
     private func toggleTask(_ task: TaskItem) {
         withAnimation {
-            task.applyCompletionToggle()
-            reorderAfterToggle(task)
+            taskService.toggleCompletion(task)
         }
         if task.isCompleted {
             HapticFeedback.success()
-        }
-        modelContext.persistToJSON()
-    }
-
-    /// Выполненная — в конец группы/«Без папки»; снятие галочки — в конец незакрытых.
-    private func reorderAfterToggle(_ task: TaskItem) {
-        let peers = tasks.filter { peer in
-            if let groupUUID = task.group?.uuid {
-                return peer.group?.uuid == groupUUID
-            }
-            return peer.group == nil
-        }
-        if task.isCompleted {
-            TaskSortHelper.moveToEnd(of: peers, task: task)
-        } else {
-            let incompletePeers = peers.filter { !$0.isCompleted || $0.uuid == task.uuid }
-            TaskSortHelper.moveToEnd(of: incompletePeers, task: task)
         }
     }
 
     private func setStatus(_ task: TaskItem, _ status: TaskStatus) {
         withAnimation {
-            task.status = status
+            taskService.setStatus(task, status)
         }
-        modelContext.persistToJSON()
     }
 
     private func deleteTask(_ task: TaskItem) {
         withAnimation {
-            task.isSoftDeleted = true
-            task.deletedAt = .now
+            taskService.softDelete(task)
         }
-        try? modelContext.save()
-        modelContext.persistToJSON()
     }
 
     private func deleteGroup(_ group: TaskGroup) {

@@ -75,6 +75,7 @@ xcodebuild test -project BraineeApp.xcodeproj -scheme BraineeApp -destination 'p
 - **Автотесты:** `TaskServiceTests` (создание, обновление, переключение с перестановкой `sortOrder`, мягкое удаление).
 - **Ручные проверки:** сценарии задач из `TEST_SCENARIOS.md` на всех трёх экранах.
 - **Риски:** анимации `withAnimation` остаются во View — сервис не должен зависеть от SwiftUI.
+- **Выполнено (2026-10-20):** `Domain/TaskService.swift` (`create`, `update`, `toggleCompletion`, `setStatus`, `softDelete`, внедряемый `onChange`). Единственное изменение поведения: отметка выполнения в Матрице теперь тоже переносит задачу в конец её группы, как в «Задачах» и «Календаре».
 - **Зависимости:** BASE-1.
 
 ### DOM-2. Сервисы для групп, тегов, привычек, корзины

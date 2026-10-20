@@ -13,11 +13,15 @@ import SwiftData
 @MainActor
 @Suite(.serialized)
 struct AppDataPersistenceRoundTripTests {
+    /// Контейнер живёт столько же, сколько тест (см. TaskServiceTests).
+    private let container: ModelContainer
+
+    init() throws {
+        container = try TestHelpers.makeContainer()
+    }
 
     // Импорт документа в SwiftData и экспорт обратно сохраняют все сущности и поля.
     @Test func импортИЭкспортЗадач_безПотерь() throws {
-        // Контейнер держим в переменной: если его освободить, контекст SwiftData падает.
-        let container = try TestHelpers.makeContainer()
         let context = container.mainContext
         let original = PersistenceFixtures.fullTasksDocument()
 
@@ -34,8 +38,6 @@ struct AppDataPersistenceRoundTripTests {
         let original = PersistenceFixtures.fullTasksDocument()
         try AppDataStore.saveTasks(original, location: store.location)
 
-        // Контейнер держим в переменной: если его освободить, контекст SwiftData падает.
-        let container = try TestHelpers.makeContainer()
         let context = container.mainContext
         AppDataPersistence.importTasks(try AppDataStore.loadTasks(location: store.location), into: context)
         try context.save()
@@ -47,8 +49,6 @@ struct AppDataPersistenceRoundTripTests {
 
     // Связи и флаги восстанавливаются именно в моделях SwiftData, а не только в JSON.
     @Test func импорт_восстанавливаетСвязиИФлагиВМоделях() throws {
-        // Контейнер держим в переменной: если его освободить, контекст SwiftData падает.
-        let container = try TestHelpers.makeContainer()
         let context = container.mainContext
         let original = PersistenceFixtures.fullTasksDocument()
         let fullRecord = original.tasks[0]
@@ -78,8 +78,6 @@ struct AppDataPersistenceRoundTripTests {
     // Поэтому bootstrap сначала очищает SwiftData (clearAllData), а будущий мигратор (SD-2)
     // обязан делать upsert по uuid.
     @Test func повторныйИмпортБезОчистки_сейчасСоздаётДубликаты() throws {
-        // Контейнер держим в переменной: если его освободить, контекст SwiftData падает.
-        let container = try TestHelpers.makeContainer()
         let context = container.mainContext
         let original = PersistenceFixtures.fullTasksDocument()
 
@@ -93,8 +91,6 @@ struct AppDataPersistenceRoundTripTests {
     // Профиль: имя, аватар, возраст, пол и дата создания переживают импорт и экспорт.
     // Тема и акцент экспортируются из UserDefaults, поэтому здесь не проверяются.
     @Test func импортИЭкспортПрофиля_безПотерь() throws {
-        // Контейнер держим в переменной: если его освободить, контекст SwiftData падает.
-        let container = try TestHelpers.makeContainer()
         let context = container.mainContext
         let original = PersistenceFixtures.profileDocument()
 
