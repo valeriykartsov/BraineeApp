@@ -80,35 +80,27 @@ struct EisenhowerQuadrantDetailView: View {
         }
     }
 
+    private var taskService: TaskService {
+        TaskService(context: modelContext)
+    }
+
+    /// Теперь, как и в «Задачах»/«Календаре», выполненная задача уходит в конец своей группы.
     private func toggleTask(_ task: TaskItem) {
         withAnimation {
-            task.applyCompletionToggle()
+            taskService.toggleCompletion(task)
         }
         if task.isCompleted {
             HapticFeedback.success()
         }
-        modelContext.persistToJSON()
     }
 
     private func updateTask(_ task: TaskItem, formData: TaskFormData) {
-        task.title = formData.title
-        task.deadline = formData.deadline
-        task.hasDeadlineTime = formData.hasDeadlineTime
-        task.reminderOffsets = formData.reminderOffsets
-        task.priority = formData.priority
-        task.status = formData.status
-        task.category = .tasks
-        task.taskDetails = formData.taskDetails
-        task.tags = formData.selectedTags
-        modelContext.persistToJSON()
+        taskService.update(task, from: formData)
     }
 
     private func softDelete(_ task: TaskItem) {
         withAnimation {
-            task.isSoftDeleted = true
-            task.deletedAt = .now
+            taskService.softDelete(task)
         }
-        try? modelContext.save()
-        modelContext.persistToJSON()
     }
 }
