@@ -6,6 +6,21 @@
 
 import Foundation
 
+/// Где лежат JSON-файлы и их Keychain-копии.
+/// Приложение всегда использует `.standard`; тесты подставляют временную папку и отдельный Keychain service,
+/// чтобы не трогать настоящие данные.
+struct AppDataStoreLocation {
+    var directory: URL
+    var keychainService: String
+
+    static var standard: AppDataStoreLocation {
+        AppDataStoreLocation(
+            directory: AppDataStore.storageDirectory,
+            keychainService: KeychainStorage.defaultService
+        )
+    }
+}
+
 enum AppDataStore {
     static let folderName = "BraineeApp"
     static let tasksFileName = "mytasks.json"
@@ -30,15 +45,15 @@ enum AppDataStore {
     }
 
     /// Создаёт папку BraineeApp и при необходимости восстанавливает mytasks.json из Keychain.
-    static func prepareStorage() throws {
-        try FileManager.default.createDirectory(at: storageDirectory, withIntermediateDirectories: true)
-        try reconcileTasksBackupIfNeeded()
+    static func prepareStorage(location: AppDataStoreLocation = .standard) throws {
+        try FileManager.default.createDirectory(at: location.directory, withIntermediateDirectories: true)
+        try reconcileTasksBackupIfNeeded(location: location)
     }
 
     /// Загружает задачи: сравнивает файл и Keychain, возвращает более свежую копию.
-    static func loadTasks() throws -> MyTasksDocument {
-        let fileDocument = loadTasksFromFile()
-        let keychainDocument = loadTasksFromKeychain()
+    static func loadTasks(location: AppDataStoreLocation = .standard) throws -> MyTasksDocument {
+        let fileDocument = loadTasksFromFile(location: location)
+        let keychainDocument = loadTasksFromKeychain(location: location)
 
         let resolved = pickNewestTasksDocument(fileDocument, keychainDocument)
         guard var document = resolved else {
@@ -48,15 +63,19 @@ enum AppDataStore {
         document.normalizeRecords()
 
         if fileDocument == nil, keychainDocument != nil {
-            try saveTasks(document, syncKeychain: false)
+            try saveTasks(document, syncKeychain: false, location: location)
         }
 
         return document
     }
 
     /// Сохраняет mytasks.json; Keychain обновляется отдельно, ошибка Keychain не блокирует запись файла.
-    static func saveTasks(_ document: MyTasksDocument, syncKeychain: Bool = true) throws {
-        try FileManager.default.createDirectory(at: storageDirectory, withIntermediateDirectories: true)
+    static func saveTasks(
+        _ document: MyTasksDocument,
+        syncKeychain: Bool = true,
+        location: AppDataStoreLocation = .standard
+    ) throws {
+        try FileManager.default.createDirectory(at: location.directory, withIntermediateDirectories: true)
 
         var normalized = document
         normalized.normalizeRecords()
@@ -64,25 +83,25 @@ enum AppDataStore {
         normalized.version = MyTasksDocument.currentVersion
 
         let data = try encoder.encode(normalized)
-        let url = storageDirectory.appendingPathComponent(tasksFileName)
+        let url = location.directory.appendingPathComponent(tasksFileName)
         try data.write(to: url, options: .atomic)
 
         if syncKeychain {
             do {
-                try KeychainStorage.save(data, account: tasksFileName)
+                try KeychainStorage.save(data, account: tasksFileName, service: location.keychainService)
             } catch {
                 print("Keychain tasks backup failed: \(error)")
             }
         }
     }
 
-    static func loadProfile() throws -> ProfileDocument {
-        let url = storageDirectory.appendingPathComponent(profileFileName)
+    static func loadProfile(location: AppDataStoreLocation = .standard) throws -> ProfileDocument {
+        let url = location.directory.appendingPathComponent(profileFileName)
         var document: ProfileDocument
         if FileManager.default.fileExists(atPath: url.path) {
             let data = try Data(contentsOf: url)
             document = try decoder.decode(ProfileDocument.self, from: data)
-        } else if let backup = KeychainStorage.load(account: profileFileName) {
+        } else if let backup = KeychainStorage.load(account: profileFileName, service: location.keychainService) {
             document = try decoder.decode(ProfileDocument.self, from: backup)
         } else {
             document = .empty
@@ -91,18 +110,18 @@ enum AppDataStore {
         return document
     }
 
-    static func saveProfile(_ document: ProfileDocument) throws {
-        try prepareStorage()
+    static func saveProfile(_ document: ProfileDocument, location: AppDataStoreLocation = .standard) throws {
+        try prepareStorage(location: location)
         var normalized = document
         normalized.normalize()
         let data = try encoder.encode(normalized)
-        let url = storageDirectory.appendingPathComponent(profileFileName)
+        let url = location.directory.appendingPathComponent(profileFileName)
         try data.write(to: url, options: .atomic)
-        try KeychainStorage.save(data, account: profileFileName)
+        try KeychainStorage.save(data, account: profileFileName, service: location.keychainService)
     }
 
-    private static func loadTasksFromFile() -> MyTasksDocument? {
-        let url = storageDirectory.appendingPathComponent(tasksFileName)
+    private static func loadTasksFromFile(location: AppDataStoreLocation) -> MyTasksDocument? {
+        let url = location.directory.appendingPathComponent(tasksFileName)
         guard FileManager.default.fileExists(atPath: url.path),
               let data = try? Data(contentsOf: url) else {
             return nil
@@ -110,8 +129,10 @@ enum AppDataStore {
         return decodeTasksDocument(from: data)
     }
 
-    private static func loadTasksFromKeychain() -> MyTasksDocument? {
-        guard let data = KeychainStorage.load(account: tasksFileName) else { return nil }
+    private static func loadTasksFromKeychain(location: AppDataStoreLocation) -> MyTasksDocument? {
+        guard let data = KeychainStorage.load(account: tasksFileName, service: location.keychainService) else {
+            return nil
+        }
         return decodeTasksDocument(from: data)
     }
 
@@ -137,10 +158,10 @@ enum AppDataStore {
     }
 
     /// После переустановки копирует Keychain в файл напрямую, без рекурсивного saveTasks.
-    private static func reconcileTasksBackupIfNeeded() throws {
-        let url = storageDirectory.appendingPathComponent(tasksFileName)
+    private static func reconcileTasksBackupIfNeeded(location: AppDataStoreLocation) throws {
+        let url = location.directory.appendingPathComponent(tasksFileName)
         guard !FileManager.default.fileExists(atPath: url.path),
-              var keychainDocument = loadTasksFromKeychain() else {
+              var keychainDocument = loadTasksFromKeychain(location: location) else {
             return
         }
 

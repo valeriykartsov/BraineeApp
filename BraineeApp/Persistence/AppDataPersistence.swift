@@ -79,7 +79,8 @@ enum AppDataPersistence {
         try? context.delete(model: Habit.self)
     }
 
-    private static func importTasks(_ document: MyTasksDocument, into context: ModelContext) {
+    // Не private: round-trip JSON ↔ SwiftData проверяется в AppDataPersistenceRoundTripTests.
+    static func importTasks(_ document: MyTasksDocument, into context: ModelContext) {
         var tagByID: [UUID: TaskTag] = [:]
         for record in document.tags {
             let tag = TaskTag(name: record.name, uuid: record.id, createdAt: record.createdAt)
@@ -137,7 +138,7 @@ enum AppDataPersistence {
         }
     }
 
-    private static func importProfile(_ document: ProfileDocument, into context: ModelContext) {
+    static func importProfile(_ document: ProfileDocument, into context: ModelContext) {
         var normalized = document
         normalized.normalize()
         let avatarData = normalized.avatarBase64.flatMap { Data(base64Encoded: $0) }
@@ -151,7 +152,7 @@ enum AppDataPersistence {
         context.insert(profile)
     }
 
-    private static func exportTasks(from context: ModelContext) -> MyTasksDocument {
+    static func exportTasks(from context: ModelContext) -> MyTasksDocument {
         let tags = (try? context.fetch(FetchDescriptor<TaskTag>())) ?? []
         let groups = (try? context.fetch(FetchDescriptor<TaskGroup>())) ?? []
         let tasks = (try? context.fetch(FetchDescriptor<TaskItem>())) ?? []
@@ -202,7 +203,7 @@ enum AppDataPersistence {
         )
     }
 
-    private static func exportProfile(from context: ModelContext) -> ProfileDocument {
+    static func exportProfile(from context: ModelContext) -> ProfileDocument {
         let profiles = (try? context.fetch(FetchDescriptor<UserProfile>())) ?? []
         let profile = profiles.first
 
