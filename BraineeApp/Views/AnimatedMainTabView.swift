@@ -114,6 +114,8 @@ struct AnimatedMainTabView: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 Task { await AppNotifications.refresh(from: modelContext) }
+                // Календарь «BraineeApp» могли удалить или поправить в приложении Календарь (CAL-2).
+                CalendarExport.syncIfEnabled(context: modelContext)
             }
         }
         .onChange(of: iconBadgeModeRaw) { _, _ in

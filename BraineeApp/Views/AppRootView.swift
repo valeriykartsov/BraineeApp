@@ -31,6 +31,12 @@ struct AppRootView: View {
             }
         }
         .preferredColorScheme(colorScheme)
+        // Ссылка из события календаря (braineeapp://task/<uuid>, CAL-2) открывает задачу.
+        .onOpenURL { url in
+            if let uuid = CalendarEventRules.taskUUID(from: url) {
+                NotificationDeepLinkRouter.shared.openTask(uuid: uuid)
+            }
+        }
         .task {
             AppDataPersistence.bootstrap(into: modelContext)
             isReady = true
