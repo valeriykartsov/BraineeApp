@@ -26,6 +26,8 @@ enum AppDataStoreError: LocalizedError {
     /// Файл не разбирается как JSON, Keychain-копии нет. Файл сохранён под именем `preservedAs`.
     case tasksFileCorrupted(preservedAs: String)
     case profileFileCorrupted(preservedAs: String)
+    /// Файл не разбирается, Keychain-копии нет; файл не трогали (чтение для миграции SD-2).
+    case sourceUnreadable(fileName: String)
 
     var errorDescription: String? {
         switch self {
@@ -37,6 +39,8 @@ enum AppDataStoreError: LocalizedError {
             "Файл профиля повреждён и не читается, резервной копии в Keychain нет. "
                 + "Повреждённый файл сохранён как \(name) в папке BraineeApp. "
                 + "После перезапуска приложение откроется с пустым профилем."
+        case .sourceUnreadable(let name):
+            "Файл \(name) повреждён и не читается, резервной копии в Keychain нет. Данные не изменены."
         }
     }
 }
@@ -100,6 +104,44 @@ enum AppDataStore {
         }
 
         return document
+    }
+
+    /// Исходные данные для миграции SD-2: тот же выбор файл/Keychain, что в `loadTasks`,
+    /// но без нормализации (чтобы посчитать, что она отбросит) и без записи на диск.
+    /// nil — данных нет ни в файле, ни в Keychain. Битый файл без Keychain-копии — ошибка.
+    static func readTasksSource(location: AppDataStoreLocation = .standard) throws -> MyTasksDocument? {
+        var fileDocument: MyTasksDocument?
+        var fileIsCorrupted = false
+        if let data = try readFileIfExists(named: tasksFileName, location: location) {
+            fileDocument = try? decoder.decode(MyTasksDocument.self, from: data)
+            fileIsCorrupted = fileDocument == nil
+        }
+        let keychainDocument = KeychainStorage.load(account: tasksFileName, service: location.keychainService)
+            .flatMap { try? decoder.decode(MyTasksDocument.self, from: $0) }
+
+        if fileIsCorrupted, keychainDocument == nil {
+            throw AppDataStoreError.sourceUnreadable(fileName: tasksFileName)
+        }
+        return pickNewestTasksDocument(fileDocument, keychainDocument)
+    }
+
+    /// Профиль для миграции SD-2: файл, иначе Keychain-копия, без нормализации и записи на диск.
+    static func readProfileSource(location: AppDataStoreLocation = .standard) throws -> ProfileDocument? {
+        var fileIsCorrupted = false
+        if let data = try readFileIfExists(named: profileFileName, location: location) {
+            if let document = try? decoder.decode(ProfileDocument.self, from: data) {
+                return document
+            }
+            fileIsCorrupted = true
+        }
+        if let backup = KeychainStorage.load(account: profileFileName, service: location.keychainService),
+           let document = try? decoder.decode(ProfileDocument.self, from: backup) {
+            return document
+        }
+        if fileIsCorrupted {
+            throw AppDataStoreError.sourceUnreadable(fileName: profileFileName)
+        }
+        return nil
     }
 
     /// Сохраняет mytasks.json; Keychain обновляется отдельно, ошибка Keychain не блокирует запись файла.
