@@ -13,6 +13,8 @@ final class Habit {
     var sortOrder: Int
     var uuid: UUID
     var createdAt: Date
+    /// Время последнего изменения (для синхронизации).
+    var updatedAt: Date
     /// JSON-массив строк дат «yyyy-MM-dd», когда привычка отмечена.
     var completedDaysRaw: String
 
@@ -31,12 +33,14 @@ final class Habit {
         sortOrder: Int = 0,
         uuid: UUID = UUID(),
         createdAt: Date = .now,
+        updatedAt: Date? = nil,
         completedDayKeys: [String] = []
     ) {
         self.title = title
         self.sortOrder = sortOrder
         self.uuid = uuid
         self.createdAt = createdAt
+        self.updatedAt = updatedAt ?? createdAt
         self.completedDaysRaw = Self.encodeDays(completedDayKeys)
     }
 

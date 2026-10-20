@@ -27,6 +27,10 @@ final class TaskItem {
     /// у SwiftData уже есть одноимённое системное свойство, и флаг не сохранялся в JSON.
     var isSoftDeleted: Bool
     var deletedAt: Date?
+    /// Время последнего изменения (для синхронизации). Проставляют сервисы Domain/.
+    var updatedAt: Date
+    /// Когда задача стала «Готово»; nil — не выполнена или дата неизвестна (старые данные, D-03).
+    var completedAt: Date?
 
     var group: TaskGroup?
 
@@ -48,6 +52,8 @@ final class TaskItem {
         uuid: UUID = UUID(),
         isSoftDeleted: Bool = false,
         deletedAt: Date? = nil,
+        updatedAt: Date? = nil,
+        completedAt: Date? = nil,
         group: TaskGroup? = nil,
         tags: [TaskTag] = []
     ) {
@@ -69,6 +75,8 @@ final class TaskItem {
         self.uuid = uuid
         self.isSoftDeleted = isSoftDeleted
         self.deletedAt = deletedAt
+        self.updatedAt = updatedAt ?? createdAt
+        self.completedAt = resolved == .done ? completedAt : nil
         self.group = group
         self.tags = tags
     }
@@ -86,8 +94,15 @@ final class TaskItem {
     var status: TaskStatus {
         get { TaskStatus(rawValue: statusRaw) ?? TaskStatus.fromCompletion(isCompleted) }
         set {
+            let wasDone = statusRaw == TaskStatus.done.rawValue
             statusRaw = newValue.rawValue
             isCompleted = newValue == .done
+            // Дата закрытия: ставится при переходе в «Готово», сбрасывается при выходе из него.
+            if newValue == .done {
+                if !wasDone { completedAt = .now }
+            } else {
+                completedAt = nil
+            }
         }
     }
 

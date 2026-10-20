@@ -98,6 +98,7 @@ struct AppDataPersistenceRoundTripTests {
         try context.save()
         let exported = AppDataPersistence.exportProfile(from: context)
 
+        #expect(exported.id == original.id)
         #expect(exported.displayName == original.displayName)
         #expect(exported.avatarBase64 == original.avatarBase64)
         #expect(exported.age == original.age)

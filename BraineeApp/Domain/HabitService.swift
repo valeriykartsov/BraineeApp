@@ -13,6 +13,8 @@ struct HabitService {
     let context: ModelContext
     /// См. TaskService.onChange.
     var onChange: (ModelContext) -> Void = { $0.persistToJSON() }
+    /// Текущее время для updatedAt; в тестах подменяется фиксированной датой.
+    var now: () -> Date = { .now }
 
     /// Привычки в порядке отображения.
     var habits: [Habit] {
@@ -29,7 +31,11 @@ struct HabitService {
         let current = habits
         guard current.count < Habit.maxCount, TaskInputValidation.canSaveTitle(title) else { return nil }
         let nextOrder = (current.map(\.sortOrder).max() ?? -1) + 1
-        let habit = Habit(title: TaskInputValidation.normalizedTitle(title), sortOrder: nextOrder)
+        let habit = Habit(
+            title: TaskInputValidation.normalizedTitle(title),
+            sortOrder: nextOrder,
+            createdAt: now()
+        )
         context.insert(habit)
         onChange(context)
         return habit
@@ -40,6 +46,7 @@ struct HabitService {
     func rename(_ habit: Habit, to title: String) -> Bool {
         guard TaskInputValidation.canSaveTitle(title) else { return false }
         habit.title = TaskInputValidation.normalizedTitle(title)
+        habit.updatedAt = now()
         onChange(context)
         return true
     }
@@ -50,6 +57,8 @@ struct HabitService {
     func toggle(_ habit: Habit, on day: Date, now: Date = .now, calendar: Calendar = .current) -> Bool {
         let allowedDay = HabitDaySelection.clamp(day, relativeTo: now, calendar: calendar)
         habit.toggleCompletion(on: allowedDay, calendar: calendar)
+        // self.now — время изменения; параметр now — «сегодня» для правила допустимых дней.
+        habit.updatedAt = self.now()
         onChange(context)
         return habit.isCompleted(on: allowedDay, calendar: calendar)
     }
@@ -70,8 +79,9 @@ struct HabitService {
         }
         let dragged = ordered.remove(at: fromIndex)
         ordered.insert(dragged, at: toIndex)
-        for (index, habit) in ordered.enumerated() {
+        for (index, habit) in ordered.enumerated() where habit.sortOrder != index {
             habit.sortOrder = index
+            habit.updatedAt = now()
         }
     }
 

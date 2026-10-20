@@ -24,6 +24,12 @@ enum AppDataPersistence {
         importTasks(tasksDocument, into: context)
         importProfile(profileDocument, into: context)
 
+        // Старый profile.json без id: uuid создан при импорте — сохраняем сразу,
+        // иначе при следующем запуске он сгенерировался бы заново.
+        if profileDocument.id == nil {
+            try? AppDataStore.saveProfile(exportProfile(from: context))
+        }
+
         if UserDefaults.standard.object(forKey: "appTheme") == nil,
            profileDocument.appThemeRaw != AppTheme.system.rawValue {
             UserDefaults.standard.set(profileDocument.appThemeRaw, forKey: "appTheme")
@@ -83,7 +89,12 @@ enum AppDataPersistence {
     static func importTasks(_ document: MyTasksDocument, into context: ModelContext) {
         var tagByID: [UUID: TaskTag] = [:]
         for record in document.tags {
-            let tag = TaskTag(name: record.name, uuid: record.id, createdAt: record.createdAt)
+            let tag = TaskTag(
+                name: record.name,
+                uuid: record.id,
+                createdAt: record.createdAt,
+                updatedAt: record.updatedAt
+            )
             context.insert(tag)
             tagByID[record.id] = tag
         }
@@ -95,7 +106,8 @@ enum AppDataPersistence {
                 category: .tasks,
                 sortOrder: record.sortOrder,
                 uuid: record.id,
-                createdAt: record.createdAt
+                createdAt: record.createdAt,
+                updatedAt: record.updatedAt
             )
             context.insert(group)
             groupByID[record.id] = group
@@ -120,6 +132,8 @@ enum AppDataPersistence {
                 uuid: record.id,
                 isSoftDeleted: record.isDeleted,
                 deletedAt: record.deletedAt ?? (record.isDeleted ? record.createdAt : nil),
+                updatedAt: record.updatedAt,
+                completedAt: record.completedAt,
                 group: record.groupID.flatMap { groupByID[$0] },
                 tags: tags
             )
@@ -132,6 +146,7 @@ enum AppDataPersistence {
                 sortOrder: record.sortOrder,
                 uuid: record.id,
                 createdAt: record.createdAt,
+                updatedAt: record.updatedAt,
                 completedDayKeys: record.completedDays
             )
             context.insert(habit)
@@ -143,6 +158,7 @@ enum AppDataPersistence {
         normalized.normalize()
         let avatarData = normalized.avatarBase64.flatMap { Data(base64Encoded: $0) }
         let profile = UserProfile(
+            uuid: normalized.id ?? UUID(),
             displayName: normalized.displayName,
             avatarData: avatarData,
             age: normalized.age,
@@ -161,14 +177,17 @@ enum AppDataPersistence {
         return MyTasksDocument(
             version: MyTasksDocument.currentVersion,
             lastSavedAt: .now,
-            tags: tags.map { TagRecord(id: $0.uuid, name: $0.name, createdAt: $0.createdAt) },
+            tags: tags.map {
+                TagRecord(id: $0.uuid, name: $0.name, createdAt: $0.createdAt, updatedAt: $0.updatedAt)
+            },
             groups: groups.map {
                 GroupRecord(
                     id: $0.uuid,
                     name: $0.name,
                     categoryRaw: $0.categoryRaw,
                     sortOrder: $0.sortOrder,
-                    createdAt: $0.createdAt
+                    createdAt: $0.createdAt,
+                    updatedAt: $0.updatedAt
                 )
             },
             tasks: tasks.map {
@@ -188,7 +207,9 @@ enum AppDataPersistence {
                     groupID: $0.group?.uuid,
                     tagIDs: $0.tags.map(\.uuid),
                     isDeleted: $0.isSoftDeleted,
-                    deletedAt: $0.isSoftDeleted ? ($0.deletedAt ?? .now) : nil
+                    deletedAt: $0.isSoftDeleted ? ($0.deletedAt ?? .now) : nil,
+                    updatedAt: $0.updatedAt,
+                    completedAt: $0.completedAt
                 )
             },
             habits: habits.map {
@@ -197,7 +218,8 @@ enum AppDataPersistence {
                     title: $0.title,
                     sortOrder: $0.sortOrder,
                     createdAt: $0.createdAt,
-                    completedDays: $0.completedDayKeys
+                    completedDays: $0.completedDayKeys,
+                    updatedAt: $0.updatedAt
                 )
             }
         )
@@ -209,6 +231,7 @@ enum AppDataPersistence {
 
         var document = ProfileDocument(
             version: ProfileDocument.currentVersion,
+            id: profile?.uuid,
             displayName: profile?.displayName ?? "",
             avatarBase64: profile?.avatarData?.base64EncodedString(),
             age: profile?.age,

@@ -94,14 +94,15 @@ enum PersistenceFixtures {
 
     /// Документ, где заполнены все поля всех сущностей, включая связи и мягкое удаление.
     static func fullTasksDocument(lastSavedAt: Date? = date(1_000)) -> MyTasksDocument {
-        let tagWork = TagRecord(id: UUID(), name: "работа", createdAt: date(1))
+        let tagWork = TagRecord(id: UUID(), name: "работа", createdAt: date(1), updatedAt: date(101))
         let tagHome = TagRecord(id: UUID(), name: "дом", createdAt: date(2))
         let group = GroupRecord(
             id: UUID(),
             name: "Проект",
             categoryRaw: TaskCategory.unifiedRaw,
             sortOrder: 3,
-            createdAt: date(3)
+            createdAt: date(3),
+            updatedAt: date(103)
         )
 
         let fullTask = TaskRecord(
@@ -118,7 +119,8 @@ enum PersistenceFixtures {
             taskDetails: "Описание\nв две строки",
             sortOrder: 7,
             groupID: group.id,
-            tagIDs: [tagWork.id, tagHome.id]
+            tagIDs: [tagWork.id, tagHome.id],
+            updatedAt: date(110)
         )
         let doneTask = TaskRecord(
             id: UUID(),
@@ -132,7 +134,9 @@ enum PersistenceFixtures {
             taskDetails: "",
             sortOrder: 1,
             groupID: nil,
-            tagIDs: []
+            tagIDs: [],
+            updatedAt: date(120),
+            completedAt: date(25)
         )
         let deletedTask = TaskRecord(
             id: UUID(),
@@ -156,7 +160,8 @@ enum PersistenceFixtures {
             title: "Спорт",
             sortOrder: 0,
             createdAt: date(50),
-            completedDays: ["2026-01-01", "2026-01-03"]
+            completedDays: ["2026-01-01", "2026-01-03"],
+            updatedAt: date(150)
         )
 
         return MyTasksDocument(
@@ -169,9 +174,12 @@ enum PersistenceFixtures {
         )
     }
 
+    static let profileID = UUID()
+
     static func profileDocument() -> ProfileDocument {
         ProfileDocument(
             version: ProfileDocument.currentVersion,
+            id: profileID,
             displayName: "Валера",
             avatarBase64: Data([0x01, 0x02, 0x03, 0xFF]).base64EncodedString(),
             age: 33,
@@ -209,6 +217,8 @@ enum RecordAssert {
         #expect(actual.tagIDs.count == expected.tagIDs.count, sourceLocation: sourceLocation)
         #expect(actual.isDeleted == expected.isDeleted, sourceLocation: sourceLocation)
         #expect(actual.deletedAt == expected.deletedAt, sourceLocation: sourceLocation)
+        #expect(actual.updatedAt == expected.updatedAt, sourceLocation: sourceLocation)
+        #expect(actual.completedAt == expected.completedAt, sourceLocation: sourceLocation)
     }
 
     /// Все сущности документа совпадают по id и полям (порядок массивов не важен).
@@ -227,6 +237,7 @@ enum RecordAssert {
             #expect(found?.categoryRaw == group.categoryRaw, sourceLocation: sourceLocation)
             #expect(found?.sortOrder == group.sortOrder, sourceLocation: sourceLocation)
             #expect(found?.createdAt == group.createdAt, sourceLocation: sourceLocation)
+            #expect(found?.updatedAt == group.updatedAt, sourceLocation: sourceLocation)
         }
 
         #expect(actual.tags.count == expected.tags.count, sourceLocation: sourceLocation)
@@ -234,6 +245,7 @@ enum RecordAssert {
         for tag in expected.tags {
             #expect(tagsByID[tag.id]?.name == tag.name, sourceLocation: sourceLocation)
             #expect(tagsByID[tag.id]?.createdAt == tag.createdAt, sourceLocation: sourceLocation)
+            #expect(tagsByID[tag.id]?.updatedAt == tag.updatedAt, sourceLocation: sourceLocation)
         }
 
         #expect(actual.habits.count == expected.habits.count, sourceLocation: sourceLocation)
@@ -244,6 +256,7 @@ enum RecordAssert {
             #expect(found?.sortOrder == habit.sortOrder, sourceLocation: sourceLocation)
             #expect(found?.createdAt == habit.createdAt, sourceLocation: sourceLocation)
             #expect(found?.completedDays == habit.completedDays, sourceLocation: sourceLocation)
+            #expect(found?.updatedAt == habit.updatedAt, sourceLocation: sourceLocation)
         }
     }
 }

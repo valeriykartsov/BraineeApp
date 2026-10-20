@@ -9,6 +9,8 @@ import SwiftData
 
 @Model
 final class UserProfile {
+    /// Стабильный идентификатор профиля (DOM-3); в profile.json — поле `id`.
+    var uuid: UUID
     var displayName: String
     var avatarData: Data?
     /// Возраст; `nil` — не указан.
@@ -23,12 +25,14 @@ final class UserProfile {
     }
 
     init(
+        uuid: UUID = UUID(),
         displayName: String = "",
         avatarData: Data? = nil,
         age: Int? = nil,
         gender: UserGender = .unspecified,
         createdAt: Date = .now
     ) {
+        self.uuid = uuid
         self.displayName = displayName
         self.avatarData = avatarData
         self.age = age

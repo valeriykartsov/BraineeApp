@@ -12,13 +12,16 @@ final class TaskTag {
     var name: String
     var createdAt: Date
     var uuid: UUID
+    /// Время последнего изменения (для синхронизации).
+    var updatedAt: Date
 
     @Relationship(inverse: \TaskItem.tags)
     var tasks: [TaskItem]?
 
-    init(name: String, uuid: UUID = UUID(), createdAt: Date = .now) {
+    init(name: String, uuid: UUID = UUID(), createdAt: Date = .now, updatedAt: Date? = nil) {
         self.name = name
         self.uuid = uuid
         self.createdAt = createdAt
+        self.updatedAt = updatedAt ?? createdAt
     }
 }

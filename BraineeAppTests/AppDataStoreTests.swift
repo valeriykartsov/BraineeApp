@@ -365,6 +365,7 @@ struct AppDataStoreTests {
         _ expected: ProfileDocument,
         sourceLocation: SourceLocation = #_sourceLocation
     ) {
+        #expect(actual.id == expected.id, sourceLocation: sourceLocation)
         #expect(actual.displayName == expected.displayName, sourceLocation: sourceLocation)
         #expect(actual.avatarBase64 == expected.avatarBase64, sourceLocation: sourceLocation)
         #expect(actual.age == expected.age, sourceLocation: sourceLocation)
