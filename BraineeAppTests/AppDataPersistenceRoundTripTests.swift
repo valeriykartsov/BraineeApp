@@ -32,19 +32,20 @@ struct AppDataPersistenceRoundTripTests {
         RecordAssert.sameContent(exported, original)
     }
 
-    // Полный путь как в приложении: файл → чтение → SwiftData → экспорт → файл → чтение.
-    @Test func полныйПутьЧерезФайл_данныеНеМеняются() throws {
-        let store = try TemporaryDataStore()
+    // Полный путь бэкапа: SwiftData → файл бэкапа → чтение → SwiftData → экспорт — данные не меняются.
+    @Test func полныйПутьЧерезФайлБэкапа_данныеНеМеняются() throws {
         let original = PersistenceFixtures.fullTasksDocument()
-        try AppDataStore.saveTasks(original, location: store.location)
+        let source = try TestHelpers.makeContainer()
+        AppDataPersistence.importTasks(original, into: source.mainContext)
+        try source.mainContext.save()
+        let data = try BackupDocument.make(from: source.mainContext).encoded()
 
         let context = container.mainContext
-        AppDataPersistence.importTasks(try AppDataStore.loadTasks(location: store.location), into: context)
+        AppDataPersistence.importTasks(try BackupDocument.decode(from: data).tasks, into: context)
         try context.save()
-        try AppDataStore.saveTasks(AppDataPersistence.exportTasks(from: context), location: store.location)
-        let reloaded = try AppDataStore.loadTasks(location: store.location)
 
-        RecordAssert.sameContent(reloaded, original)
+        RecordAssert.sameContent(AppDataPersistence.exportTasks(from: context), original)
+        withExtendedLifetime(source) {}
     }
 
     // Связи и флаги восстанавливаются именно в моделях SwiftData, а не только в JSON.

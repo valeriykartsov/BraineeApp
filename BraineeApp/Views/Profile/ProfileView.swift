@@ -324,7 +324,7 @@ struct ProfileView: View {
                         .font(DesignSystem.Typography.body(16))
                         .foregroundStyle(DesignSystem.Colors.textPrimary)
                     Spacer()
-                    Text(AppDataStore.folderName)
+                    Text(ModelContainerFactory.folderName)
                         .font(DesignSystem.Typography.caption())
                         .foregroundStyle(DesignSystem.Colors.textSecondary)
                 }

@@ -3,7 +3,7 @@
 //  BraineeAppTests
 //
 //  JSON — только бэкап (roadmap SD-4): правило автобэкапа (не чаще раза в 24 часа, последние 7 файлов)
-//  и то, что изменение данных больше не перезаписывает mytasks.json и Keychain.
+//  и сохранение хранилища после изменения.
 
 import Foundation
 import Testing
@@ -104,18 +104,12 @@ final class AutoBackupTests {
         #expect(AutoBackup.date(fromFileName: "pre-swiftdata-20261020-202743") == nil)
     }
 
-    // MARK: - JSON больше не основной
+    // MARK: - Сохранение после изменения
 
-    // Изменение через сервис с побочными эффектами приложения сохраняет хранилище, но не трогает
-    // mytasks.json, profile.json и Keychain. Уведомления выключены: их асинхронный пересчёт
-    // обратился бы к моделям после освобождения тестового контейнера.
-    @Test func изменениеЧерезСервис_неПишетJSONиKeychain() throws {
-        let tasksURL = AppDataStore.storageDirectory.appendingPathComponent(AppDataStore.tasksFileName)
-        let profileURL = AppDataStore.storageDirectory.appendingPathComponent(AppDataStore.profileFileName)
-        let tasksBefore = try? Data(contentsOf: tasksURL)
-        let profileBefore = try? Data(contentsOf: profileURL)
-        let keychainBefore = KeychainStorage.load(account: AppDataStore.tasksFileName)
-
+    // Изменение через сервис с побочными эффектами приложения сразу сохраняет хранилище.
+    // Уведомления выключены: их асинхронный пересчёт обратился бы к моделям
+    // после освобождения тестового контейнера.
+    @Test func изменениеЧерезСервис_сохраняетХранилище() throws {
         let service = HabitService(
             context: container.mainContext,
             onChange: { AppSideEffects.didChange(in: $0, refreshNotifications: false) }
@@ -124,8 +118,5 @@ final class AutoBackupTests {
 
         #expect(!container.mainContext.hasChanges)
         #expect(habit.title == "Новая привычка")
-        #expect((try? Data(contentsOf: tasksURL)) == tasksBefore)
-        #expect((try? Data(contentsOf: profileURL)) == profileBefore)
-        #expect(KeychainStorage.load(account: AppDataStore.tasksFileName) == keychainBefore)
     }
 }

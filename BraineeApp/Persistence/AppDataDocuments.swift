@@ -2,11 +2,13 @@
 //  AppDataDocuments.swift
 //  BraineeApp
 //
-//  Структуры JSON-файлов: как задачи, группы и профиль выглядят на диске.
+//  Структуры JSON-документов бэкапа (BackupDocument): задачи, группы, теги, привычки и профиль.
+//  Раньше это были рабочие файлы mytasks.json и profile.json, поэтому формат и правила
+//  обратной совместимости (decodeIfPresent, normalizeRecords) сохранены — старые бэкапы читаются.
 
 import Foundation
 
-/// Корневой документ mytasks.json — задачи, группы, теги и привычки.
+/// Задачи, группы, теги и привычки (раздел `tasks` бэкапа; бывший mytasks.json).
 struct MyTasksDocument: Codable {
     var version: Int
     var lastSavedAt: Date?
@@ -134,10 +136,6 @@ struct MyTasksDocument: Codable {
         habits.removeAll { $0.title.isEmpty }
     }
 
-    /// Помогает выбрать более свежую копию между файлом и Keychain.
-    var contentTimestamp: Date {
-        lastSavedAt ?? tasks.map(\.createdAt).max() ?? .distantPast
-    }
 }
 
 /// Одна задача в JSON (зеркало полей TaskItem).

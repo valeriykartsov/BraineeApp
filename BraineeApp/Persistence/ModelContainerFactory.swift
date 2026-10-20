@@ -18,11 +18,14 @@ enum ModelContainerFactory {
 
     static var schema: Schema { Schema(versionedSchema: CurrentSchema.self) }
 
+    /// Папка приложения внутри Application Support.
+    static let folderName = "BraineeApp"
+
     /// Хранилище приложения: `Application Support/BraineeApp/BraineeApp.store`.
     /// Не в App Group — виджет читает снимок, а не SwiftData.
     static var standardStoreURL: URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent(AppDataStore.folderName, isDirectory: true)
+            .appendingPathComponent(folderName, isDirectory: true)
             .appendingPathComponent("BraineeApp.store")
     }
 
