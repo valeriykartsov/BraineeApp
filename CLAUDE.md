@@ -13,8 +13,8 @@
 
 ## Как устроено сейчас
 
-- SwiftData — **только in-memory** (`BraineeAppApp.sharedModelContainer`). Источник правды — `Documents/BraineeApp/mytasks.json` и `profile.json` + копия в Keychain (`Persistence/AppDataStore.swift`).
-- Старт: `AppRootView` → `AppDataPersistence.bootstrap` (очищает SwiftData и импортирует JSON).
+- SwiftData — **постоянное хранилище** `Application Support/BraineeApp/BraineeApp.store` (`ModelContainerFactory`, схема `SchemaV1`, `#Unique` на `uuid`). Это источник правды; `Documents/BraineeApp/mytasks.json`/`profile.json` + Keychain пока пишутся параллельно (до SD-4).
+- Старт: `AppRootView` → `AppDataPersistence.bootstrap`. Без маркера `Application Support/BraineeApp/swiftdata-migration.json` — перенос JSON (`JSONToSwiftDataMigrator`: бэкап → upsert → проверка → маркер); с маркером JSON не читается. Хранилище при старте **никогда** не очищается. Откат на старую сборку не поддерживается (D-19).
 - Любое изменение данных — только через сервисы `Domain/` (`TaskService`, `GroupService`, `TagService`, `HabitService`, `ProfileService`); они вызывают `modelContext.persistToJSON()` (JSON + Keychain + виджет + уведомления). Во View не менять модели и не вызывать `persistToJSON()` напрямую.
 - Новые поля JSON — только через `decodeIfPresent` + значение по умолчанию и `MyTasksDocument.normalizeRecords()`.
 - Флаг мягкого удаления в модели — `isSoftDeleted` (не `isDeleted`: конфликт с SwiftData); в JSON он называется `isDeleted`.
@@ -32,7 +32,7 @@
 ## Данные — строгие ограничения
 
 - Не удалять и не перезаписывать пользовательские данные, Keychain-записи и старый путь хранения без явного подтверждения владельца.
-- Нельзя включать persistent `ModelConfiguration`, пока в `bootstrap` есть `clearAllData` (риск R1).
+- Никакой очистки хранилища при старте (риск R1): `clearAllData` удалён в SD-3 и не должен возвращаться.
 - Любая миграция: бэкап → копирование → проверка → маркер → переключение. Повторный запуск не должен создавать дублей.
 - Секреты (API-ключи, токены) — только в Keychain; не в коде, логах, `Info.plist`, UserDefaults.
 

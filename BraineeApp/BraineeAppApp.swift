@@ -2,7 +2,7 @@
 //  BraineeAppApp.swift
 //  BraineeApp
 //
-//  Точка входа приложения: создаёт SwiftData-контейнер в памяти и открывает AppRootView.
+//  Точка входа приложения: открывает постоянное хранилище SwiftData (SD-3) и показывает AppRootView.
 
 import SwiftUI
 import SwiftData
@@ -13,19 +13,21 @@ struct BraineeAppApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 #endif
 
-    /// SwiftData живёт только в памяти; постоянные данные — в JSON (см. AppDataPersistence).
-    var sharedModelContainer: ModelContainer = {
-        do {
-            return try ModelContainerFactory.make(.inMemory)
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
-        }
-    }()
+    /// Данные живут в SwiftData-файле; JSON пока пишется параллельно (см. AppDataPersistence).
+    /// Если хранилище не открылось — экран ошибки вместо падения приложения.
+    private let sharedModelContainer = Result {
+        try ModelContainerFactory.make(.persistent(url: ModelContainerFactory.standardStoreURL))
+    }
 
     var body: some Scene {
         WindowGroup {
-            AppRootView()
+            switch sharedModelContainer {
+            case .success(let container):
+                AppRootView()
+                    .modelContainer(container)
+            case .failure(let error):
+                LoadErrorView(message: "Не удалось открыть хранилище данных: \(error.localizedDescription)")
+            }
         }
-        .modelContainer(sharedModelContainer)
     }
 }
