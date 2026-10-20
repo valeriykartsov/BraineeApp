@@ -2,7 +2,7 @@
 //  BackupExport.swift
 //  BraineeApp
 //
-//  Ручной бэкап: один JSON-файл с задачами, группами, тегами, привычками и профилем.
+//  Ручной бэкап: один JSON-файл с задачами, группами, тегами, привычками и профилем (без аватара).
 //  Внутри — те же MyTasksDocument и ProfileDocument, что и в рабочих JSON, поэтому формат
 //  записей не дублируется и старые бэкапы будут читаться теми же decode-правилами.
 
@@ -41,12 +41,16 @@ struct BackupDocument: Codable {
         // Как в saveTasks: в бэкап попадает то же, что попало бы в mytasks.json.
         tasks.normalizeRecords()
         tasks.lastSavedAt = now
+        var profile = AppDataPersistence.exportProfile(from: context)
+        // Аватар не кладём в бэкап, чтобы файл оставался лёгким (D-16).
+        // Восстановление (SD-5) поэтому не должно стирать текущий аватар.
+        profile.avatarBase64 = nil
         return BackupDocument(
             format: formatID,
             version: currentVersion,
             exportedAt: now,
             tasks: tasks,
-            profile: AppDataPersistence.exportProfile(from: context)
+            profile: profile
         )
     }
 

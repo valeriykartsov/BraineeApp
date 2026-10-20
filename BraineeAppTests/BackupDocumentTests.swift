@@ -30,10 +30,27 @@ struct BackupDocumentTests {
         #expect(restored.exportedAt == PersistenceFixtures.date(5_000))
         let profile = PersistenceFixtures.profileDocument()
         #expect(restored.profile.displayName == profile.displayName)
-        #expect(restored.profile.avatarBase64 == profile.avatarBase64)
         #expect(restored.profile.age == profile.age)
         #expect(restored.profile.genderRaw == profile.genderRaw)
         #expect(restored.profile.createdAt == profile.createdAt)
+    }
+
+    // Аватар не попадает в бэкап (D-16), даже если он есть в профиле, — файл не утяжеляется.
+    @Test func аватар_неПопадаетВБэкап() throws {
+        let container = try TestHelpers.makeContainer()
+        let context = container.mainContext
+        AppDataPersistence.importProfile(PersistenceFixtures.profileDocument(), into: context)
+        try context.save()
+        let profileInStore = try #require(try context.fetch(FetchDescriptor<UserProfile>()).first)
+        #expect(profileInStore.avatarData != nil)
+
+        let data = try BackupDocument.make(from: context).encoded()
+        let restored = try BackupDocument.decode(from: data)
+
+        #expect(restored.profile.avatarBase64 == nil)
+        #expect(!String(decoding: data, as: UTF8.self).contains("avatarBase64"))
+        // Экспорт не трогает сам профиль в приложении.
+        #expect(profileInStore.avatarData != nil)
     }
 
     // Вложенный tasks — обычный MyTasksDocument: его можно извлечь и прочитать как mytasks.json.
