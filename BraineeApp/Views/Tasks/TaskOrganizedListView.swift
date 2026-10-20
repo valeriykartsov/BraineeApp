@@ -317,9 +317,7 @@ struct TaskOrganizedListView: View {
     }
 
     private func confirmRenameGroup(_ group: TaskGroup) {
-        guard TaskInputValidation.canSaveGroupName(editingGroupName) else { return }
-        group.name = TaskInputValidation.normalizedGroupName(editingGroupName)
-        modelContext.persistToJSON()
+        guard GroupService(context: modelContext).rename(group, to: editingGroupName) else { return }
         cancelRenameGroup()
     }
 
@@ -428,17 +426,8 @@ struct TaskOrganizedListView: View {
 
         HapticFeedback.success()
         withAnimation {
-            task.group = group
-            let targetTasks = visibleTasks.filter { item in
-                guard item.uuid != task.uuid else { return false }
-                if let group {
-                    return item.group?.uuid == group.uuid
-                }
-                return item.group == nil
-            }
-            task.sortOrder = (targetTasks.map(\.sortOrder).max() ?? -1) + 1
+            TaskService(context: modelContext).move(task, to: group)
         }
-        modelContext.persistToJSON()
     }
 }
 

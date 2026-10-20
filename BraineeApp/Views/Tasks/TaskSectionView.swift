@@ -301,24 +301,19 @@ struct TaskSectionView: View {
         }
     }
 
+    private var groupService: GroupService {
+        GroupService(context: modelContext)
+    }
+
     private func deleteGroup(_ group: TaskGroup) {
         withAnimation {
-            for task in tasks where task.group?.persistentModelID == group.persistentModelID {
-                task.group = nil
-            }
-            modelContext.delete(group)
+            groupService.delete(group)
         }
-        modelContext.persistToJSON()
     }
 
     private func createGroup() {
-        let trimmed = newGroupName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        let nextOrder = (groups.map(\.sortOrder).max() ?? -1) + 1
-        let group = TaskGroup(name: trimmed, category: .tasks, sortOrder: nextOrder)
-        modelContext.insert(group)
+        guard groupService.create(name: newGroupName) != nil else { return }
         newGroupName = ""
-        modelContext.persistToJSON()
     }
 }
 

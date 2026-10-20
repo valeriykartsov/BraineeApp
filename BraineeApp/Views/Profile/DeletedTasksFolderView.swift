@@ -175,48 +175,43 @@ struct DeletedTasksFolderView: View {
         }
     }
 
+    private var taskService: TaskService {
+        TaskService(context: modelContext)
+    }
+
     private func restore(_ task: TaskItem) {
         let uuid = task.uuid
         withAnimation {
-            task.isSoftDeleted = false
-            task.deletedAt = nil
+            taskService.restore(task)
             deletedTasks.removeAll { $0.uuid == uuid }
             selectedIDs.remove(uuid)
         }
-        try? modelContext.save()
-        modelContext.persistToJSON()
         reloadDeletedTasks()
     }
 
     private func permanentlyDelete(_ task: TaskItem) {
         withAnimation {
-            modelContext.delete(task)
+            taskService.permanentlyDelete([task])
         }
-        try? modelContext.save()
-        modelContext.persistToJSON()
         reloadDeletedTasks()
     }
 
     private func permanentlyDeleteSelected() {
         let toDelete = deletedTasks.filter { selectedIDs.contains($0.uuid) }
         withAnimation {
-            for task in toDelete { modelContext.delete(task) }
+            taskService.permanentlyDelete(toDelete)
             selectedIDs.removeAll()
             isSelecting = false
         }
-        try? modelContext.save()
-        modelContext.persistToJSON()
         reloadDeletedTasks()
     }
 
     private func permanentlyDeleteAll() {
         withAnimation {
-            for task in deletedTasks { modelContext.delete(task) }
+            taskService.permanentlyDelete(deletedTasks)
             selectedIDs.removeAll()
             isSelecting = false
         }
-        try? modelContext.save()
-        modelContext.persistToJSON()
         reloadDeletedTasks()
     }
 }
