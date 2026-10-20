@@ -3,12 +3,15 @@
 //  BraineeApp
 //
 //  Матрица Эйзенхауэра: 4 одинаковых квадранта; тап открывает список задач.
+//  Открывается листом из «Профиль → Дашборд → Дополнительно» (NAV-1) со своей навигацией:
+//  вложенный переход внутри стека Профиля зацикливал обновление SwiftUI.
 
 import SwiftUI
 import SwiftData
 
 struct EisenhowerMatrixView: View {
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dismiss) private var dismiss
 
     @Query(
         filter: #Predicate<TaskItem> { !$0.isSoftDeleted },
@@ -36,14 +39,6 @@ struct EisenhowerMatrixView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                Text("Матрица")
-                    .font(DesignSystem.Typography.title(24))
-                    .foregroundStyle(DesignSystem.Colors.textPrimary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, DesignSystem.Space.screenInset)
-                    .padding(.top, DesignSystem.Space.x1)
-                    .padding(.bottom, DesignSystem.Space.x2)
-
                 ScrollView {
                     LazyVGrid(
                         columns: [
@@ -64,8 +59,14 @@ struct EisenhowerMatrixView: View {
                     .padding(.bottom, DesignSystem.Space.x4)
                 }
             }
+            .appScreenBackground()
+            .navigationTitle("Матрица")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar(.hidden, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Готово") { dismiss() }
+                }
+            }
             .tint(DesignSystem.Colors.accent)
             .navigationDestination(for: EisenhowerQuadrant.self) { quadrant in
                 EisenhowerQuadrantDetailView(

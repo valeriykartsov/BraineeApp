@@ -15,7 +15,7 @@ struct AnimatedMainTabView: View {
     @AppStorage("appTheme") private var appThemeRaw = AppTheme.system.rawValue
     @AppStorage(AccentPalette.storageKey) private var accentPaletteRaw = AccentPalette.orange.rawValue
     @AppStorage(TabBarSettings.showCalendarKey) private var showCalendar = true
-    @AppStorage(TabBarSettings.showMatrixKey) private var showMatrix = false
+    @AppStorage(TabBarSettings.showLLMKey) private var showLLM = false
     @AppStorage(TabBarSettings.showHabitsKey) private var showHabits = false
     @AppStorage(NotificationSettings.iconBadgeModeKey) private var iconBadgeModeRaw = AppIconBadgeMode.overdue.rawValue
 
@@ -25,6 +25,11 @@ struct AnimatedMainTabView: View {
     @ObservedObject private var deepLinkRouter = NotificationDeepLinkRouter.shared
     @State private var selectedTab: MainTab = .tasks
     @Namespace private var tabUnderlineNamespace
+
+    init() {
+        // До первого чтения @AppStorage: прежний флаг «Матрицы» становится флагом «LLM» (NAV-1).
+        TabBarSettings.migrateLegacyMatrixFlag()
+    }
 
     private var colorScheme: ColorScheme? {
         AppTheme.resolved(from: appThemeRaw).colorScheme
@@ -41,13 +46,13 @@ struct AnimatedMainTabView: View {
     private var visibleTabs: [MainTab] {
         MainTab.visibleTabs(
             showCalendar: showCalendar,
-            showMatrix: showMatrix,
+            showLLM: showLLM,
             showHabits: showHabits
         )
     }
 
     private var tabVisibilityToken: String {
-        "\(showCalendar)-\(showMatrix)-\(showHabits)"
+        "\(showCalendar)-\(showLLM)-\(showHabits)"
     }
 
     private var iconBadgeMode: AppIconBadgeMode {
@@ -70,9 +75,9 @@ struct AnimatedMainTabView: View {
                     .opacity(selectedTab == .calendar ? 1 : 0)
                     .allowsHitTesting(selectedTab == .calendar)
 
-                EisenhowerMatrixView()
-                    .opacity(selectedTab == .matrix ? 1 : 0)
-                    .allowsHitTesting(selectedTab == .matrix)
+                LLMTabView(isActive: selectedTab == .llm)
+                    .opacity(selectedTab == .llm ? 1 : 0)
+                    .allowsHitTesting(selectedTab == .llm)
 
                 HabitsView()
                     .opacity(selectedTab == .habits ? 1 : 0)
