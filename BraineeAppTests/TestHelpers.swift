@@ -11,11 +11,7 @@ import SwiftData
 enum TestHelpers {
     @MainActor
     static func makeContainer() throws -> ModelContainer {
-        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-        return try ModelContainer(
-            for: TaskItem.self, TaskGroup.self, TaskTag.self, UserProfile.self, Habit.self,
-            configurations: configuration
-        )
+        try ModelContainerFactory.make(.inMemory)
     }
 
     static func daysFromNow(_ days: Int) -> Date {
