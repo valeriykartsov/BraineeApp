@@ -3,7 +3,9 @@
 //  BraineeApp
 //
 //  Вкладка «LLM» (NAV-1). Без ключа — «Подключите LLM» и переход в настройки;
-//  с ключом — заготовка под чат (LLM-3). Шестерёнка открывает настройки LLM.
+//  с ключом — чат (LLM-3). Шестерёнка открывает настройки LLM.
+//  История чата — только в памяти этого экрана: вкладка не пересоздаётся при переключении,
+//  поэтому сообщения живут до закрытия приложения.
 
 import SwiftUI
 
@@ -12,6 +14,7 @@ struct LLMTabView: View {
 
     @State private var hasKey = SecretStore.shared.hasValue(for: .openRouterAPIKey)
     @State private var showingSettings = false
+    @State private var messages: [LLMChatMessage] = []
 
     var body: some View {
         NavigationStack {
@@ -21,6 +24,18 @@ struct LLMTabView: View {
                         .font(DesignSystem.Typography.title(24))
                         .foregroundStyle(DesignSystem.Colors.textPrimary)
                     Spacer()
+                    if hasKey && !messages.isEmpty {
+                        Button {
+                            messages = []
+                        } label: {
+                            Image(systemName: "square.and.pencil")
+                                .font(.system(size: 17, weight: .medium))
+                                .foregroundStyle(DesignSystem.Colors.accent)
+                                .frame(width: DesignSystem.Space.x10, height: DesignSystem.Space.x10)
+                                .contentShape(Rectangle())
+                        }
+                        .accessibilityLabel("Новый чат")
+                    }
                     Button {
                         showingSettings = true
                     } label: {
@@ -36,14 +51,10 @@ struct LLMTabView: View {
                 .padding(.top, DesignSystem.Space.x1)
                 .padding(.bottom, DesignSystem.Space.x2)
 
-                Spacer(minLength: 0)
                 if hasKey {
-                    placeholder(
-                        systemImage: "bubble.left.and.text.bubble.right",
-                        title: "Скоро здесь появится чат",
-                        message: "Опишите задачу словами — LLM подготовит черновик, а вы проверите и сохраните его."
-                    )
+                    LLMChatView(messages: $messages)
                 } else {
+                    Spacer(minLength: 0)
                     placeholder(
                         systemImage: "sparkles",
                         title: "Подключите LLM",
@@ -54,8 +65,8 @@ struct LLMTabView: View {
                             .foregroundStyle(DesignSystem.Colors.accent)
                             .padding(.top, DesignSystem.Space.x2)
                     }
+                    Spacer(minLength: 0)
                 }
-                Spacer(minLength: 0)
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .navigationBar)
