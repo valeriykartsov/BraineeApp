@@ -14,6 +14,8 @@ final class TaskGroup {
     var sortOrder: Int
     var createdAt: Date
     var uuid: UUID
+    /// Время последнего изменения (для синхронизации).
+    var updatedAt: Date
 
     @Relationship(deleteRule: .nullify, inverse: \TaskItem.group)
     var tasks: [TaskItem]?
@@ -23,13 +25,15 @@ final class TaskGroup {
         category: TaskCategory = .tasks,
         sortOrder: Int = 0,
         uuid: UUID = UUID(),
-        createdAt: Date = .now
+        createdAt: Date = .now,
+        updatedAt: Date? = nil
     ) {
         self.name = name
         self.categoryRaw = category.rawValue
         self.sortOrder = sortOrder
         self.uuid = uuid
         self.createdAt = createdAt
+        self.updatedAt = updatedAt ?? createdAt
     }
 
     var category: TaskCategory {

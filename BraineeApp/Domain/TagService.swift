@@ -13,6 +13,8 @@ struct TagService {
     let context: ModelContext
     /// См. TaskService.onChange.
     var onChange: (ModelContext) -> Void = { $0.persistToJSON() }
+    /// Текущее время для updatedAt; в тестах подменяется фиксированной датой.
+    var now: () -> Date = { .now }
 
     private var existingNames: [String] {
         ((try? context.fetch(FetchDescriptor<TaskTag>())) ?? []).map(\.name)
@@ -22,7 +24,7 @@ struct TagService {
     @discardableResult
     func create(name: String) -> TaskTag? {
         guard TaskInputValidation.canCreateTag(name: name, existingNames: existingNames) else { return nil }
-        let tag = TaskTag(name: TaskInputValidation.normalizedTagName(name))
+        let tag = TaskTag(name: TaskInputValidation.normalizedTagName(name), createdAt: now())
         context.insert(tag)
         onChange(context)
         return tag
@@ -37,12 +39,16 @@ struct TagService {
             currentName: tag.name
         ) else { return false }
         tag.name = TaskInputValidation.normalizedTagName(name)
+        tag.updatedAt = now()
         onChange(context)
         return true
     }
 
-    /// Тег снимается со всех задач (связь обнуляется), сами задачи не меняются.
+    /// Тег снимается со всех задач (связь обнуляется); у этих задач обновляется updatedAt.
     func delete(_ tag: TaskTag) {
+        for task in tag.tasks ?? [] {
+            task.updatedAt = now()
+        }
         context.delete(tag)
         onChange(context)
     }

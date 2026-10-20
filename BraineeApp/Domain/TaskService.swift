@@ -16,6 +16,8 @@ struct TaskService {
     /// Что сделать после изменения. В приложении — сохранить JSON, обновить виджет и уведомления;
     /// в тестах подменяется, чтобы не трогать настоящие файлы.
     var onChange: (ModelContext) -> Void = { $0.persistToJSON() }
+    /// Текущее время для updatedAt; в тестах подменяется фиксированной датой.
+    var now: () -> Date = { .now }
 
     /// Новая задача — всегда со статусом «Новая», в конце списка активных задач.
     @discardableResult
@@ -29,6 +31,7 @@ struct TaskService {
             priority: form.priority,
             category: .tasks,
             status: .new,
+            createdAt: now(),
             taskDetails: form.taskDetails,
             sortOrder: nextOrder
         )
@@ -50,6 +53,7 @@ struct TaskService {
         task.category = .tasks
         task.taskDetails = form.taskDetails
         task.tags = form.selectedTags
+        task.updatedAt = now()
         onChange(context)
     }
 
@@ -70,19 +74,22 @@ struct TaskService {
             let incompletePeers = peers.filter { !$0.isCompleted || $0.uuid == task.uuid }
             TaskSortHelper.moveToEnd(of: incompletePeers, task: task)
         }
+        task.updatedAt = now()
         onChange(context)
     }
 
     /// Смена статуса из канбана (порядок не меняется).
     func setStatus(_ task: TaskItem, _ status: TaskStatus) {
         task.status = status
+        task.updatedAt = now()
         onChange(context)
     }
 
     /// В «Удалённые»: задача остаётся в базе, окончательное удаление — только из корзины.
     func softDelete(_ task: TaskItem) {
         task.isSoftDeleted = true
-        task.deletedAt = .now
+        task.deletedAt = now()
+        task.updatedAt = now()
         try? context.save()
         onChange(context)
     }
@@ -100,6 +107,7 @@ struct TaskService {
             return item.group == nil
         }
         task.sortOrder = (targetTasks.map(\.sortOrder).max() ?? -1) + 1
+        task.updatedAt = now()
         onChange(context)
     }
 
@@ -107,6 +115,7 @@ struct TaskService {
     func restore(_ task: TaskItem) {
         task.isSoftDeleted = false
         task.deletedAt = nil
+        task.updatedAt = now()
         try? context.save()
         onChange(context)
     }

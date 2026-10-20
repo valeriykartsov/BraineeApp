@@ -15,7 +15,7 @@ struct MyTasksDocument: Codable {
     var tasks: [TaskRecord]
     var habits: [HabitRecord]
 
-    static let currentVersion = 8
+    static let currentVersion = 9
     static let empty = MyTasksDocument(
         version: currentVersion,
         lastSavedAt: nil,
@@ -120,6 +120,11 @@ struct MyTasksDocument: Codable {
             tasks[index].reminderOffsetsRaw = TaskReminderOffset
                 .normalizedList(tasks[index].reminderOffsetsRaw)
                 .map(\.rawValue)
+
+            // v9: дата закрытия бывает только у выполненной задачи.
+            if status != .done {
+                tasks[index].completedAt = nil
+            }
         }
 
         for index in habits.indices {
@@ -153,6 +158,10 @@ struct TaskRecord: Codable, Identifiable {
     var tagIDs: [UUID]
     var isDeleted: Bool
     var deletedAt: Date?
+    /// v9. Для старых файлов — createdAt.
+    var updatedAt: Date
+    /// v9. Для старых файлов — nil (дата закрытия неизвестна, D-03).
+    var completedAt: Date?
 
     init(
         id: UUID,
@@ -170,7 +179,9 @@ struct TaskRecord: Codable, Identifiable {
         groupID: UUID?,
         tagIDs: [UUID],
         isDeleted: Bool = false,
-        deletedAt: Date? = nil
+        deletedAt: Date? = nil,
+        updatedAt: Date? = nil,
+        completedAt: Date? = nil
     ) {
         self.id = id
         self.title = title
@@ -192,6 +203,8 @@ struct TaskRecord: Codable, Identifiable {
         self.tagIDs = tagIDs
         self.isDeleted = isDeleted
         self.deletedAt = deletedAt
+        self.updatedAt = updatedAt ?? createdAt
+        self.completedAt = completedAt
     }
 
     /// Старые JSON без новых полей читаются с безопасными значениями по умолчанию.
@@ -239,6 +252,8 @@ struct TaskRecord: Codable, Identifiable {
         } else {
             statusRaw = TaskStatus.fromCompletion(isCompleted).rawValue
         }
+        updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt) ?? createdAt
+        completedAt = try container.decodeIfPresent(Date.self, forKey: .completedAt)
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -247,6 +262,7 @@ struct TaskRecord: Codable, Identifiable {
         case hasReminder, reminderValue, reminderUnitRaw // только decode (миграция v7)
         case priorityRaw, categoryRaw, statusRaw, createdAt, taskDetails
         case sortOrder, groupID, tagIDs, isDeleted, deletedAt
+        case updatedAt, completedAt
     }
 
     func encode(to encoder: Encoder) throws {
@@ -267,6 +283,8 @@ struct TaskRecord: Codable, Identifiable {
         try container.encode(tagIDs, forKey: .tagIDs)
         try container.encode(isDeleted, forKey: .isDeleted)
         try container.encodeIfPresent(deletedAt, forKey: .deletedAt)
+        try container.encode(updatedAt, forKey: .updatedAt)
+        try container.encodeIfPresent(completedAt, forKey: .completedAt)
     }
 }
 
@@ -277,13 +295,23 @@ struct GroupRecord: Codable, Identifiable {
     var categoryRaw: String
     var sortOrder: Int
     var createdAt: Date
+    /// v9. Для старых файлов — createdAt.
+    var updatedAt: Date
 
-    init(id: UUID, name: String, categoryRaw: String, sortOrder: Int, createdAt: Date) {
+    init(
+        id: UUID,
+        name: String,
+        categoryRaw: String,
+        sortOrder: Int,
+        createdAt: Date,
+        updatedAt: Date? = nil
+    ) {
         self.id = id
         self.name = name
         self.categoryRaw = categoryRaw
         self.sortOrder = sortOrder
         self.createdAt = createdAt
+        self.updatedAt = updatedAt ?? createdAt
     }
 
     init(from decoder: Decoder) throws {
@@ -293,6 +321,7 @@ struct GroupRecord: Codable, Identifiable {
         categoryRaw = try container.decodeIfPresent(String.self, forKey: .categoryRaw) ?? TaskCategory.unifiedRaw
         sortOrder = try container.decodeIfPresent(Int.self, forKey: .sortOrder) ?? 0
         createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? .now
+        updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt) ?? createdAt
     }
 }
 
@@ -301,11 +330,14 @@ struct TagRecord: Codable, Identifiable {
     var id: UUID
     var name: String
     var createdAt: Date
+    /// v9. Для старых файлов — createdAt.
+    var updatedAt: Date
 
-    init(id: UUID, name: String, createdAt: Date) {
+    init(id: UUID, name: String, createdAt: Date, updatedAt: Date? = nil) {
         self.id = id
         self.name = name
         self.createdAt = createdAt
+        self.updatedAt = updatedAt ?? createdAt
     }
 
     init(from decoder: Decoder) throws {
@@ -313,6 +345,7 @@ struct TagRecord: Codable, Identifiable {
         id = try container.decode(UUID.self, forKey: .id)
         name = try container.decodeIfPresent(String.self, forKey: .name) ?? "Тег"
         createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? .now
+        updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt) ?? createdAt
     }
 }
 
@@ -323,19 +356,23 @@ struct HabitRecord: Codable, Identifiable {
     var sortOrder: Int
     var createdAt: Date
     var completedDays: [String]
+    /// v9. Для старых файлов — createdAt.
+    var updatedAt: Date
 
     init(
         id: UUID,
         title: String,
         sortOrder: Int,
         createdAt: Date,
-        completedDays: [String] = []
+        completedDays: [String] = [],
+        updatedAt: Date? = nil
     ) {
         self.id = id
         self.title = title
         self.sortOrder = sortOrder
         self.createdAt = createdAt
         self.completedDays = completedDays
+        self.updatedAt = updatedAt ?? createdAt
     }
 
     init(from decoder: Decoder) throws {
@@ -345,12 +382,15 @@ struct HabitRecord: Codable, Identifiable {
         sortOrder = try container.decodeIfPresent(Int.self, forKey: .sortOrder) ?? 0
         createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? .now
         completedDays = try container.decodeIfPresent([String].self, forKey: .completedDays) ?? []
+        updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt) ?? createdAt
     }
 }
 
 /// Файл profile.json — имя, аватар, возраст, пол и тема оформления.
 struct ProfileDocument: Codable {
     var version: Int
+    /// v4: стабильный идентификатор профиля. nil — старый файл; bootstrap создаёт и сразу сохраняет.
+    var id: UUID?
     var displayName: String
     var avatarBase64: String?
     var age: Int?
@@ -359,10 +399,11 @@ struct ProfileDocument: Codable {
     var accentPaletteRaw: String
     var createdAt: Date
 
-    static let currentVersion = 3
+    static let currentVersion = 4
 
     static let empty = ProfileDocument(
         version: currentVersion,
+        id: nil,
         displayName: "",
         avatarBase64: nil,
         age: nil,
@@ -374,6 +415,7 @@ struct ProfileDocument: Codable {
 
     init(
         version: Int,
+        id: UUID? = nil,
         displayName: String,
         avatarBase64: String?,
         age: Int?,
@@ -383,6 +425,7 @@ struct ProfileDocument: Codable {
         createdAt: Date
     ) {
         self.version = version
+        self.id = id
         self.displayName = displayName
         self.avatarBase64 = avatarBase64
         self.age = age
@@ -395,6 +438,7 @@ struct ProfileDocument: Codable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         version = try container.decodeIfPresent(Int.self, forKey: .version) ?? 1
+        id = try container.decodeIfPresent(UUID.self, forKey: .id)
         displayName = try container.decodeIfPresent(String.self, forKey: .displayName) ?? ""
         avatarBase64 = try container.decodeIfPresent(String.self, forKey: .avatarBase64)
         age = try container.decodeIfPresent(Int.self, forKey: .age)

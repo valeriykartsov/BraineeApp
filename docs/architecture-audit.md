@@ -66,7 +66,7 @@
 
 Чего в моделях **нет** **[факт]**: `updatedAt`/версии записи, `completedAt` у задач, tombstone-записей для окончательно удалённых объектов, проектов, целей (goals), сессий фокуса, входящих (inbox). Бриф упоминает «цели и фокус» — в коде таких сущностей не найдено.
 
-Версии формата: `MyTasksDocument.currentVersion = 8`, `ProfileDocument.currentVersion = 3`. Миграции старых версий делаются при decode (`TaskRecord.init(from:)`, v7→v8 напоминания) и в `MyTasksDocument.normalizeRecords()` (v3 слияние категорий, v5 статус, v6 время дедлайна, v8 напоминания).
+Версии формата на момент аудита: `MyTasksDocument.currentVersion = 8`, `ProfileDocument.currentVersion = 3` (после DOM-3 — 9 и 4). Миграции старых версий делаются при decode (`TaskRecord.init(from:)`, v7→v8 напоминания) и в `MyTasksDocument.normalizeRecords()` (v3 слияние категорий, v5 статус, v6 время дедлайна, v8 напоминания).
 
 ### Данные вне SwiftData/JSON (UserDefaults, `@AppStorage`)
 
@@ -165,8 +165,8 @@ xcodebuild test -project BraineeApp.xcodeproj -scheme BraineeApp -destination 'p
 | R1 | `clearAllData` в `bootstrap` при постоянном хранилище удалит все данные | `AppDataPersistence.bootstrap` | Критично: при включении persistent store этот путь обязан быть удалён/заменён в том же изменении |
 | R2 | Битый `mytasks.json` молча превращается в `nil` (`try?` в `decodeTasksDocument`); если Keychain тоже пуст/битый — грузится `.empty`, и первый же `persistToJSON` перезапишет файл пустым | `AppDataStore.loadTasksFromFile`, `loadTasks` | Тихая потеря данных уже сейчас; миграция должна не повторить этот шаблон. **Устранено в BASE-3** (2026-10-20) |
 | R3 | `normalizeRecords()` молча отбрасывает привычки сверх 7, пустые названия, дубликаты UUID, «висячие» ссылки | `MyTasksDocument.normalizeRecords` | Миграция должна сравнивать данные **после** нормализации и логировать отброшенное |
-| R4 | Нет `updatedAt` и tombstone-ов; окончательное удаление (задачи, группы, теги, привычки) бесследно | модели, `DeletedTasksFolderView`, `TagLibraryView`, `HabitsView` | Без этого невозможна корректная синхронизация удалений |
-| R5 | `UserProfile` без `uuid`; тема/акцент живут и в UserDefaults, и в `profile.json` | `UserProfile`, `exportProfile` | Два источника правды для настроек |
+| R4 | Нет `updatedAt` и tombstone-ов; окончательное удаление (задачи, группы, теги, привычки) бесследно | модели, `DeletedTasksFolderView`, `TagLibraryView`, `HabitsView` | Без этого невозможна корректная синхронизация удалений. **`updatedAt` добавлен в DOM-3**; tombstones — в SYNC-1 (D-07) |
+| R5 | `UserProfile` без `uuid`; тема/акцент живут и в UserDefaults, и в `profile.json` | `UserProfile`, `exportProfile` | Два источника правды для настроек. **`uuid` профиля добавлен в DOM-3**; дублирование темы/акцента остаётся |
 | R6 | Keychain хранит полные JSON-документы, в т. ч. аватар (base64); ошибка Keychain ломает `saveProfile` | `AppDataStore.saveProfile` | Противоречит целевой роли Keychain (только секреты); размер элемента Keychain не предназначен для больших данных **[?] лимит не измерялся** |
 | R7 | Бизнес-логика мутаций задач продублирована в 3 View | `TaskSectionView`, `CalendarWeekView`, `EisenhowerQuadrantDetailView` | Любые новые побочные эффекты (календарь, очередь синхронизации) придётся добавлять в 3 местах |
 | R8 | Каждое изменение = полная перезапись JSON + Keychain + пересоздание всех уведомлений, на главном потоке | `persistToJSON` | Растёт с объёмом данных; при SwiftData-хранилище файл-экспорт на каждое изменение уже не нужен |
