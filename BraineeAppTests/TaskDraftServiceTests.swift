@@ -18,44 +18,13 @@ struct TaskDraftServiceTests {
         container = try TestHelpers.makeContainer()
     }
 
-    private static let timeZone = TimeZone(identifier: "Europe/Moscow")!
-    /// Среда, 21 октября 2026, 12:00 по Москве.
-    private static let now: Date = {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = timeZone
-        return calendar.date(from: DateComponents(year: 2026, month: 10, day: 21, hour: 12))!
-    }()
+    private let context = LLMTestSupport.context
 
-    private static var calendar: Calendar {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = timeZone
-        return calendar
-    }
-
-    private let context = TaskDraftContext(
-        now: TaskDraftServiceTests.now,
-        timeZone: TaskDraftServiceTests.timeZone,
-        groupNames: ["Работа", "Дом"],
-        tagNames: ["Звонки", "Финансы"]
-    )
+    private static let now = LLMTestSupport.now
+    private static let timeZone = LLMTestSupport.timeZone
 
     private func date(_ year: Int, _ month: Int, _ day: Int, _ hour: Int = 0, _ minute: Int = 0) -> Date {
-        Self.calendar.date(from: DateComponents(year: year, month: month, day: day, hour: hour, minute: minute))!
-    }
-
-    /// Модель-заглушка: запоминает запрос и возвращает заданный текст или ошибку.
-    private final class StubProvider: LLMProvider {
-        var reply: Result<String, LLMError>
-        var requests: [LLMRequest] = []
-
-        init(_ reply: Result<String, LLMError>) {
-            self.reply = reply
-        }
-
-        func complete(_ request: LLMRequest) async throws -> LLMResponse {
-            requests.append(request)
-            return LLMResponse(text: try reply.get(), model: "stub/model")
-        }
+        LLMTestSupport.date(year, month, day, hour, minute)
     }
 
     // MARK: - Запрос
@@ -227,7 +196,7 @@ struct TaskDraftServiceTests {
 
     // Генератор отправляет один запрос с текстом пользователя и возвращает черновик; данные не меняются.
     @Test func генератор_черновикБезИзмененияДанных() async throws {
-        let provider = StubProvider(.success(#"{"title":"Позвонить маме","date":"2026-10-22"}"#))
+        let provider = StubLLMProvider(.success(#"{"title":"Позвонить маме","date":"2026-10-22"}"#))
         let draft = try await TaskDraftGenerator(provider: provider).draft(from: "Завтра позвонить маме", context: context)
         #expect(draft.title == "Позвонить маме")
         #expect(provider.requests.count == 1)
@@ -238,7 +207,7 @@ struct TaskDraftServiceTests {
 
     // Ошибка модели передаётся как есть — для понятного сообщения в чате.
     @Test func генератор_ошибкаПровайдераПробрасывается() async {
-        let provider = StubProvider(.failure(.rateLimited(retryAfterSeconds: nil)))
+        let provider = StubLLMProvider(.failure(.rateLimited(retryAfterSeconds: nil)))
         do {
             _ = try await TaskDraftGenerator(provider: provider).draft(from: "Что-то", context: context)
             Issue.record("Ожидалась ошибка")
@@ -249,7 +218,7 @@ struct TaskDraftServiceTests {
 
     // Пустой текст не уходит в модель.
     @Test func генератор_пустойТекстНеОтправляется() async {
-        let provider = StubProvider(.success("{}"))
+        let provider = StubLLMProvider(.success("{}"))
         do {
             _ = try await TaskDraftGenerator(provider: provider).draft(from: "  ", context: context)
             Issue.record("Ожидалась ошибка")

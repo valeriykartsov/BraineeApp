@@ -12,7 +12,7 @@ import SwiftUI
 struct LLMTabView: View {
     var isActive: Bool = true
 
-    @State private var hasKey = SecretStore.shared.hasValue(for: .openRouterAPIKey)
+    @State private var hasKey = LLMProviderFactory.isAvailable
     @State private var showingSettings = false
     @State private var messages: [LLMChatMessage] = []
 
@@ -109,7 +109,7 @@ struct LLMTabView: View {
     }
 
     private func reloadKey() {
-        hasKey = SecretStore.shared.hasValue(for: .openRouterAPIKey)
+        hasKey = LLMProviderFactory.isAvailable
     }
 }
 
