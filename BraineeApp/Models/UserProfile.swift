@@ -9,6 +9,9 @@ import SwiftData
 
 @Model
 final class UserProfile {
+    /// Один uuid — одна запись: повторная вставка обновляет существующую (upsert), а не создаёт дубль (D-17).
+    #Unique<UserProfile>([\.uuid])
+
     /// Стабильный идентификатор профиля (DOM-3); в profile.json — поле `id`.
     var uuid: UUID
     var displayName: String
