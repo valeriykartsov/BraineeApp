@@ -6,6 +6,7 @@
 
 import SwiftUI
 import SwiftData
+import UniformTypeIdentifiers
 
 struct ProfileView: View {
     @Environment(\.modelContext) private var modelContext
@@ -21,6 +22,11 @@ struct ProfileView: View {
     @State private var isSearchExpanded = false
     @State private var showingEditProfile = false
     @State private var navigationResetID = UUID()
+    @State private var backupFile: BackupFile?
+    @State private var backupFileName = ""
+    @State private var isExportingBackup = false
+    @State private var backupMessage: String?
+    @State private var pendingBackupSummary = ""
     @FocusState private var isSearchFocused: Bool
 
     private var profile: UserProfile? { profiles.first }
@@ -73,7 +79,7 @@ struct ProfileView: View {
                         TagLibraryView()
                     }
 
-                    if matches("хранение", "данные", "json", "папка") {
+                    if matches("хранение", "данные", "json", "папка", "бэкап", "резерв", "экспорт") {
                         storageSection
                     }
                 }
@@ -124,6 +130,25 @@ struct ProfileView: View {
                 ) { name, age, gender, avatarData in
                     saveProfile(name: name, age: age, gender: gender, avatarData: avatarData)
                 }
+            }
+            .fileExporter(
+                isPresented: $isExportingBackup,
+                document: backupFile,
+                contentType: .json,
+                defaultFilename: backupFileName
+            ) { result in
+                finishBackupExport(result)
+            }
+            .alert(
+                "Резервная копия",
+                isPresented: Binding(
+                    get: { backupMessage != nil },
+                    set: { if !$0 { backupMessage = nil } }
+                )
+            ) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(backupMessage ?? "")
             }
         }
         .id(navigationResetID)
@@ -287,7 +312,49 @@ struct ProfileView: View {
                     .foregroundStyle(DesignSystem.Colors.textSecondary)
             }
             .padding(DesignSystem.Space.x3)
+
+            InsetDivider(leading: DesignSystem.Space.rowIconInset)
+
+            Button {
+                prepareBackupExport()
+            } label: {
+                GroupedNavRow(
+                    title: "Экспорт резервной копии",
+                    systemImage: "square.and.arrow.up",
+                    showsChevron: false
+                )
+            }
+            .buttonStyle(.plain)
         }
+    }
+
+    /// Собирает бэкап из текущих данных и открывает системный диалог сохранения (Файлы / iCloud Drive).
+    private func prepareBackupExport() {
+        try? modelContext.save()
+        let now = Date.now
+        let document = BackupDocument.make(from: modelContext, now: now)
+        do {
+            backupFile = BackupFile(data: try document.encoded())
+            backupFileName = BackupDocument.defaultFileName(for: now)
+            pendingBackupSummary = document.summary
+            isExportingBackup = true
+        } catch {
+            print("Backup export failed: \(error)")
+            backupMessage = "Не удалось подготовить файл: \(error.localizedDescription)"
+        }
+    }
+
+    private func finishBackupExport(_ result: Result<URL, Error>) {
+        switch result {
+        case .success(let url):
+            backupMessage = "Сохранено: \(url.lastPathComponent)\n\(pendingBackupSummary)"
+        case .failure(let error):
+            if (error as? CocoaError)?.code != .userCancelled {
+                print("Backup export failed: \(error)")
+                backupMessage = "Не удалось сохранить файл: \(error.localizedDescription)"
+            }
+        }
+        backupFile = nil
     }
 
     private func ensureProfile() {

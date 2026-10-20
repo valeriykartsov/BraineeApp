@@ -48,9 +48,9 @@ xcodebuild test -project BraineeApp.xcodeproj -scheme BraineeApp -destination 'p
 ### BASE-2. Ручной экспорт бэкапа JSON
 - **Цель:** дать возможность вынуть данные с устройства до миграции.
 - **Предусловия:** BASE-1.
-- **Файлы:** `Views/Profile/ProfileView.swift` (кнопка), новый `Persistence/BackupExport.swift` (`FileDocument`).
-- **Изменения:** `fileExporter` сохраняет `mytasks.json` + `profile.json` (или один архив-JSON) в Files.
-- **Готово, когда:** экспортированный файл открывается, декодируется существующим `MyTasksDocument` и содержит все задачи.
+- **Файлы:** `Views/Profile/ProfileView.swift` (кнопка), новый `Persistence/BackupExport.swift` (`BackupDocument`, `BackupFile`).
+- **Изменения:** `fileExporter` сохраняет один JSON-файл бэкапа (формат — D-16) в Files.
+- **Готово, когда:** экспортированный файл открывается, вложенный `tasks` декодируется существующим `MyTasksDocument` и содержит все задачи.
 - **Автотесты:** encode/decode бэкап-документа.
 - **Ручные проверки:** экспорт на устройстве в Files/iCloud Drive, сравнение числа задач.
 - **Риски:** аватар в base64 увеличивает файл — допустимо.
