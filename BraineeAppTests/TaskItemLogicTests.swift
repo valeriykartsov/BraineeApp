@@ -50,12 +50,18 @@ struct TaskItemLogicTests {
         #expect(task.isOverdue == false)
     }
 
+    /// Фиксированное «сейчас» — середина дня: «час назад» и «через два часа» всегда в те же сутки.
+    /// С `Date()` тесты падали в первый час после полуночи и в последние два часа перед ней.
+    private static func fixedDay(hour: Int) -> Date {
+        let calendar = Calendar.current
+        return calendar.date(bySettingHour: hour, minute: 0, second: 0, of: calendar.date(from: DateComponents(year: 2026, month: 10, day: 21))!)!
+    }
+
     @Test func дедлайнСегодняСоВременемВПрошлом_просрочена() throws {
         // Если задано время и оно уже прошло — просрочка, даже если день ещё сегодня.
         let container = try TestHelpers.makeContainer()
-        let calendar = Calendar.current
-        let now = Date()
-        let past = calendar.date(byAdding: .hour, value: -1, to: now) ?? now.addingTimeInterval(-3600)
+        let now = Self.fixedDay(hour: 15)
+        let past = Self.fixedDay(hour: 14)
         let task = TaskItem(
             title: "Опоздали",
             deadline: past,
@@ -64,15 +70,14 @@ struct TaskItemLogicTests {
         )
         container.mainContext.insert(task)
         #expect(task.isOverdue(at: now) == true)
-        #expect(task.isDueToday == true)
+        #expect(task.isDue(on: now) == true)
     }
 
     @Test func дедлайнСегодняСоВременемВБудущем_неПросрочена() throws {
         // Время сегодня ещё не наступило — не просрочена.
         let container = try TestHelpers.makeContainer()
-        let calendar = Calendar.current
-        let now = Date()
-        let future = calendar.date(byAdding: .hour, value: 2, to: now) ?? now.addingTimeInterval(7200)
+        let now = Self.fixedDay(hour: 15)
+        let future = Self.fixedDay(hour: 17)
         let task = TaskItem(
             title: "Ещё успеем",
             deadline: future,
@@ -81,6 +86,7 @@ struct TaskItemLogicTests {
         )
         container.mainContext.insert(task)
         #expect(task.isOverdue(at: now) == false)
+        #expect(task.isDue(on: now) == true)
     }
 
     @Test func дедлайнСегодняБезВремени_неПросрочена() throws {

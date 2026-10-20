@@ -3,10 +3,10 @@
 Статус: порядок согласован владельцем 2026-10-20 (D-01). Решения — в `docs/decisions.md`. Одна задача = одна ветка = один PR, если не сказано иное.
 Перед каждой задачей: зелёные тесты на `main`. После: список изменений, проверок, рисков и ручной работы.
 
-Команда тестов (подтверждена 2026-10-20):
+Команда тестов (обновлена 2026-10-21; правила экономного запуска — `CLAUDE.md`, «Сборка и тесты»):
 
 ```bash
-xcodebuild test -project BraineeApp.xcodeproj -scheme BraineeApp -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.3.1' -only-testing:BraineeAppTests
+scripts/test.sh
 ```
 
 ---

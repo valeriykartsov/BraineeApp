@@ -56,7 +56,7 @@ README.md            # этот файл
 2. Выбрать схему **BraineeApp** и симулятор / устройство с iOS 18.2+.
 3. Собрать и запустить (⌘R).
 4. Юнит-тесты: ⌘U или  
-   `xcodebuild test -scheme BraineeApp -destination 'platform=iOS Simulator,name=iPhone 16'`.
+   `scripts/test.sh` (все тесты; `scripts/test.sh <НаборТестов>` — один набор, `--build` — только сборка).
 
 Signing: Personal Team / ваш Apple ID. Bundle ID в проекте: `valeravalera.BraineeApp`.
 

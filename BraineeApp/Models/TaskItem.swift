@@ -143,8 +143,13 @@ final class TaskItem {
     }
 
     var isDueToday: Bool {
+        isDue(on: .now)
+    }
+
+    /// Дедлайн приходится на тот же календарный день, что и `day` (в тестах — фиксированная дата).
+    func isDue(on day: Date, calendar: Calendar = .current) -> Bool {
         guard let deadline else { return false }
-        return Calendar.current.isDateInToday(deadline)
+        return calendar.isDate(deadline, inSameDayAs: day)
     }
 
     /// Текст дедлайна для карточки: дата или дата + время.
