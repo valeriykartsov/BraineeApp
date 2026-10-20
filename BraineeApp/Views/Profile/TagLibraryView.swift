@@ -145,38 +145,25 @@ struct TagLibraryView: View {
         showingDeleteConfirm = true
     }
 
+    private var tagService: TagService {
+        TagService(context: modelContext)
+    }
+
+    /// Поле очищается и при успехе, и при недопустимом имени (как раньше).
     private func createTag() {
-        let existingNames = tags.map(\.name)
-        guard TaskInputValidation.canCreateTag(name: newTagName, existingNames: existingNames) else {
-            newTagName = ""
-            return
-        }
-        modelContext.insert(TaskTag(name: TaskInputValidation.normalizedTagName(newTagName)))
+        tagService.create(name: newTagName)
         newTagName = ""
-        modelContext.persistToJSON()
     }
 
     private func saveEditedTag() {
         guard let tag = editingTag else { return }
-        let existingNames = tags.map(\.name)
-        guard TaskInputValidation.canRenameTag(
-            name: editedTagName,
-            existingNames: existingNames,
-            currentName: tag.name
-        ) else {
-            editingTag = nil
-            editedTagName = ""
-            return
-        }
-        tag.name = TaskInputValidation.normalizedTagName(editedTagName)
+        tagService.rename(tag, to: editedTagName)
         editingTag = nil
         editedTagName = ""
-        modelContext.persistToJSON()
     }
 
     private func deleteTag(_ tag: TaskTag) {
-        modelContext.delete(tag)
-        modelContext.persistToJSON()
+        tagService.delete(tag)
     }
 }
 

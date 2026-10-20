@@ -86,4 +86,40 @@ struct TaskService {
         try? context.save()
         onChange(context)
     }
+
+    /// Перенос в группу (drag-and-drop) или в «Без папки» (`group == nil`): в конец целевой группы.
+    /// Задачи из корзины не переносятся.
+    func move(_ task: TaskItem, to group: TaskGroup?) {
+        guard !task.isSoftDeleted else { return }
+        task.group = group
+        let targetTasks = context.fetchActiveTasks().filter { item in
+            guard item.uuid != task.uuid else { return false }
+            if let group {
+                return item.group?.uuid == group.uuid
+            }
+            return item.group == nil
+        }
+        task.sortOrder = (targetTasks.map(\.sortOrder).max() ?? -1) + 1
+        onChange(context)
+    }
+
+    /// Возврат из «Удалённых».
+    func restore(_ task: TaskItem) {
+        task.isSoftDeleted = false
+        task.deletedAt = nil
+        try? context.save()
+        onChange(context)
+    }
+
+    /// Окончательное удаление. Удаляются только задачи, которые уже в корзине, —
+    /// активную задачу так стереть нельзя, даже если её передали по ошибке.
+    func permanentlyDelete(_ tasks: [TaskItem]) {
+        let trashed = tasks.filter(\.isSoftDeleted)
+        guard !trashed.isEmpty else { return }
+        for task in trashed {
+            context.delete(task)
+        }
+        try? context.save()
+        onChange(context)
+    }
 }

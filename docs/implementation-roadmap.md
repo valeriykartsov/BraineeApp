@@ -86,6 +86,9 @@ xcodebuild test -project BraineeApp.xcodeproj -scheme BraineeApp -destination 'p
 - **Ручные проверки:** группы (drag-and-drop), теги, привычки, корзина.
 - **Риски:** большой diff — допускается разбить на 2 PR (задачи/группы и привычки/теги/профиль).
 - **Зависимости:** DOM-1.
+- **Разбивка (2026-10-20):**
+  - **DOM-2a — выполнено:** `GroupService` (создание, переименование, удаление), `TagService` (создание, переименование, удаление), `TaskService.move/restore/permanentlyDelete`; экраны `TaskSectionView`, `TaskOrganizedListView`, `TagLibraryView`, `DeletedTasksFolderView`. Добавлена защита: `permanentlyDelete` стирает только задачи из корзины.
+  - **DOM-2b — следующий:** `HabitService` (`HabitsView`), `ProfileService` (`ProfileView`, `AppearanceSettingsView`).
 
 ### DOM-3. Поля для синхронизации и отчётов (JSON v9)
 - **Цель:** добавить `updatedAt` (задачи, группы, теги, привычки), `completedAt` (задачи), `uuid` профиля.

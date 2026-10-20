@@ -212,4 +212,100 @@ struct TaskServiceTests {
         #expect(try context.fetch(FetchDescriptor<TaskItem>()).count == 1)
         #expect(counter.count == 1)
     }
+
+    // MARK: - Перенос в группу (DOM-2)
+
+    // Перенос в группу ставит задачу в конец этой группы.
+    @Test func переносВГруппу_вКонецГруппы() throws {
+        let context = container.mainContext
+        let group = TaskGroup(name: "Проект")
+        context.insert(group)
+        context.insert(TaskItem(title: "В группе", sortOrder: 7, group: group))
+        let task = TaskItem(title: "Без папки", sortOrder: 50)
+        context.insert(task)
+        let counter = ChangeCounter()
+
+        makeService(context, counter: counter).move(task, to: group)
+
+        #expect(task.group?.uuid == group.uuid)
+        #expect(task.sortOrder == 8)
+        #expect(counter.count == 1)
+    }
+
+    // Перенос в «Без папки» (nil) — в конец задач без группы.
+    @Test func переносБезПапки_вКонецБезПапки() throws {
+        let context = container.mainContext
+        let group = TaskGroup(name: "Проект")
+        context.insert(group)
+        let task = TaskItem(title: "Из группы", sortOrder: 0, group: group)
+        context.insert(task)
+        context.insert(TaskItem(title: "Без папки", sortOrder: 3))
+
+        makeService(context, counter: ChangeCounter()).move(task, to: nil)
+
+        #expect(task.group == nil)
+        #expect(task.sortOrder == 4)
+    }
+
+    // Задачу из корзины перенести нельзя: ничего не меняется и не сохраняется.
+    @Test func переносЗадачиИзКорзины_игнорируется() throws {
+        let context = container.mainContext
+        let group = TaskGroup(name: "Проект")
+        context.insert(group)
+        let task = TaskItem(title: "В корзине", sortOrder: 1, isSoftDeleted: true, deletedAt: .now)
+        context.insert(task)
+        let counter = ChangeCounter()
+
+        makeService(context, counter: counter).move(task, to: group)
+
+        #expect(task.group == nil)
+        #expect(task.sortOrder == 1)
+        #expect(counter.count == 0)
+    }
+
+    // MARK: - Корзина (DOM-2)
+
+    // Восстановление снимает флаг и дату удаления, задача снова активна.
+    @Test func восстановление_возвращаетВАктивные() throws {
+        let context = container.mainContext
+        let task = TaskItem(title: "Вернуть", isSoftDeleted: true, deletedAt: .now)
+        context.insert(task)
+        let counter = ChangeCounter()
+
+        makeService(context, counter: counter).restore(task)
+
+        #expect(!task.isSoftDeleted)
+        #expect(task.deletedAt == nil)
+        #expect(context.fetchActiveTasks().map(\.uuid) == [task.uuid])
+        #expect(counter.count == 1)
+    }
+
+    // Окончательное удаление стирает задачи из корзины, остальные не трогает.
+    @Test func окончательноеУдаление_стираетТолькоИзКорзины() throws {
+        let context = container.mainContext
+        let trashed1 = TaskItem(title: "Корзина 1", isSoftDeleted: true, deletedAt: .now)
+        let trashed2 = TaskItem(title: "Корзина 2", isSoftDeleted: true, deletedAt: .now)
+        let active = TaskItem(title: "Активная")
+        for task in [trashed1, trashed2, active] { context.insert(task) }
+        let counter = ChangeCounter()
+
+        makeService(context, counter: counter).permanentlyDelete([trashed1, trashed2])
+
+        let left = try context.fetch(FetchDescriptor<TaskItem>())
+        #expect(left.map(\.title) == ["Активная"])
+        #expect(counter.count == 1)
+    }
+
+    // Защита: активную задачу окончательно удалить нельзя, даже если её передали.
+    @Test func окончательноеУдалениеАктивной_игнорируется() throws {
+        let context = container.mainContext
+        let active = TaskItem(title: "Активная")
+        context.insert(active)
+        let counter = ChangeCounter()
+
+        makeService(context, counter: counter).permanentlyDelete([active])
+
+        #expect(try context.fetch(FetchDescriptor<TaskItem>()).count == 1)
+        #expect(counter.count == 0)
+    }
 }
