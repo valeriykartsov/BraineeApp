@@ -163,7 +163,7 @@ xcodebuild test -project BraineeApp.xcodeproj -scheme BraineeApp -destination 'p
 | # | Риск | Где | Почему важно |
 |---|---|---|---|
 | R1 | `clearAllData` в `bootstrap` при постоянном хранилище удалит все данные | `AppDataPersistence.bootstrap` | Критично: при включении persistent store этот путь обязан быть удалён/заменён в том же изменении |
-| R2 | Битый `mytasks.json` молча превращается в `nil` (`try?` в `decodeTasksDocument`); если Keychain тоже пуст/битый — грузится `.empty`, и первый же `persistToJSON` перезапишет файл пустым | `AppDataStore.loadTasksFromFile`, `loadTasks` | Тихая потеря данных уже сейчас; миграция должна не повторить этот шаблон |
+| R2 | Битый `mytasks.json` молча превращается в `nil` (`try?` в `decodeTasksDocument`); если Keychain тоже пуст/битый — грузится `.empty`, и первый же `persistToJSON` перезапишет файл пустым | `AppDataStore.loadTasksFromFile`, `loadTasks` | Тихая потеря данных уже сейчас; миграция должна не повторить этот шаблон. **Устранено в BASE-3** (2026-10-20) |
 | R3 | `normalizeRecords()` молча отбрасывает привычки сверх 7, пустые названия, дубликаты UUID, «висячие» ссылки | `MyTasksDocument.normalizeRecords` | Миграция должна сравнивать данные **после** нормализации и логировать отброшенное |
 | R4 | Нет `updatedAt` и tombstone-ов; окончательное удаление (задачи, группы, теги, привычки) бесследно | модели, `DeletedTasksFolderView`, `TagLibraryView`, `HabitsView` | Без этого невозможна корректная синхронизация удалений |
 | R5 | `UserProfile` без `uuid`; тема/акцент живут и в UserDefaults, и в `profile.json` | `UserProfile`, `exportProfile` | Два источника правды для настроек |

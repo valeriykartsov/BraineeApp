@@ -2,8 +2,8 @@
 //  AppDataStoreTests.swift
 //  BraineeAppTests
 //
-//  Характеризационные тесты AppDataStore: фиксируют ТЕКУЩЕЕ поведение файла и Keychain-копии
-//  перед миграцией на SwiftData (roadmap BASE-1). Каждый тест работает во временной папке
+//  Тесты AppDataStore: поведение файла и Keychain-копии (BASE-1), защита от битых файлов (BASE-3).
+//  Каждый тест работает во временной папке
 //  и в отдельном Keychain service — настоящие данные приложения не затрагиваются.
 
 import Foundation
@@ -157,31 +157,96 @@ struct AppDataStoreTests {
         #expect(loaded.tasks.map(\.title) == ["новый Keychain"])
     }
 
-    // MARK: - Повреждённые данные (текущее поведение, риск R2 из аудита)
+    // MARK: - Повреждённые данные (BASE-3, риск R2 из аудита)
 
-    // Битый файл + целая Keychain-копия — используется копия.
-    @Test func битыйФайлЕстьKeychain_используетсяKeychain() throws {
+    // Битый файл + целая Keychain-копия: используется копия, битый файл сохранён под другим именем,
+    // mytasks.json переписан из копии.
+    @Test func битыйФайлЕстьKeychain_используетсяKeychainИФайлСохранён() throws {
         let store = try TemporaryDataStore()
-        try Data("{ не json".utf8).write(to: store.tasksFileURL)
+        let corrupt = Data("{ не json".utf8)
+        try corrupt.write(to: store.tasksFileURL)
         try store.writeTasksKeychain(Self.document(title: "из Keychain", savedAt: 100))
 
         let loaded = try AppDataStore.loadTasks(location: store.location)
 
         #expect(loaded.tasks.map(\.title) == ["из Keychain"])
+        let preserved = store.corruptFiles(of: AppDataStore.tasksFileName)
+        #expect(preserved.count == 1)
+        #expect(try preserved.first.map { try Data(contentsOf: $0) } == corrupt)
+        let rewritten = try PersistenceFixtures.decoder.decode(
+            MyTasksDocument.self,
+            from: Data(contentsOf: store.tasksFileURL)
+        )
+        #expect(rewritten.tasks.map(\.title) == ["из Keychain"])
     }
 
-    // ТЕКУЩЕЕ поведение (риск R2): битый файл без Keychain-копии молча даёт пустой документ.
-    // Сам loadTasks файл не перезаписывает — данные теряются при следующем сохранении.
-    // BASE-3 должен изменить это поведение; тогда тест нужно обновить.
-    @Test func битыйФайлБезKeychain_сейчасВозвращаетсяПустойДокумент() throws {
+    // Битый файл без Keychain-копии: ошибка вместо пустых данных, содержимое файла сохранено.
+    @Test func битыйФайлБезKeychain_ошибкаИФайлСохранён() throws {
         let store = try TemporaryDataStore()
         let corrupt = Data("{ не json".utf8)
         try corrupt.write(to: store.tasksFileURL)
 
+        #expect(throws: AppDataStoreError.self) {
+            try AppDataStore.loadTasks(location: store.location)
+        }
+
+        #expect(!store.tasksFileExists)
+        let preserved = store.corruptFiles(of: AppDataStore.tasksFileName)
+        #expect(preserved.count == 1)
+        #expect(try preserved.first.map { try Data(contentsOf: $0) } == corrupt)
+    }
+
+    // Битый файл и битая Keychain-копия — тоже ошибка, не пустые данные.
+    @Test func битыйФайлИБитыйKeychain_ошибка() throws {
+        let store = try TemporaryDataStore()
+        try Data("{ не json".utf8).write(to: store.tasksFileURL)
+        try KeychainStorage.save(
+            Data("тоже не json".utf8),
+            account: AppDataStore.tasksFileName,
+            service: store.location.keychainService
+        )
+
+        #expect(throws: AppDataStoreError.self) {
+            try AppDataStore.loadTasks(location: store.location)
+        }
+    }
+
+    // После ошибки следующий запуск открывается без задач; сохранённый битый файл не трогается.
+    @Test func послеОшибки_следующийЗапускПустойИБитыйФайлЦел() throws {
+        let store = try TemporaryDataStore()
+        let corrupt = Data("{ не json".utf8)
+        try corrupt.write(to: store.tasksFileURL)
+        _ = try? AppDataStore.loadTasks(location: store.location)
+
         let loaded = try AppDataStore.loadTasks(location: store.location)
 
         #expect(loaded.tasks.isEmpty)
-        #expect(try Data(contentsOf: store.tasksFileURL) == corrupt)
+        #expect(try store.corruptFiles(of: AppDataStore.tasksFileName).map { try Data(contentsOf: $0) } == [corrupt])
+    }
+
+    // Файл есть, но не читается с диска (нет прав): ошибка, файл не переименовывается —
+    // это может быть временной проблемой, а не порчей данных.
+    @Test func файлНеЧитаетсяСДиска_ошибкаФайлНаМесте() throws {
+        let store = try TemporaryDataStore()
+        try store.writeTasksFile(Self.document(title: "задача", savedAt: 100))
+        try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: store.tasksFileURL.path)
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: store.tasksFileURL.path)
+        }
+
+        #expect(throws: (any Error).self) {
+            try AppDataStore.loadTasks(location: store.location)
+        }
+
+        #expect(store.tasksFileExists)
+        #expect(store.corruptFiles(of: AppDataStore.tasksFileName).isEmpty)
+    }
+
+    // Текст ошибки понятен пользователю и называет сохранённый файл.
+    @Test func текстОшибки_называетСохранённыйФайл() {
+        let error = AppDataStoreError.tasksFileCorrupted(preservedAs: "mytasks.corrupt-20261020-164300.json")
+
+        #expect(error.localizedDescription.contains("mytasks.corrupt-20261020-164300.json"))
     }
 
     // ТЕКУЩЕЕ поведение (риск R3): при чтении привычки сверх 7 молча отбрасываются.
@@ -225,14 +290,33 @@ struct AppDataStoreTests {
         #expect(!FileManager.default.fileExists(atPath: store.profileFileURL.path))
     }
 
-    // Битый profile.json — ошибка пробрасывается (в отличие от mytasks.json), bootstrap покажет экран ошибки.
-    @Test func битыйФайлПрофиля_бросаетОшибку() throws {
+    // Битый profile.json без Keychain-копии: ошибка, файл сохранён под другим именем.
+    // Следующий запуск уже не падает — пустой профиль (раньше ошибка повторялась при каждом запуске).
+    @Test func битыйФайлПрофиляБезKeychain_ошибкаИФайлСохранён() throws {
         let store = try TemporaryDataStore()
-        try Data("{ не json".utf8).write(to: store.profileFileURL)
+        let corrupt = Data("{ не json".utf8)
+        try corrupt.write(to: store.profileFileURL)
 
-        #expect(throws: (any Error).self) {
+        #expect(throws: AppDataStoreError.self) {
             try AppDataStore.loadProfile(location: store.location)
         }
+        #expect(try store.corruptFiles(of: AppDataStore.profileFileName).map { try Data(contentsOf: $0) } == [corrupt])
+
+        let next = try AppDataStore.loadProfile(location: store.location)
+        #expect(next.displayName.isEmpty)
+    }
+
+    // Битый profile.json + целая Keychain-копия — используется копия.
+    @Test func битыйФайлПрофиляЕстьKeychain_используетсяKeychain() throws {
+        let store = try TemporaryDataStore()
+        try Data("{ не json".utf8).write(to: store.profileFileURL)
+        let original = PersistenceFixtures.profileDocument()
+        try store.writeProfileKeychain(original)
+
+        let loaded = try AppDataStore.loadProfile(location: store.location)
+
+        Self.expectSameProfile(loaded, original)
+        #expect(store.corruptFiles(of: AppDataStore.profileFileName).count == 1)
     }
 
     // Нет ни файла, ни копии — пустой профиль с настройками по умолчанию.
