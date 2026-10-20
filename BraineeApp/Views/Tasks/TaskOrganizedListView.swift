@@ -6,9 +6,6 @@
 
 import SwiftUI
 import SwiftData
-#if canImport(UIKit)
-import UIKit
-#endif
 
 struct TaskOrganizedListView: View {
     @Environment(\.modelContext) private var modelContext
@@ -31,6 +28,12 @@ struct TaskOrganizedListView: View {
     /// Одна открытая свайпом строка удаления.
     @State private var swipedTaskUUID: UUID?
 
+    /// Фиксированный id drop-зоны «Без папки» (без force unwrap).
+    private static let ungroupedDropID = UUID(uuid: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1))
+
+    /// Ширина превью при переносе (вместо устаревшего UIScreen.main).
+    private static let dragPreviewWidth: CGFloat = 300
+
     /// Задачи уже приходят из @Query без soft-deleted.
     private var visibleTasks: [TaskItem] { tasks }
 
@@ -50,10 +53,6 @@ struct TaskOrganizedListView: View {
             }
         }
         return (byGroup, sortedTasks(ungrouped))
-    }
-
-    private var ungroupedDropID: UUID {
-        UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
     }
 
     var body: some View {
@@ -149,7 +148,8 @@ struct TaskOrganizedListView: View {
     }
 
     private func ungroupedSection(tasks ungrouped: [TaskItem]) -> some View {
-        let isTargeted = dropTargetGroupUUID == ungroupedDropID
+        let ungroupedID = Self.ungroupedDropID
+        let isTargeted = dropTargetGroupUUID == ungroupedID
         let shape = RoundedRectangle(cornerRadius: DesignSystem.Radius.group, style: .continuous)
 
         return VStack(alignment: .leading, spacing: 0) {
@@ -171,13 +171,12 @@ struct TaskOrganizedListView: View {
             .padding(.horizontal, DesignSystem.Space.x3)
             .padding(.vertical, DesignSystem.Space.x2 + 2)
 
+            InsetDivider(leading: DesignSystem.Space.rowIconInset)
             if ungrouped.isEmpty {
-                InsetDivider(leading: DesignSystem.Space.rowIconInset)
                 emptyFolderHint(name: nil)
                     .padding(.horizontal, DesignSystem.Space.x3)
                     .padding(.vertical, DesignSystem.Space.x4)
-            } else if !ungrouped.isEmpty {
-                InsetDivider(leading: DesignSystem.Space.rowIconInset)
+            } else {
                 taskStack(ungrouped)
             }
         }
@@ -194,8 +193,8 @@ struct TaskOrganizedListView: View {
             performDrop(items, into: nil)
         } isTargeted: { hovering in
             if hovering {
-                dropTargetGroupUUID = ungroupedDropID
-            } else if dropTargetGroupUUID == ungroupedDropID {
+                dropTargetGroupUUID = ungroupedID
+            } else if dropTargetGroupUUID == ungroupedID {
                 dropTargetGroupUUID = nil
             }
         }
@@ -335,18 +334,20 @@ struct TaskOrganizedListView: View {
         }
     }
 
+    /// Ручка drag стоит СНАРУЖИ SwipeToDeleteRow, чтобы жест свайпа
+    /// не конкурировал с системным drag.
     private func taskRow(_ task: TaskItem) -> some View {
-        SwipeToDeleteRow(
-            isOpen: swipedTaskUUID == task.uuid,
-            onOpen: { swipedTaskUUID = task.uuid },
-            onClose: {
-                if swipedTaskUUID == task.uuid {
-                    swipedTaskUUID = nil
-                }
-            },
-            onDelete: { onDelete(task) }
-        ) {
-            HStack(spacing: DesignSystem.Space.x2) {
+        HStack(spacing: 0) {
+            SwipeToDeleteRow(
+                isOpen: swipedTaskUUID == task.uuid,
+                onOpen: { swipedTaskUUID = task.uuid },
+                onClose: {
+                    if swipedTaskUUID == task.uuid {
+                        swipedTaskUUID = nil
+                    }
+                },
+                onDelete: { onDelete(task) }
+            ) {
                 TaskRowView(
                     task: task,
                     displaySettings: displaySettings,
@@ -366,7 +367,6 @@ struct TaskOrganizedListView: View {
                         onEdit(task)
                     }
                 }
-                // contextMenu только слева — long-press не конфликтует с drag справа.
                 .contextMenu {
                     Button {
                         onEdit(task)
@@ -379,18 +379,21 @@ struct TaskOrganizedListView: View {
                         Label("Удалить", systemImage: DesignSystem.Icon.trash)
                     }
                 }
-
-                TaskDragHandle(taskUUID: task.uuid) {
-                    taskDragPreview(task)
-                }
+                .padding(.leading, DesignSystem.Space.x3)
+                .padding(.vertical, DesignSystem.Space.x2)
+                .background(DesignSystem.Colors.surface)
             }
-            .padding(.horizontal, DesignSystem.Space.x3)
-            .padding(.vertical, DesignSystem.Space.x2)
-            .background(DesignSystem.Colors.surface)
+
+            TaskDragHandle(taskUUID: task.uuid) {
+                taskDragPreview(task)
+            }
+            .padding(.trailing, DesignSystem.Space.x3)
         }
+        .background(DesignSystem.Colors.surface)
     }
 
     /// Миниатюра при переносе: только название — без полей из настроек отображения.
+    /// Вибрация «подъёма» срабатывает, когда система показывает превью (начало drag).
     private func taskDragPreview(_ task: TaskItem) -> some View {
         Text(task.title)
             .font(DesignSystem.Typography.body(16))
@@ -400,20 +403,13 @@ struct TaskOrganizedListView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, DesignSystem.Space.x3)
             .padding(.vertical, DesignSystem.Space.x2 + 2)
-            .frame(width: dragPreviewWidth, alignment: .leading)
+            .frame(width: Self.dragPreviewWidth, alignment: .leading)
             .background(DesignSystem.Colors.surface)
             .clipShape(
                 RoundedRectangle(cornerRadius: DesignSystem.Radius.group, style: .continuous)
             )
             .shadow(color: .black.opacity(0.18), radius: 10, y: 4)
-    }
-
-    private var dragPreviewWidth: CGFloat {
-#if canImport(UIKit)
-        max(UIScreen.main.bounds.width - DesignSystem.Space.screenInset * 2, 280)
-#else
-        320
-#endif
+            .onAppear { HapticFeedback.lift() }
     }
 
     private func sortedTasks(_ items: [TaskItem]) -> [TaskItem] {
@@ -446,13 +442,11 @@ struct TaskOrganizedListView: View {
     }
 }
 
-/// Ручка drag: вибрация в момент long-press (выбор), а не при начале движения превью.
+/// Ручка drag. Только `.draggable` — без дополнительных LongPress-жестов,
+/// которые конфликтовали с системным drag-interaction.
 private struct TaskDragHandle<Preview: View>: View {
     let taskUUID: UUID
     @ViewBuilder var preview: () -> Preview
-
-    /// Становится true, когда long-press распознан (палец ещё на месте).
-    @GestureState private var isLiftSelected = false
 
     var body: some View {
         Image(systemName: DesignSystem.Icon.drag)
@@ -462,16 +456,5 @@ private struct TaskDragHandle<Preview: View>: View {
             .contentShape(Rectangle())
             .accessibilityLabel("Перетащить задачу")
             .draggable(taskUUID.uuidString, preview: preview)
-            .simultaneousGesture(
-                LongPressGesture(minimumDuration: 0.35)
-                    .updating($isLiftSelected) { currentState, gestureState, _ in
-                        gestureState = currentState
-                    }
-            )
-            .onChange(of: isLiftSelected) { _, selected in
-                if selected {
-                    HapticFeedback.lift()
-                }
-            }
     }
 }
