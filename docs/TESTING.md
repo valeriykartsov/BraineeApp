@@ -38,12 +38,22 @@ scripts/test.sh --build                           # только компиля�
 |---|---|
 | `-LLMStub` | Чат LLM работает с готовыми ответами вместо OpenRouter — ключ и сеть не нужны. Слово «ошибка» в тексте → «нет сети», «мусор» → ответ не JSON, `today` → черновик со сроком на сегодня |
 | `-SeedDemoData` | Заполняет **пустое** хранилище демо-задачами, папками, тегами и привычками и включает все вкладки (для скриншотов). Если данные уже есть — ничего не делает |
+| `-DemoTaskCount N` | Вместе с `-SeedDemoData`: ещё N однотипных задач по папкам, с тегами и сроками — для замера прокрутки (п. 10) |
 | `-SeedDemoMeetings` | Создаёт в Календаре устройства календарь «Демо-встречи» с событиями на сегодня (весь день, через полночь, обычные) — для блока «Встречи» (D-37). Нужен полный доступ: `xcrun simctl privacy <UDID> grant calendar valeravalera.BraineeApp`. Если календарь уже есть — ничего не делает |
 
 ```bash
 xcrun simctl install <UDID> <путь к BraineeApp.app>
 xcrun simctl launch <UDID> valeravalera.BraineeApp -SeedDemoData -LLMStub
 ```
+
+## Замер прокрутки (Time Profiler)
+
+1. Чистая установка и запуск с `-SeedDemoData -DemoTaskCount 300 -notificationDidRequestPermission YES`.
+2. `xcrun xctrace record --template 'Time Profiler' --device <UDID> --attach BraineeApp --time-limit 20s --output x.trace` (подключаться по имени процесса: по PID `xctrace` процесс в симуляторе не находит) и за это время — 6 одинаковых быстрых прокруток списка.
+3. `xcrun xctrace export --input x.trace --xpath '/trace-toc/run[@number="1"]/data/table[@schema="time-profile"]'` → сколько мс главный поток в состоянии Running и сколько из них в каждой секунде. Функции системных библиотек симулятора не подписываются — смотреть разбивку по библиотекам (AttributeGraph, SwiftUICore…) и функции приложения.
+4. Разброс между одинаковыми записями — до 2 раз: сравнивать варианты «в разы».
+
+Результат п. 10 (309 задач, iPhone 17 / iOS 27): до — 1939 мс, пики ~780 мс/с; после — 233 мс, пик 100 мс/с.
 
 ## Ручная проверка в симуляторе
 

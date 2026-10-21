@@ -65,6 +65,7 @@ struct CalendarWeekView: View {
                     .padding(.bottom, DesignSystem.Space.x3)
 
                 dayTasksList
+                    .taskRowClock()
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .navigationBar)
