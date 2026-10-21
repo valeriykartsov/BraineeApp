@@ -2,7 +2,8 @@
 //  CalendarExportSettingsView.swift
 //  BraineeApp
 //
-//  Настройка «Экспорт в Календарь» (CAL-2): вкл/выкл без выбора календаря и состояние экспорта.
+//  Настройки Календаря: «Экспорт в Календарь» (CAL-2) с состоянием экспорта
+//  и «Встречи из Календаря» (D-37) — показ встреч под задачами дня.
 
 import SwiftUI
 import SwiftData
@@ -12,6 +13,7 @@ struct CalendarExportSettingsView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var isEnabled = CalendarExport.isEnabled
+    @State private var meetingsEnabled = CalendarMeetings.isEnabled
     @State private var access = CalendarExport.store.access
     @State private var isWorking = false
     @State private var calendarSummary: String?
@@ -52,6 +54,27 @@ struct CalendarExportSettingsView: View {
                             .foregroundStyle(DesignSystem.Colors.accent)
                         }
                     }
+                    .padding(DesignSystem.Space.x3)
+                }
+
+                GroupedSection(title: "Встречи") {
+                    Toggle(isOn: Binding(
+                        get: { meetingsEnabled },
+                        set: { newValue in
+                            Task { await setMeetingsEnabled(newValue) }
+                        }
+                    )) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Встречи из Календаря")
+                                .font(DesignSystem.Typography.body(16))
+                                .foregroundStyle(DesignSystem.Colors.textPrimary)
+                            Text("Во вкладке «Календарь» под задачами дня — встречи из ваших календарей (кроме «\(CalendarEventRules.calendarTitle)»), только для просмотра. Встречи нигде не сохраняются и не передаются.")
+                                .font(DesignSystem.Typography.caption())
+                                .foregroundStyle(DesignSystem.Colors.textSecondary)
+                        }
+                    }
+                    .tint(DesignSystem.Colors.accent)
+                    .disabled(isWorking)
                     .padding(DesignSystem.Space.x3)
                 }
 
@@ -122,8 +145,21 @@ struct CalendarExportSettingsView: View {
         reload()
     }
 
+    private func setMeetingsEnabled(_ newValue: Bool) async {
+        guard !isWorking else { return }
+        isWorking = true
+        defer { isWorking = false }
+        if newValue {
+            _ = await CalendarMeetings.enable()
+        } else {
+            CalendarMeetings.disable()
+        }
+        reload()
+    }
+
     private func reload() {
         isEnabled = CalendarExport.isEnabled
+        meetingsEnabled = CalendarMeetings.isEnabled
         access = CalendarExport.store.access
         calendarSummary = CalendarExport.calendarSummary
         lastError = CalendarExport.lastError

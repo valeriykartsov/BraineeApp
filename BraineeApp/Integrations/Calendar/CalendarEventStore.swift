@@ -62,7 +62,8 @@ protocol CalendarEventStore: AnyObject {
 
 @MainActor
 final class EventKitCalendarStore: CalendarEventStore {
-    private let store = EKEventStore()
+    /// Не private: чтение встреч (`CalendarMeetings.swift`, D-37) использует тот же EKEventStore.
+    let store = EKEventStore()
 
     var access: CalendarAccess {
         switch EKEventStore.authorizationStatus(for: .event) {

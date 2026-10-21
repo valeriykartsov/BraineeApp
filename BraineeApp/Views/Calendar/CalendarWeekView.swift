@@ -2,7 +2,7 @@
 //  CalendarWeekView.swift
 //  BraineeApp
 //
-//  Календарь: недельная лента дней и список задач выбранного дня.
+//  Календарь: недельная лента дней, задачи выбранного дня и встречи из Календаря iPhone (D-37).
 
 import SwiftUI
 import SwiftData
@@ -24,6 +24,9 @@ struct CalendarWeekView: View {
     @State private var selectedDay = Calendar.current.startOfDay(for: .now)
     @State private var editingTask: TaskItem?
     @State private var displaySettings = TaskListDisplaySettings.load()
+    /// Встречи дня читаются из Календаря при показе и нигде не сохраняются (D-37).
+    @State private var meetings: [DayMeeting] = []
+    @State private var meetingsAvailable = false
 
     private var weekDays: [Date] {
         CalendarWeekHelper.daysInWeek(starting: weekStart)
@@ -82,18 +85,34 @@ struct CalendarWeekView: View {
             .onAppear {
                 displaySettings = TaskListDisplaySettings.load()
                 resetToToday()
+                reloadMeetings()
             }
             .onChange(of: isActive) { _, active in
-                if !active {
+                if active {
+                    reloadMeetings()
+                } else {
                     resetToToday()
                 }
             }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .background {
                     resetToToday()
+                } else if phase == .active {
+                    reloadMeetings()
                 }
             }
+            .onChange(of: selectedDay) { _, _ in
+                reloadMeetings()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: CalendarMeetings.changedNotification)) { _ in
+                reloadMeetings()
+            }
         }
+    }
+
+    private func reloadMeetings() {
+        meetingsAvailable = CalendarMeetings.isAvailable
+        meetings = CalendarMeetings.meetings(on: selectedDay)
     }
 
     private func resetToToday() {
@@ -168,54 +187,142 @@ struct CalendarWeekView: View {
 
     @ViewBuilder
     private var dayTasksList: some View {
-        if tasksForSelectedDay.isEmpty {
+        if tasksForSelectedDay.isEmpty && !meetingsAvailable {
             VStack(alignment: .leading, spacing: DesignSystem.Space.x2) {
                 GroupedSection(title: "Задачи дня") {
-                    VStack(alignment: .leading, spacing: DesignSystem.Space.x2) {
-                        Text("На этот день задач нет")
-                            .font(DesignSystem.Typography.headline())
-                            .foregroundStyle(DesignSystem.Colors.textPrimary)
-                        Text("Создайте задачу с дедлайном на выбранную дату в разделе «Задачи».")
-                            .font(DesignSystem.Typography.caption())
-                            .foregroundStyle(DesignSystem.Colors.textSecondary)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(DesignSystem.Space.x4)
+                    emptyTasksNote
                 }
             }
             .groupedScreenPadding()
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         } else {
             ScrollView {
-                GroupedSection(title: "Задачи дня") {
-                    VStack(spacing: 0) {
-                        ForEach(Array(tasksForSelectedDay.enumerated()), id: \.element.uuid) { index, task in
-                            TaskRowView(
-                                task: task,
-                                displaySettings: displaySettings,
-                                showsActionButtons: true,
-                                onToggle: { toggleTask(task) },
-                                onEdit: { editingTask = task },
-                                onDelete: { softDelete(task) }
-                            )
-                            .padding(.horizontal, DesignSystem.Space.x3)
-                            .padding(.vertical, DesignSystem.Space.x2)
-                            .contentShape(Rectangle())
-                            .onTapGesture { editingTask = task }
-                            .contextMenu {
-                                Button("Редактировать") { editingTask = task }
-                                Button("Удалить", role: .destructive) { softDelete(task) }
-                            }
-                            if index < tasksForSelectedDay.count - 1 {
-                                InsetDivider(leading: DesignSystem.Space.rowIconInset)
-                            }
+                VStack(spacing: DesignSystem.Space.sectionGap) {
+                    GroupedSection(title: "Задачи дня") {
+                        if tasksForSelectedDay.isEmpty {
+                            emptyTasksNote
+                        } else {
+                            tasksStack
                         }
+                    }
+
+                    if meetingsAvailable {
+                        meetingsSection
                     }
                 }
                 .groupedScreenPadding()
                 .padding(.vertical, DesignSystem.Space.x2 + 2)
             }
         }
+    }
+
+    private var emptyTasksNote: some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Space.x2) {
+            Text("На этот день задач нет")
+                .font(DesignSystem.Typography.headline())
+                .foregroundStyle(DesignSystem.Colors.textPrimary)
+            Text("Создайте задачу с дедлайном на выбранную дату в разделе «Задачи».")
+                .font(DesignSystem.Typography.caption())
+                .foregroundStyle(DesignSystem.Colors.textSecondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(DesignSystem.Space.x4)
+    }
+
+    private var tasksStack: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(tasksForSelectedDay.enumerated()), id: \.element.uuid) { index, task in
+                TaskRowView(
+                    task: task,
+                    displaySettings: displaySettings,
+                    showsActionButtons: true,
+                    onToggle: { toggleTask(task) },
+                    onEdit: { editingTask = task },
+                    onDelete: { softDelete(task) }
+                )
+                .padding(.horizontal, DesignSystem.Space.x3)
+                .padding(.vertical, DesignSystem.Space.x2)
+                .contentShape(Rectangle())
+                .onTapGesture { editingTask = task }
+                .contextMenu {
+                    Button("Редактировать") { editingTask = task }
+                    Button("Удалить", role: .destructive) { softDelete(task) }
+                }
+                if index < tasksForSelectedDay.count - 1 {
+                    InsetDivider(leading: DesignSystem.Space.rowIconInset)
+                }
+            }
+        }
+    }
+
+    /// Встречи только для просмотра: без нажатий, меню и перехода в Календарь (D-37).
+    private var meetingsSection: some View {
+        GroupedSection(title: "Встречи") {
+            if meetings.isEmpty {
+                Text("Встреч нет")
+                    .font(DesignSystem.Typography.caption())
+                    .foregroundStyle(DesignSystem.Colors.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(DesignSystem.Space.x4)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(Array(meetings.enumerated()), id: \.element.id) { index, item in
+                        meetingRow(item)
+                        if index < meetings.count - 1 {
+                            InsetDivider(leading: DesignSystem.Space.x3)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func meetingRow(_ item: DayMeeting) -> some View {
+        let meeting = item.meeting
+        let time: String
+        let duration: String?
+        switch item.timing {
+        case .allDay:
+            time = "Весь день"
+            duration = nil
+        case .starts(let start):
+            time = CalendarMeetingRules.timeText(start)
+            duration = CalendarMeetingRules.durationText(from: meeting.start, to: meeting.end)
+        case .continuesUntil(let end):
+            time = "до \(CalendarMeetingRules.timeText(end))"
+            duration = CalendarMeetingRules.durationText(from: meeting.start, to: meeting.end)
+        }
+
+        return HStack(alignment: .firstTextBaseline, spacing: DesignSystem.Space.x3) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(time)
+                    .font(DesignSystem.Typography.headline(15))
+                    .monospacedDigit()
+                    .foregroundStyle(DesignSystem.Colors.textPrimary)
+                    .lineLimit(2)
+                if let duration {
+                    Text(duration)
+                        .font(DesignSystem.Typography.caption(11))
+                        .foregroundStyle(DesignSystem.Colors.textSecondary)
+                }
+            }
+            .frame(width: 76, alignment: .leading)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(meeting.title.isEmpty ? "Без названия" : meeting.title)
+                    .font(DesignSystem.Typography.body(15))
+                    .foregroundStyle(DesignSystem.Colors.textPrimary)
+                    .lineLimit(2)
+                Text(meeting.calendarTitle)
+                    .font(DesignSystem.Typography.caption(11))
+                    .foregroundStyle(DesignSystem.Colors.textSecondary)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, DesignSystem.Space.x3)
+        .padding(.vertical, DesignSystem.Space.x2 + 2)
+        .accessibilityElement(children: .combine)
     }
 
     private func shiftWeek(by weeks: Int) {

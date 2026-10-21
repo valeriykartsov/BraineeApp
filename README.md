@@ -19,7 +19,7 @@ The app UI is in Russian. Screenshots use demo data.
 ## Features
 
 - **Tasks** — deadlines with optional time, priorities, statuses, descriptions, tags, folders, drag-and-drop, list and kanban views, soft delete with a trash.
-- **Calendar** — week strip with the tasks of the selected day; optional one-way export to an app-owned "BraineeApp" calendar in the iPhone Calendar (iCloud).
+- **Calendar** — week strip with the tasks of the selected day; optional one-way export to an app-owned "BraineeApp" calendar in the iPhone Calendar (iCloud); optional read-only list of the day's meetings from your calendars, sorted by time with start and duration.
 - **Habits** — up to 7 habits, a three-month contribution grid, check-ins for today and up to 14 days back.
 - **AI assistant (optional, OpenRouter)** — turn a phrase into a task draft, split a brain dump into several drafts, get a short day/week reflection, get a suggested plan for today. Drafts are saved only after you confirm them in the regular task form.
 - **Dashboard** — progress, overdue and today counters; details with a tag pie chart (percent legend) and an Active / All (including trash) switch.
@@ -32,6 +32,7 @@ The app UI is in Russian. Screenshots use demo data.
 ## Privacy
 
 - All data lives in a local SwiftData store on the device. No account, no analytics, no iCloud sync of app data.
+- Meetings from the iPhone Calendar (if enabled) are read on screen only: never stored, backed up or sent anywhere.
 - The AI assistant is off until you add your own [OpenRouter](https://openrouter.ai) API key. The key is stored in the Keychain on this device only.
 - Requests are sent only when you ask, one at a time, without chat history:
 
@@ -50,7 +51,7 @@ Task descriptions, tags of tasks, profile data and backups are never sent.
 | UI | SwiftUI |
 | Storage | SwiftData (versioned schema, persistent store in Application Support) |
 | Backup | JSON documents via Files |
-| Calendar | EventKit (one-way export) |
+| Calendar | EventKit (one-way export, read-only meetings) |
 | AI | OpenRouter Chat Completions over `URLSession` |
 | Secrets | Keychain |
 | Widgets | WidgetKit + App Group |

@@ -3,6 +3,12 @@
 Notable changes to BraineeApp. Dates are commit dates. Decision references (D-xx) point to [`docs/decisions.md`](docs/decisions.md).
 The October 2026 work was a modernization done in phases; the detailed task plan and audit it followed are available in git history (`e1ccfff`).
 
+## 2026-10-21 — Meetings from the iPhone Calendar
+
+- Calendar tab: optional read-only "Meetings" block under the day's tasks — events from all calendars except "BraineeApp", all-day first, then by start time, with start time and duration on the left; a meeting that started the day before shows "until HH:MM" (D-37).
+- Setting "Profile → Settings → Calendar → Meetings from Calendar", off by default; meetings are never stored, backed up or sent anywhere.
+- Debug-only `-SeedDemoMeetings` launch argument for demo events.
+
 ## 2026-10-21 — UI polish
 
 - Tag library, dashboard and widget counters use one rule: tasks in the trash are never counted.
