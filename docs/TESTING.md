@@ -21,7 +21,7 @@ scripts/test.sh --build                           # только компиля�
 | Хранилище и бэкап | `ModelContainerFactoryTests`, `AppDataPersistenceRoundTripTests`, `MyTasksDocumentTests`, `ProfileDocumentTests`, `BackupDocumentTests`, `BackupImportTests`, `AutoBackupTests`, `SyncFieldsTests`, `LegacyStorageCleanupTests` |
 | Календарь | `CalendarEventRulesTests`, `CalendarExportServiceTests`, `CalendarWeekHelperTests`, `CalendarMeetingRulesTests` |
 | LLM | `SecretStoreTests`, `LLMSettingsTests`, `OpenRouterProviderTests`, `TaskDraftServiceTests`, `InboxDraftServiceTests`, `ReflectionServiceTests`, `DayPlanServiceTests`, `LLMAnswerTextTests` |
-| Интерфейс и настройки | `TabBarSettingsTests`, `NotificationSettingsTests`, `NotificationDeepLinkTests`, `AppBadgeCounterTests`, `AccentPaletteTests`, `AccentInstallDefaultsTests`, `OrientationLockSettingsTests`, `TaskListDisplaySettingsTests`, `EisenhowerMatrixLayoutTests`, `EisenhowerQuadrantTests`, `WidgetSnapshotBuilderTests`, `TaskDragPayloadTests`, `TaskFieldKeyboardResetTests`, `TaskReminderOffsetTests` |
+| Интерфейс и настройки | `TabBarSettingsTests`, `NotificationSettingsTests`, `NotificationDeepLinkTests`, `AppBadgeCounterTests`, `AccentPaletteTests`, `AccentInstallDefaultsTests`, `OrientationLockSettingsTests`, `TaskListDisplaySettingsTests`, `EisenhowerMatrixLayoutTests`, `EisenhowerQuadrantTests`, `WidgetSnapshotBuilderTests`, `LockScreenWidgetSnapshotTests`, `TaskDragPayloadTests`, `TaskFieldKeyboardResetTests`, `TaskReminderOffsetTests` |
 
 Сеть в тестах LLM подменяется `URLProtocol`-заглушкой или `StubLLMProvider`; настоящий ключ не используется. Общие помощники — `TestHelpers.swift`, `PersistenceTestSupport.swift`, `LLMTestSupport.swift`.
 
@@ -45,6 +45,10 @@ scripts/test.sh --build                           # только компиля�
 xcrun simctl install <UDID> <путь к BraineeApp.app>
 xcrun simctl launch <UDID> valeravalera.BraineeApp -SeedDemoData -LLMStub
 ```
+
+Свежая сборка `scripts/test.sh` лежит в `$TMPDIR/BraineeApp-DerivedData/Build/Products/Debug-iphonesimulator/BraineeApp.app`, а не в `~/Library/Developer/Xcode/DerivedData` (там — последняя сборка из Xcode, возможно старая).
+
+Переход с виджетов экрана блокировки: `xcrun simctl openurl <UDID> braineeapp://calendar` (на холодном старте система спросит «Открыть в приложении»). Скрытую вкладку «Календарь» задаёт аргумент `-tabBarShowCalendar NO`. Сам виджет на экран блокировки симулятора не добавить — проверка на iPhone (сценарий 1.3e). Снимок для виджетов — `widget_snapshot.json` в контейнере `xcrun simctl get_app_container <UDID> valeravalera.BraineeApp groups`.
 
 ## Замер прокрутки (Time Profiler)
 

@@ -22,9 +22,15 @@ struct BraineeWidgetProvider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<BraineeWidgetEntry>) -> Void) {
-        let entry = BraineeWidgetEntry(date: .now, snapshot: WidgetSnapshotStore.load())
-        let next = Calendar.current.date(byAdding: .minute, value: 30, to: .now) ?? .now.addingTimeInterval(1800)
-        completion(Timeline(entries: [entry], policy: .after(next)))
+        let snapshot = WidgetSnapshotStore.load()
+        let calendar = Calendar.current
+        var entries = [BraineeWidgetEntry(date: .now, snapshot: snapshot)]
+        // В полночь меняется дата на виджете «Календарь», а счётчики «сегодня» становятся вчерашними.
+        if let midnight = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: .now)) {
+            entries.append(BraineeWidgetEntry(date: midnight, snapshot: snapshot))
+        }
+        let next = calendar.date(byAdding: .minute, value: 30, to: .now) ?? .now.addingTimeInterval(1800)
+        completion(Timeline(entries: entries, policy: .after(next)))
     }
 }
 
@@ -49,7 +55,7 @@ extension WidgetSnapshot {
                 )
             ],
             priorityTasks: [],
-            stats: WidgetStatsSnapshot(total: 8, completed: 3, active: 5, overdue: 1, today: 2),
+            stats: WidgetStatsSnapshot(total: 8, completed: 3, active: 5, overdue: 1, today: 3, todayCompleted: 1),
             habits: [
                 WidgetHabitRow(id: UUID(), title: "Зарядка", isCompletedToday: true),
                 WidgetHabitRow(id: UUID(), title: "Чтение", isCompletedToday: false)

@@ -20,6 +20,7 @@ struct CalendarWeekView: View {
     )
     private var tasks: [TaskItem]
 
+    @ObservedObject private var deepLinkRouter = NotificationDeepLinkRouter.shared
     @State private var weekStart = CalendarWeekHelper.startOfWeek(containing: .now)
     @State private var selectedDay = Calendar.current.startOfDay(for: .now)
     @State private var editingTask: TaskItem?
@@ -88,8 +89,14 @@ struct CalendarWeekView: View {
                 resetToToday()
                 reloadMeetings()
             }
+            // Тап по виджету экрана блокировки: приложение могло быть лишь неактивным
+            // (шторка поверх него), и выбранный день не сбросился при уходе в фон.
+            .onChange(of: deepLinkRouter.pendingCalendarToday) { _, _ in
+                openTodayIfRequested()
+            }
             .onChange(of: isActive) { _, active in
                 if active {
+                    openTodayIfRequested()
                     reloadMeetings()
                 } else {
                     resetToToday()
@@ -114,6 +121,14 @@ struct CalendarWeekView: View {
     private func reloadMeetings() {
         meetingsAvailable = CalendarMeetings.isAvailable
         meetings = CalendarMeetings.meetings(on: selectedDay)
+    }
+
+    /// Флаг сбрасывает только активная вкладка: на холодном старте `onAppear` здесь
+    /// срабатывает раньше, чем AnimatedMainTabView переключит вкладку.
+    private func openTodayIfRequested() {
+        guard isActive, deepLinkRouter.pendingCalendarToday else { return }
+        resetToToday()
+        deepLinkRouter.clearPendingCalendar()
     }
 
     private func resetToToday() {

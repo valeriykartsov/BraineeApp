@@ -25,7 +25,7 @@ The app UI is in Russian. Screenshots use demo data.
 - **Dashboard** — progress, overdue and today counters; details with a tag pie chart (percent legend) and an Active / All (including trash) switch.
 - **Eisenhower Matrix** — quadrants by priority and urgency.
 - **Reminders and badge** — local notifications for tasks and habits, deadline alerts, configurable app icon badge.
-- **Widgets** — today's tasks, habits, dashboard (S / M / L).
+- **Widgets** — today's tasks, habits, dashboard (S / M / L); on the Lock Screen — date with tasks left for today, and today's habit and task progress.
 - **Backup** — one-file JSON export through Files, daily auto-backup (last 7 copies), "replace all" restore with a safety snapshot.
 - **Personalization** — light/dark theme, accent colors with matching app icons, configurable tab bar.
 

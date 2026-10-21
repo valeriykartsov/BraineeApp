@@ -31,10 +31,13 @@ struct AppRootView: View {
             }
         }
         .preferredColorScheme(colorScheme)
-        // Ссылка из события календаря (braineeapp://task/<uuid>, CAL-2) открывает задачу.
+        // Ссылка из события календаря (braineeapp://task/<uuid>, CAL-2) открывает задачу;
+        // виджет экрана блокировки (braineeapp://calendar) — «Календарь» на сегодня.
         .onOpenURL { url in
             if let uuid = CalendarEventRules.taskUUID(from: url) {
                 NotificationDeepLinkRouter.shared.openTask(uuid: uuid)
+            } else if WidgetSnapshotStore.isCalendarURL(url) {
+                NotificationDeepLinkRouter.shared.openCalendarToday()
             }
         }
         .task {
