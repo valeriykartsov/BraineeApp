@@ -55,7 +55,7 @@ struct DebugStubLLMProvider: LLMProvider {
             """, model: "debug/stub")
         }
         if system.contains(ReflectionService.modeMarker) {
-            return LLMResponse(text: "Заглушка: период прошёл ровно. Закройте одну просроченную задачу первой — станет легче.", model: "debug/stub")
+            return LLMResponse(text: "Неделя идёт ровно: главное закрыто, привычки держатся. Начните день с просроченной задачи — это быстро снимет напряжение.", model: "debug/stub")
         }
         if system.contains(InboxDraftService.modeMarker) {
             // Четыре элемента: два нормальных, один без названия (отбросится), один с незнакомым тегом.
