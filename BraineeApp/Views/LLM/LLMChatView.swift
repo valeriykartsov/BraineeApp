@@ -3,7 +3,8 @@
 //  BraineeApp
 //
 //  Чат вкладки «LLM». Режимы: «Задача» (LLM-3) — фраза → черновик; «Разбор» (LLM-6) — длинный
-//  текст → до 10 черновиков. Каждый черновик → обычная форма задачи → сохранение через TaskService. Каждый запрос отправляется отдельно, без предыдущих сообщений (D-26).
+//  текст → до 10 черновиков; «Итоги» (LLM-5) — цифры за день/неделю считает код, модель их описывает.
+//  Каждый черновик → обычная форма задачи → сохранение через TaskService. Каждый запрос отправляется отдельно, без предыдущих сообщений (D-26).
 //  История живёт только в памяти до закрытия приложения и нигде не сохраняется.
 
 import SwiftUI
@@ -13,6 +14,7 @@ import SwiftData
 enum LLMChatMode: CaseIterable, Identifiable {
     case task
     case inbox
+    case reflection
 
     var id: Self { self }
 
@@ -20,6 +22,7 @@ enum LLMChatMode: CaseIterable, Identifiable {
         switch self {
         case .task: "Задача"
         case .inbox: "Разбор"
+        case .reflection: "Итоги"
         }
     }
 
@@ -27,6 +30,7 @@ enum LLMChatMode: CaseIterable, Identifiable {
         switch self {
         case .task: "checklist"
         case .inbox: "tray.full"
+        case .reflection: "chart.bar"
         }
     }
 
@@ -34,6 +38,7 @@ enum LLMChatMode: CaseIterable, Identifiable {
         switch self {
         case .task: "Опишите задачу…"
         case .inbox: "Вставьте список дел или мысли…"
+        case .reflection: ""
         }
     }
 
@@ -41,6 +46,7 @@ enum LLMChatMode: CaseIterable, Identifiable {
         switch self {
         case .task: TaskDraftService.maxInputLength
         case .inbox: InboxDraftService.maxInputLength
+        case .reflection: 0
         }
     }
 }
@@ -51,6 +57,8 @@ struct LLMChatMessage: Identifiable {
         case draft(TaskDraft)
         /// Несколько черновиков из «Разбора» и пометки об отброшенном.
         case drafts([TaskDraft], notes: [String])
+        /// «Итоги»: текст модели и цифры, которые посчитал код.
+        case reflection(String, stats: ReflectionStats)
         case error(String, retryText: String, mode: LLMChatMode)
     }
 
@@ -68,6 +76,10 @@ struct LLMChatView: View {
 
     @Query(sort: \TaskTag.name)
     private var tags: [TaskTag]
+
+    /// Для «Итогов»: из задач и привычек считаются только числа (ReflectionService).
+    @Query private var allTasks: [TaskItem]
+    @Query private var habits: [Habit]
 
     @State private var input = ""
     @State private var mode: LLMChatMode = .task
@@ -134,19 +146,38 @@ struct LLMChatView: View {
 
     private var hint: some View {
         VStack(alignment: .leading, spacing: DesignSystem.Space.x2) {
-            Text(mode == .task ? "Опишите задачу словами" : "Вставьте всё, что в голове")
+            Text(hintTitle)
                 .font(DesignSystem.Typography.headline(16))
                 .foregroundStyle(DesignSystem.Colors.textPrimary)
-            Text(mode == .task
-                 ? "Например: «Завтра в 10 позвонить в банк, важно». LLM подготовит черновик — вы проверите его в обычной форме и сохраните. Без сохранения ничего не меняется."
-                 : "Список дел, заметку или поток мыслей — до \(InboxDraftService.maxInputLength) символов. LLM разберёт текст на отдельные задачи (до \(InboxDraftService.maxDrafts)); каждую вы проверяете и сохраняете отдельно.")
+            Text(hintText)
                 .font(DesignSystem.Typography.body(15))
                 .foregroundStyle(DesignSystem.Colors.textSecondary)
-            Text("В OpenRouter уходят только ваш текст, сегодняшняя дата, часовой пояс и названия папок и тегов. История чата не сохраняется.")
+            Text(mode == .reflection
+                 ? "В OpenRouter уходят только числа: сколько задач выполнено, создано и просрочено, процент отметок привычек. Названия задач и привычек не отправляются. История чата не сохраняется."
+                 : "В OpenRouter уходят только ваш текст, сегодняшняя дата, часовой пояс и названия папок и тегов. История чата не сохраняется.")
                 .font(DesignSystem.Typography.caption())
                 .foregroundStyle(DesignSystem.Colors.textSecondary)
         }
         .padding(.top, DesignSystem.Space.x4)
+    }
+
+    private var hintTitle: String {
+        switch mode {
+        case .task: "Опишите задачу словами"
+        case .inbox: "Вставьте всё, что в голове"
+        case .reflection: "Итоги дня или недели"
+        }
+    }
+
+    private var hintText: String {
+        switch mode {
+        case .task:
+            "Например: «Завтра в 10 позвонить в банк, важно». LLM подготовит черновик — вы проверите его в обычной форме и сохраните. Без сохранения ничего не меняется."
+        case .inbox:
+            "Список дел, заметку или поток мыслей — до \(InboxDraftService.maxInputLength) символов. LLM разберёт текст на отдельные задачи (до \(InboxDraftService.maxDrafts)); каждую вы проверяете и сохраняете отдельно."
+        case .reflection:
+            "Приложение посчитает выполненные, созданные и просроченные задачи и отметки привычек, а LLM коротко опишет, как прошёл период. Данные не меняются."
+        }
     }
 
     @ViewBuilder
@@ -167,6 +198,8 @@ struct LLMChatView: View {
             }
         case .draft(let draft):
             draftCard(draft)
+        case .reflection(let text, let stats):
+            reflectionCard(text: text, stats: stats)
         case .drafts(let drafts, let notes):
             VStack(alignment: .leading, spacing: DesignSystem.Space.x2) {
                 Text("Черновиков: \(drafts.count). Сохраните нужные по одному.")
@@ -266,6 +299,31 @@ struct LLMChatView: View {
         )
     }
 
+    private func reflectionCard(text: String, stats: ReflectionStats) -> some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Space.x2) {
+            Text(stats.period == .today ? "Итоги дня" : "Итоги недели")
+                .font(DesignSystem.Typography.sectionHeader())
+                .foregroundStyle(DesignSystem.Colors.textSecondary)
+            VStack(alignment: .leading, spacing: DesignSystem.Space.x1) {
+                draftRow("Выполнено", "\(stats.completed)")
+                draftRow("Создано", "\(stats.created)")
+                draftRow("Просрочено", "\(stats.overdue) из \(stats.active) открытых")
+                if let rate = stats.habitRatePercent {
+                    draftRow("Привычки", "\(stats.habitCheckins) из \(stats.habitPossible) (\(rate)%)")
+                }
+            }
+            Text(text)
+                .font(DesignSystem.Typography.body(15))
+                .foregroundStyle(DesignSystem.Colors.textPrimary)
+                .padding(.top, DesignSystem.Space.x1)
+        }
+        .padding(DesignSystem.Space.x3)
+        .background(
+            RoundedRectangle(cornerRadius: DesignSystem.Radius.group, style: .continuous)
+                .fill(DesignSystem.Colors.surface)
+        )
+    }
+
     private func draftRow(_ title: String, _ value: String) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: DesignSystem.Space.x2) {
             Text(title)
@@ -301,26 +359,48 @@ struct LLMChatView: View {
                 }
             }
 
-            HStack(alignment: .bottom, spacing: DesignSystem.Space.x2) {
-                TextField(mode.placeholder, text: $input, axis: .vertical)
-                    .font(DesignSystem.Typography.body(16))
-                    .lineLimit(1...(mode == .inbox ? 8 : 5))
-                    .focused($isInputFocused)
-                    .padding(.horizontal, DesignSystem.Space.x3)
-                    .padding(.vertical, DesignSystem.Space.x2)
-                    .background(
-                        RoundedRectangle(cornerRadius: DesignSystem.Radius.card, style: .continuous)
-                            .fill(DesignSystem.Colors.chip)
-                    )
-                Button {
-                    send(trimmedInput, mode: mode)
-                } label: {
-                    Image(systemName: "arrow.up.circle.fill")
-                        .font(.system(size: 32))
-                        .foregroundStyle(canSend ? DesignSystem.Colors.accent : DesignSystem.Colors.textSecondary.opacity(0.4))
+            if mode == .reflection {
+                HStack(spacing: DesignSystem.Space.x2) {
+                    ForEach(ReflectionPeriod.allCases) { period in
+                        Button {
+                            send(period.rawValue, mode: .reflection)
+                        } label: {
+                            Text(period == .today ? "Итоги за сегодня" : "Итоги за неделю")
+                                .font(DesignSystem.Typography.bodyBold(15))
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, DesignSystem.Space.x2)
+                                .background(
+                                    RoundedRectangle(cornerRadius: DesignSystem.Radius.card, style: .continuous)
+                                        .fill(isSending ? DesignSystem.Colors.textSecondary.opacity(0.4) : DesignSystem.Colors.accent)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(isSending)
+                    }
                 }
-                .disabled(!canSend)
-                .accessibilityLabel("Отправить")
+            } else {
+                HStack(alignment: .bottom, spacing: DesignSystem.Space.x2) {
+                    TextField(mode.placeholder, text: $input, axis: .vertical)
+                        .font(DesignSystem.Typography.body(16))
+                        .lineLimit(1...(mode == .inbox ? 8 : 5))
+                        .focused($isInputFocused)
+                        .padding(.horizontal, DesignSystem.Space.x3)
+                        .padding(.vertical, DesignSystem.Space.x2)
+                        .background(
+                            RoundedRectangle(cornerRadius: DesignSystem.Radius.card, style: .continuous)
+                                .fill(DesignSystem.Colors.chip)
+                        )
+                    Button {
+                        send(trimmedInput, mode: mode)
+                    } label: {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.system(size: 32))
+                            .foregroundStyle(canSend ? DesignSystem.Colors.accent : DesignSystem.Colors.textSecondary.opacity(0.4))
+                    }
+                    .disabled(!canSend)
+                    .accessibilityLabel("Отправить")
+                }
             }
         }
         .padding(.horizontal, DesignSystem.Space.screenInset)
@@ -352,14 +432,18 @@ struct LLMChatView: View {
         TaskDraftContext.make(groups: groups, tags: tags)
     }
 
+    /// В «Итогах» `text` — период (`ReflectionPeriod.rawValue`), а не ввод пользователя.
     private func send(_ text: String, mode: LLMChatMode) {
         guard !isSending, !text.isEmpty else { return }
-        if text == trimmedInput {
+        let period = mode == .reflection ? ReflectionPeriod(rawValue: text) : nil
+        if mode == .reflection, period == nil { return }
+        if mode != .reflection, text == trimmedInput {
             input = ""
         }
-        messages.append(LLMChatMessage(kind: .user(text)))
+        messages.append(LLMChatMessage(kind: .user(period.map { "Итоги: \($0.title.lowercased())" } ?? text)))
         isSending = true
         let context = draftContext
+        let stats = period.map { ReflectionService.compute(tasks: allTasks, habits: habits, period: $0) }
         Task {
             defer { isSending = false }
             do {
@@ -371,6 +455,10 @@ struct LLMChatView: View {
                 case .inbox:
                     let result = try await InboxDraftGenerator(provider: provider).drafts(from: text, context: context)
                     messages.append(LLMChatMessage(kind: .drafts(result.drafts, notes: result.notes)))
+                case .reflection:
+                    guard let stats else { return }
+                    let text = try await ReflectionGenerator(provider: provider).reflection(for: stats)
+                    messages.append(LLMChatMessage(kind: .reflection(text, stats: stats)))
                 }
             } catch {
                 let message = (error as? LLMError)?.userMessage
