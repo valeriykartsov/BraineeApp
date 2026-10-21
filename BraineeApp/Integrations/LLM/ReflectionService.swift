@@ -137,7 +137,7 @@ enum ReflectionService {
                 LLMMessage(role: .system, content: systemPrompt),
                 LLMMessage(role: .user, content: numbersMessage(stats))
             ],
-            maxTokens: 400,
+            maxTokens: 800,
             temperature: 0.4
         )
     }

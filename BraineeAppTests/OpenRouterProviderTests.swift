@@ -121,6 +121,9 @@ struct OpenRouterProviderTests {
         let json = try #require(try JSONSerialization.jsonObject(with: body) as? [String: Any])
         #expect(json["model"] as? String == model)
         #expect(json["max_tokens"] as? Int == 1024)
+        let reasoning = try #require(json["reasoning"] as? [String: Any])
+        #expect(reasoning["effort"] as? String == "low")
+        #expect(reasoning["exclude"] as? Bool == true)
         let messages = try #require(json["messages"] as? [[String: Any]])
         #expect(messages.count == 1)
         #expect(messages.first?["role"] as? String == "user")
@@ -163,6 +166,29 @@ struct OpenRouterProviderTests {
         await expectError(.invalidResponse, reply: .http(status: 200, body: #"{"choices":[]}"#))
         await expectError(.emptyResponse, reply: .http(status: 200, body: #"{"choices":[{"message":{"content":"   "}}]}"#))
         await expectError(.emptyResponse, reply: .http(status: 200, body: #"{"choices":[{"message":{"content":null}}]}"#))
+    }
+
+    // Бесплатные модели (все сейчас рассуждающие) получают лимит ответа ×4; платные — как запрошено.
+    @Test func лимитОтвета_бесплатныеМоделиБольше() async throws {
+        #expect(OpenRouterProvider.effectiveMaxTokens(1000, model: "openrouter/free") == 4000)
+        #expect(OpenRouterProvider.effectiveMaxTokens(1000, model: "google/gemma-4-31b-it:free") == 4000)
+        #expect(OpenRouterProvider.effectiveMaxTokens(1000, model: "openrouter/auto") == 1000)
+        #expect(OpenRouterProvider.effectiveMaxTokens(1000, model: "openai/gpt-4o-mini") == 1000)
+
+        let free = OpenRouterProvider(apiKey: testKey, model: "openrouter/free",
+                                      session: StubURLProtocol.makeSession { _ in .http(status: 200, body: Self.completionOK) })
+        _ = try await free.complete(request())
+        let sent = try #require(StubURLProtocol.requests.first)
+        let body = try #require(StubURLProtocol.body(of: sent))
+        let json = try #require(try JSONSerialization.jsonObject(with: body) as? [String: Any])
+        #expect(json["max_tokens"] as? Int == 4096)
+    }
+
+    // Рассуждающая модель потратила весь лимит: текста нет, finish_reason = "length" — отдельная понятная ошибка.
+    @Test func лимитИсчерпанРассуждениями_отдельнаяОшибка() async {
+        let body = #"{"model":"vendor/thinker","choices":[{"finish_reason":"length","message":{"content":"","reasoning":"..."}}]}"#
+        await expectError(.outputLimitReached(model: "vendor/thinker"), reply: .http(status: 200, body: body))
+        #expect(LLMError.outputLimitReached(model: "vendor/thinker").userMessage.contains("«vendor/thinker»"))
     }
 
     // Ошибка после начала генерации: код 200, объект `error` в теле.
@@ -245,7 +271,7 @@ struct OpenRouterProviderTests {
         let errors: [LLMError] = [
             .missingKey, .offline, .timeout, .invalidKey, .insufficientCredits,
             .rateLimited(retryAfterSeconds: 5), .forbidden(nil), .modelNotFound(model),
-            .modelUnavailable(model), .badRequest("x"), .server(500), .emptyResponse,
+            .modelUnavailable(model), .badRequest("x"), .server(500), .emptyResponse, .outputLimitReached(model: nil),
             .invalidResponse, .unexpectedStatus(418), .network("x")
         ]
         for error in errors {
