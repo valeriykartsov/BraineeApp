@@ -41,6 +41,7 @@ struct AppRootView: View {
             AppDataPersistence.bootstrap(into: modelContext)
 #if DEBUG
             DemoDataSeeder.seedIfRequested(into: modelContext)
+            DemoMeetingsSeeder.seedIfRequested()
 #endif
             isReady = true
             // Подтянуть иконку Springboard под сохранённый акцент (без алерта).
