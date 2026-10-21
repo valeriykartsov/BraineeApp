@@ -4,20 +4,24 @@
 
 ## Документы
 
-- `docs/architecture-audit.md` — фактическое состояние кода, риски (R1…R12)
-- `docs/target-architecture.md` — целевая архитектура
-- `docs/implementation-roadmap.md` — задачи с ID (BASE-1, DOM-1, SD-1 …)
-- `docs/decisions.md` — решения D-xx и их статусы
-- `docs/acceptance-checklist.md` — что проверено
-- `TEST_SCENARIOS.md` — ручные сценарии
+- `README.md` / `README.ru.md` — витрина репозитория (EN / RU); обновлять при заметных изменениях функций
+- `docs/ARCHITECTURE.md` — как устроено приложение сейчас
+- `docs/decisions.md` — журнал решений D-xx и их статусы; новое решение — новым номером
+- `docs/TESTING.md` — автотесты, отладочные аргументы запуска, проверки в симуляторе
+- `docs/manual-test-scenarios.md` — ручные сценарии
+- `CHANGELOG.md` — история заметных изменений (на английском); дополнять после каждой задачи
+
+Объём функциональности зафиксирован 2026-10-21 (D-35). Новые задачи приходят из бэклога владельца; план модернизации и аудит удалены (есть в истории git, `e1ccfff`).
 
 ## Как устроено сейчас
 
 - SwiftData — **постоянное хранилище** `Application Support/BraineeApp/BraineeApp.store` (`ModelContainerFactory`, схема `SchemaV1`, `#Unique` на `uuid`). Это единственный источник правды. Старый путь (`Documents/BraineeApp/*.json` + Keychain-копии) и мигратор удалены в SD-6 (D-21); Keychain — только для секретов.
 - Старт: `AppRootView` → `AppDataPersistence.bootstrap` (акцент при первой установке, `LegacyStorageCleanup` — удаление старых JSON/Keychain-копий, если есть маркер переноса `Application Support/BraineeApp/swiftdata-migration.json`, виджет). Хранилище при старте **никогда** не очищается. Откат на старую сборку не поддерживается (D-19).
 - Любое изменение данных — только через сервисы `Domain/` (`TaskService`, `GroupService`, `TagService`, `HabitService`, `ProfileService`); они вызывают `modelContext.didChange()` (`AppSideEffects`: `save()` + виджет + уведомления). Во View не менять модели и не вызывать `didChange()` напрямую.
-- Экспорт в Календарь (CAL-2, D-05/D-06/D-22): `Integrations/Calendar/`. Настройка «Профиль → Календарь» (UserDefaults `calendarExportEnabled`). После каждого `didChange()` и при возврате в приложение `CalendarExport` сверяет все задачи с календарём «BraineeApp» (iCloud, иначе локальный): событие есть только у активной задачи с датой, неизменённые события не переписываются. Связи «задача → событие» — служебный файл `Application Support/BraineeApp/calendar-links.json` (не SwiftData, не бэкап); потерянные связи восстанавливаются по метке `braineeapp://task/<uuid>` в url события. В тестах (`refreshNotifications: false`) экспорт не запускается.
+- Экспорт в Календарь (CAL-2, D-05/D-06/D-22): `Integrations/Calendar/`. Настройка «Профиль → Настройки → Календарь» (UserDefaults `calendarExportEnabled`). После каждого `didChange()` и при возврате в приложение `CalendarExport` сверяет все задачи с календарём «BraineeApp» (iCloud, иначе локальный): событие есть только у активной задачи с датой, неизменённые события не переписываются. Связи «задача → событие» — служебный файл `Application Support/BraineeApp/calendar-links.json` (не SwiftData, не бэкап); потерянные связи восстанавливаются по метке `braineeapp://task/<uuid>` в url события. В тестах (`refreshNotifications: false`) экспорт не запускается.
 - Бэкап: при уходе в фон `AutoBackup` пишет `BackupDocument` (формат ручного экспорта, D-16) в `Application Support/Backups/auto/` — не чаще раза в 24 часа, последние 7 файлов (D-04). Восстановление — «Профиль → Хранение данных» (`BackupRestore`, D-20): замена всех данных, перед ней текущее состояние сохраняется в `Backups/pre-restore/`. Замена и сверка хранилища с документом — `StoreContents`.
+- LLM (D-24…D-34): `Integrations/LLM/` — `OpenRouterProvider` (единственный провайдер), сервисы режимов чата `TaskDraftService`, `InboxDraftService`, `ReflectionService`, `DayPlanService`; экран — вкладка «LLM» (`Views/LLM/`). Ключ — Keychain (`SecretStore`), модель — UserDefaults (`LLMSettings`). LLM-код не получает `ModelContext` и не меняет данные: черновики сохраняются только через форму задачи и `TaskService`. Что можно отправлять наружу — строго по D-26/D-31/D-32; новые данные в запросах — только отдельным решением.
+- Отладочные аргументы запуска (только Debug): `-LLMStub` — заглушка вместо OpenRouter, `-SeedDemoData` — демо-данные в пустое хранилище (`Debug/DemoDataSeeder.swift`).
 - Новые поля в модели — новая версия схемы (`SchemaV2` + этап в `BraineeMigrationPlan`, V1 «заморозить», D-17) и поле в JSON бэкапа только через `decodeIfPresent` + значение по умолчанию и `MyTasksDocument.normalizeRecords()` (старые бэкапы должны читаться).
 - Флаг мягкого удаления в модели — `isSoftDeleted` (не `isDeleted`: конфликт с SwiftData); в JSON бэкапа он называется `isDeleted`.
 - Зависимостей нет (только Apple SDK). Мин. iOS 18.2, Swift 5.
@@ -27,8 +31,8 @@
 1. Offline-first: локальные функции не зависят от сервера, LLM и сети.
 2. Внешний идентификатор сущности — `uuid`, не `PersistentIdentifier`.
 3. Бизнес-правила — в одном месте (целевое: `Domain/*Service`), не во View и не в нескольких слоях.
-4. Без Docker/PostgreSQL/Redis/очередей/микросервисов и сторонних пакетов без явного решения в `docs/decisions.md`.
-5. Одна задача roadmap за раз; не смешивать независимые подсистемы в одном изменении.
+4. Без серверной инфраструктуры и сторонних пакетов без явного решения в `docs/decisions.md`.
+5. Одна задача бэклога за раз; не смешивать независимые подсистемы в одном изменении.
 6. Только iOS (macOS/visionOS не поддерживаем). «Цели» и «фокус» — заметки Obsidian, не сущности приложения.
 
 ## Данные — строгие ограничения
@@ -72,6 +76,5 @@ scripts/test.sh --build                           # только компиля�
 
 ## После каждой задачи
 
-Перечислить: изменения (файлы), проверки (что запускалось и результат), риски, оставшуюся ручную работу. Отмечать пункты в `docs/acceptance-checklist.md` только после проверки.
+Перечислить: изменения (файлы), проверки (что запускалось и результат), риски, оставшуюся ручную работу. Обновить `CHANGELOG.md`, а при изменении устройства или функций — `docs/ARCHITECTURE.md` и оба README.
 
-`.cursorrules` частично устарел (категории career/sport/mental, вкладки) — при расхождении верить коду и этому файлу.
