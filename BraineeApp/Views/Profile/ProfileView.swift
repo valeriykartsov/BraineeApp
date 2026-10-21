@@ -39,13 +39,8 @@ struct ProfileView: View {
         AccentPalette.resolved(from: accentPaletteRaw)
     }
 
-    private var query: String {
-        searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-    }
-
     private func matches(_ keywords: String...) -> Bool {
-        guard !query.isEmpty else { return true }
-        return keywords.contains { $0.lowercased().contains(query) }
+        SettingsSearch.matches(query: searchText, keywords: keywords)
     }
 
     var body: some View {
@@ -81,7 +76,7 @@ struct ProfileView: View {
                         "настройки", "панель", "вкладки", "привычки", "календарь",
                         "тема", "оформление", "светлая", "тёмная", "акцент", "цвет",
                         "ориентация", "положение", "вертикал", "горизонтал",
-                        "уведомлен", "напоминал", "дедлайн", "пуш",
+                        "уведомлен", "напомина", "дедлайн", "пуш", "пуши",
                         "llm", "openrouter", "ключ", "модель", "ассистент"
                     ) {
                         settingsSection
@@ -91,7 +86,7 @@ struct ProfileView: View {
                         TagLibraryView()
                     }
 
-                    if matches("хранение", "данные", "json", "папка", "бэкап", "резерв", "экспорт", "восстан", "импорт") {
+                    if matches("хранение", "данные", "json", "папка", "бэкап", "резерв", "копия", "экспорт", "восстан", "импорт") {
                         storageSection
                     }
 
