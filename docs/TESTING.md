@@ -20,7 +20,7 @@ scripts/test.sh --build                           # только компиля�
 | Привычки и профиль | `HabitTests`, `HabitDaySelectionTests`, `HabitAndProfileServiceTests`, `UserGenderTests` |
 | Хранилище и бэкап | `ModelContainerFactoryTests`, `AppDataPersistenceRoundTripTests`, `MyTasksDocumentTests`, `ProfileDocumentTests`, `BackupDocumentTests`, `BackupImportTests`, `AutoBackupTests`, `SyncFieldsTests`, `LegacyStorageCleanupTests` |
 | Календарь | `CalendarEventRulesTests`, `CalendarExportServiceTests`, `CalendarWeekHelperTests`, `CalendarMeetingRulesTests` |
-| LLM | `SecretStoreTests`, `LLMSettingsTests`, `OpenRouterProviderTests`, `TaskDraftServiceTests`, `InboxDraftServiceTests`, `ReflectionServiceTests`, `DayPlanServiceTests` |
+| LLM | `SecretStoreTests`, `LLMSettingsTests`, `OpenRouterProviderTests`, `TaskDraftServiceTests`, `InboxDraftServiceTests`, `ReflectionServiceTests`, `DayPlanServiceTests`, `LLMAnswerTextTests` |
 | Интерфейс и настройки | `TabBarSettingsTests`, `NotificationSettingsTests`, `NotificationDeepLinkTests`, `AppBadgeCounterTests`, `AccentPaletteTests`, `AccentInstallDefaultsTests`, `OrientationLockSettingsTests`, `TaskListDisplaySettingsTests`, `EisenhowerMatrixLayoutTests`, `EisenhowerQuadrantTests`, `WidgetSnapshotBuilderTests`, `TaskDragPayloadTests`, `TaskFieldKeyboardResetTests`, `TaskReminderOffsetTests` |
 
 Сеть в тестах LLM подменяется `URLProtocol`-заглушкой или `StubLLMProvider`; настоящий ключ не используется. Общие помощники — `TestHelpers.swift`, `PersistenceTestSupport.swift`, `LLMTestSupport.swift`.

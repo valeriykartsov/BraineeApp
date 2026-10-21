@@ -10,6 +10,9 @@
 
 import SwiftUI
 import SwiftData
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// Режим чата: что сделать с текстом. Выбирает пользователь (D-29…D-34).
 enum LLMChatMode: CaseIterable, Identifiable {
@@ -95,6 +98,8 @@ struct LLMChatView: View {
     @State private var openedDraft: TaskDraft?
     @State private var savedDraftIDs: Set<UUID> = []
     @State private var showingDayPlanConsent = false
+    /// Ответ, который только что скопировали: на кнопке на пару секунд «Скопировано».
+    @State private var copiedMessageID: UUID?
     @FocusState private var isInputFocused: Bool
 
     private var trimmedInput: String {
@@ -229,9 +234,13 @@ struct LLMChatView: View {
         case .draft(let draft):
             draftCard(draft)
         case .reflection(let text, let stats):
-            reflectionCard(text: text, stats: stats)
+            copyableAnswer(message.id, text: LLMAnswerText.reflection(text: text, stats: stats)) {
+                reflectionCard(text: text, stats: stats)
+            }
         case .dayPlan(let plan):
-            dayPlanCard(plan)
+            copyableAnswer(message.id, text: LLMAnswerText.dayPlan(plan)) {
+                dayPlanCard(plan)
+            }
         case .info(let text):
             Label(text, systemImage: "info.circle")
                 .font(DesignSystem.Typography.body(15))
@@ -336,6 +345,55 @@ struct LLMChatView: View {
         )
     }
 
+    /// Ответ ассистента с кнопкой «Копировать» под карточкой и тем же пунктом в контекстном меню (п. 8).
+    private func copyableAnswer<Card: View>(
+        _ id: UUID,
+        text: String,
+        @ViewBuilder card: () -> Card
+    ) -> some View {
+        let isCopied = copiedMessageID == id
+        return VStack(alignment: .trailing, spacing: DesignSystem.Space.x1) {
+            card()
+                .contextMenu {
+                    Button {
+                        copy(text, messageID: id)
+                    } label: {
+                        Label("Копировать", systemImage: "doc.on.doc")
+                    }
+                }
+            Button {
+                copy(text, messageID: id)
+            } label: {
+                Label(isCopied ? "Скопировано" : "Копировать", systemImage: isCopied ? "checkmark" : "doc.on.doc")
+                    .font(DesignSystem.Typography.caption())
+                    .foregroundStyle(DesignSystem.Colors.accent)
+                    .padding(.horizontal, DesignSystem.Space.x1)
+                    .padding(.vertical, DesignSystem.Space.x1)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(isCopied ? "Ответ скопирован" : "Копировать ответ")
+        }
+    }
+
+    private func copy(_ text: String, messageID: UUID) {
+#if canImport(UIKit)
+        UIPasteboard.general.string = text
+#endif
+        HapticFeedback.success()
+        withAnimation(.easeInOut(duration: 0.15)) {
+            copiedMessageID = messageID
+        }
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(2))
+            if copiedMessageID == messageID {
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    copiedMessageID = nil
+                }
+            }
+        }
+    }
+
     private func dayPlanCard(_ plan: DayPlan) -> some View {
         VStack(alignment: .leading, spacing: DesignSystem.Space.x2) {
             Text("План на сегодня")
@@ -432,13 +490,8 @@ struct LLMChatView: View {
     private var inputBar: some View {
         VStack(alignment: .leading, spacing: DesignSystem.Space.x2) {
             HStack(spacing: DesignSystem.Space.x2) {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: DesignSystem.Space.x2) {
-                        ForEach(LLMChatMode.allCases) { item in
-                            modeChip(item)
-                        }
-                    }
-                }
+                modeMenu
+                Spacer(minLength: 0)
                 if mode.maxInputLength > 0, trimmedInput.count > mode.maxInputLength {
                     Text("\(trimmedInput.count)/\(mode.maxInputLength)")
                         .font(DesignSystem.Typography.caption())
@@ -509,22 +562,34 @@ struct LLMChatView: View {
         .background(DesignSystem.Colors.surface)
     }
 
-    private func modeChip(_ item: LLMChatMode) -> some View {
-        let isSelected = item == mode
-        return Button {
-            mode = item
+    /// Режим — раскрывающееся меню (п. 9): на кнопке иконка и название текущего режима
+    /// в цвете акцента, в списке у выбранного — галочка (системный Picker внутри Menu).
+    private var modeMenu: some View {
+        Menu {
+            Picker("Режим", selection: $mode) {
+                ForEach(LLMChatMode.allCases) { item in
+                    Label(item.title, systemImage: item.systemImage)
+                        .tag(item)
+                }
+            }
         } label: {
-            Label(item.title, systemImage: item.systemImage)
-                .font(DesignSystem.Typography.caption())
-                .foregroundStyle(isSelected ? .white : DesignSystem.Colors.textPrimary)
-                .padding(.horizontal, DesignSystem.Space.x2)
-                .padding(.vertical, DesignSystem.Space.x1)
-                .background(Capsule().fill(isSelected ? DesignSystem.Colors.accent : DesignSystem.Colors.chip))
+            HStack(spacing: DesignSystem.Space.x1) {
+                Image(systemName: mode.systemImage)
+                Text(mode.title)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 10, weight: .semibold))
+            }
+            .font(DesignSystem.Typography.bodyBold(14))
+            .foregroundStyle(.white)
+            .padding(.horizontal, DesignSystem.Space.x3)
+            .padding(.vertical, DesignSystem.Space.x1 + 2)
+            .background(Capsule().fill(DesignSystem.Colors.accent))
+            .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
         .disabled(isSending)
-        .accessibilityLabel("Режим: \(item.title)")
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .opacity(isSending ? 0.5 : 1)
+        .accessibilityLabel("Режим: \(mode.title)")
+        .accessibilityHint("Открывает список режимов чата")
     }
 
     // MARK: - Действия
