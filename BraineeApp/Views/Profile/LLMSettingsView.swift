@@ -24,6 +24,7 @@ struct LLMSettingsView: View {
     @State private var keyInfoError: String?
     @State private var isChecking = false
     @State private var checkResult: CheckResult?
+    @State private var dayPlanConsent = DayPlanService.hasConsent()
 
     private enum CheckResult: Equatable {
         case success(String)
@@ -95,6 +96,27 @@ struct LLMSettingsView: View {
                     connectionSection
                 }
 
+                if dayPlanConsent {
+                    GroupedSection(title: "План дня") {
+                        VStack(alignment: .leading, spacing: DesignSystem.Space.x2) {
+                            Text("Разрешено отправлять в OpenRouter названия задач на сегодня и просроченных.")
+                                .font(DesignSystem.Typography.body(15))
+                                .foregroundStyle(DesignSystem.Colors.textPrimary)
+                            Button("Отозвать разрешение") {
+                                DayPlanService.revokeConsent()
+                                dayPlanConsent = false
+                            }
+                            .font(DesignSystem.Typography.body(15))
+                            .foregroundStyle(DesignSystem.Colors.danger)
+                            .buttonStyle(.plain)
+                            Text("После отзыва «План дня» снова спросит разрешение перед отправкой.")
+                                .font(DesignSystem.Typography.caption())
+                                .foregroundStyle(DesignSystem.Colors.textSecondary)
+                        }
+                        .padding(DesignSystem.Space.x3)
+                    }
+                }
+
                 Text("Провайдер — OpenRouter. Наружу отправляется только то, что нужно конкретному действию; приложение работает и без LLM.")
                     .font(DesignSystem.Typography.caption())
                     .foregroundStyle(DesignSystem.Colors.textSecondary)
@@ -110,7 +132,10 @@ struct LLMSettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
 #endif
         .tint(DesignSystem.Colors.accent)
-        .onAppear(perform: reloadKey)
+        .onAppear {
+            reloadKey()
+            dayPlanConsent = DayPlanService.hasConsent()
+        }
         .task(id: savedKeyMask) { await loadKeyInfo() }
         .alert("Удалить ключ?", isPresented: $showingDeleteConfirm) {
             Button("Удалить", role: .destructive, action: deleteKey)

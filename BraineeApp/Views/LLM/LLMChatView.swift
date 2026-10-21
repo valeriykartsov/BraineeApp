@@ -3,7 +3,8 @@
 //  BraineeApp
 //
 //  Чат вкладки «LLM». Режимы: «Задача» (LLM-3) — фраза → черновик; «Разбор» (LLM-6) — длинный
-//  текст → до 10 черновиков; «Итоги» (LLM-5) — цифры за день/неделю считает код, модель их описывает.
+//  текст → до 10 черновиков; «Итоги» (LLM-5) — цифры за день/неделю считает код, модель их описывает;
+//  «План дня» (LLM-4) — порядок задач на сегодня, только просмотр, с согласием на отправку названий.
 //  Каждый черновик → обычная форма задачи → сохранение через TaskService. Каждый запрос отправляется отдельно, без предыдущих сообщений (D-26).
 //  История живёт только в памяти до закрытия приложения и нигде не сохраняется.
 
@@ -15,6 +16,7 @@ enum LLMChatMode: CaseIterable, Identifiable {
     case task
     case inbox
     case reflection
+    case dayPlan
 
     var id: Self { self }
 
@@ -23,6 +25,7 @@ enum LLMChatMode: CaseIterable, Identifiable {
         case .task: "Задача"
         case .inbox: "Разбор"
         case .reflection: "Итоги"
+        case .dayPlan: "План дня"
         }
     }
 
@@ -31,6 +34,7 @@ enum LLMChatMode: CaseIterable, Identifiable {
         case .task: "checklist"
         case .inbox: "tray.full"
         case .reflection: "chart.bar"
+        case .dayPlan: "calendar.day.timeline.left"
         }
     }
 
@@ -38,7 +42,7 @@ enum LLMChatMode: CaseIterable, Identifiable {
         switch self {
         case .task: "Опишите задачу…"
         case .inbox: "Вставьте список дел или мысли…"
-        case .reflection: ""
+        case .reflection, .dayPlan: ""
         }
     }
 
@@ -46,7 +50,7 @@ enum LLMChatMode: CaseIterable, Identifiable {
         switch self {
         case .task: TaskDraftService.maxInputLength
         case .inbox: InboxDraftService.maxInputLength
-        case .reflection: 0
+        case .reflection, .dayPlan: 0
         }
     }
 }
@@ -59,6 +63,10 @@ struct LLMChatMessage: Identifiable {
         case drafts([TaskDraft], notes: [String])
         /// «Итоги»: текст модели и цифры, которые посчитал код.
         case reflection(String, stats: ReflectionStats)
+        /// «План дня»: порядок задач от модели, сопоставленный с задачами приложения.
+        case dayPlan(DayPlan)
+        /// Сообщение приложения без запроса к модели.
+        case info(String)
         case error(String, retryText: String, mode: LLMChatMode)
     }
 
@@ -86,6 +94,7 @@ struct LLMChatView: View {
     @State private var isSending = false
     @State private var openedDraft: TaskDraft?
     @State private var savedDraftIDs: Set<UUID> = []
+    @State private var showingDayPlanConsent = false
     @FocusState private var isInputFocused: Bool
 
     private var trimmedInput: String {
@@ -140,6 +149,15 @@ struct LLMChatView: View {
                 save(formData, from: draft)
             }
         }
+        .alert("Отправить названия задач?", isPresented: $showingDayPlanConsent) {
+            Button("Отправить") {
+                DayPlanService.giveConsent()
+                send(LLMChatMode.dayPlan.title, mode: .dayPlan)
+            }
+            Button("Отмена", role: .cancel) {}
+        } message: {
+            Text("Для плана дня в OpenRouter уйдут названия задач на сегодня и просроченных (до \(DayPlanService.maxTasks)): название, приоритет, время срока и признак просрочки. Описания, теги и папки не отправляются. Спросим один раз; отозвать можно в «Профиль → Настройки → LLM».")
+        }
     }
 
     // MARK: - Сообщения
@@ -152,13 +170,22 @@ struct LLMChatView: View {
             Text(hintText)
                 .font(DesignSystem.Typography.body(15))
                 .foregroundStyle(DesignSystem.Colors.textSecondary)
-            Text(mode == .reflection
-                 ? "В OpenRouter уходят только числа: сколько задач выполнено, создано и просрочено, процент отметок привычек. Названия задач и привычек не отправляются. История чата не сохраняется."
-                 : "В OpenRouter уходят только ваш текст, сегодняшняя дата, часовой пояс и названия папок и тегов. История чата не сохраняется.")
+            Text(privacyText)
                 .font(DesignSystem.Typography.caption())
                 .foregroundStyle(DesignSystem.Colors.textSecondary)
         }
         .padding(.top, DesignSystem.Space.x4)
+    }
+
+    private var privacyText: String {
+        switch mode {
+        case .task, .inbox:
+            "В OpenRouter уходят только ваш текст, сегодняшняя дата, часовой пояс и названия папок и тегов. История чата не сохраняется."
+        case .reflection:
+            "В OpenRouter уходят только числа: сколько задач выполнено, создано и просрочено, процент отметок привычек. Названия задач и привычек не отправляются. История чата не сохраняется."
+        case .dayPlan:
+            "В OpenRouter уходят названия задач на сегодня и просроченных (до \(DayPlanService.maxTasks)), их приоритет, время срока и текущее время. Описания, теги и папки не отправляются. История чата не сохраняется."
+        }
     }
 
     private var hintTitle: String {
@@ -166,6 +193,7 @@ struct LLMChatView: View {
         case .task: "Опишите задачу словами"
         case .inbox: "Вставьте всё, что в голове"
         case .reflection: "Итоги дня или недели"
+        case .dayPlan: "План на сегодня"
         }
     }
 
@@ -175,6 +203,8 @@ struct LLMChatView: View {
             "Например: «Завтра в 10 позвонить в банк, важно». LLM подготовит черновик — вы проверите его в обычной форме и сохраните. Без сохранения ничего не меняется."
         case .inbox:
             "Список дел, заметку или поток мыслей — до \(InboxDraftService.maxInputLength) символов. LLM разберёт текст на отдельные задачи (до \(InboxDraftService.maxDrafts)); каждую вы проверяете и сохраняете отдельно."
+        case .dayPlan:
+            "LLM предложит порядок задач на сегодня и просроченных, примерное время и короткие советы. План только для просмотра — сроки и порядок задач в приложении не меняются."
         case .reflection:
             "Приложение посчитает выполненные, созданные и просроченные задачи и отметки привычек, а LLM коротко опишет, как прошёл период. Данные не меняются."
         }
@@ -200,6 +230,13 @@ struct LLMChatView: View {
             draftCard(draft)
         case .reflection(let text, let stats):
             reflectionCard(text: text, stats: stats)
+        case .dayPlan(let plan):
+            dayPlanCard(plan)
+        case .info(let text):
+            Label(text, systemImage: "info.circle")
+                .font(DesignSystem.Typography.body(15))
+                .foregroundStyle(DesignSystem.Colors.textSecondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
         case .drafts(let drafts, let notes):
             VStack(alignment: .leading, spacing: DesignSystem.Space.x2) {
                 Text("Черновиков: \(drafts.count). Сохраните нужные по одному.")
@@ -299,6 +336,53 @@ struct LLMChatView: View {
         )
     }
 
+    private func dayPlanCard(_ plan: DayPlan) -> some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Space.x2) {
+            Text("План на сегодня")
+                .font(DesignSystem.Typography.sectionHeader())
+                .foregroundStyle(DesignSystem.Colors.textSecondary)
+            if !plan.summary.isEmpty {
+                Text(plan.summary)
+                    .font(DesignSystem.Typography.body(15))
+                    .foregroundStyle(DesignSystem.Colors.textPrimary)
+            }
+            VStack(alignment: .leading, spacing: DesignSystem.Space.x2) {
+                ForEach(Array(plan.items.enumerated()), id: \.element.id) { index, item in
+                    HStack(alignment: .firstTextBaseline, spacing: DesignSystem.Space.x2) {
+                        Text(item.suggestedTime ?? "\(index + 1).")
+                            .font(DesignSystem.Typography.data())
+                            .foregroundStyle(DesignSystem.Colors.accent)
+                            .frame(width: 48, alignment: .leading)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(item.title)
+                                .font(DesignSystem.Typography.body(15))
+                                .foregroundStyle(DesignSystem.Colors.textPrimary)
+                            if !item.note.isEmpty {
+                                Text(item.note)
+                                    .font(DesignSystem.Typography.caption())
+                                    .foregroundStyle(DesignSystem.Colors.textSecondary)
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(.top, DesignSystem.Space.x1)
+            ForEach(plan.notes, id: \.self) { note in
+                Label(note, systemImage: "info.circle")
+                    .font(DesignSystem.Typography.caption())
+                    .foregroundStyle(DesignSystem.Colors.textSecondary)
+            }
+            Text("Только для просмотра: сроки и порядок задач не меняются.")
+                .font(DesignSystem.Typography.caption())
+                .foregroundStyle(DesignSystem.Colors.textSecondary)
+        }
+        .padding(DesignSystem.Space.x3)
+        .background(
+            RoundedRectangle(cornerRadius: DesignSystem.Radius.group, style: .continuous)
+                .fill(DesignSystem.Colors.surface)
+        )
+    }
+
     private func reflectionCard(text: String, stats: ReflectionStats) -> some View {
         VStack(alignment: .leading, spacing: DesignSystem.Space.x2) {
             Text(stats.period == .today ? "Итоги дня" : "Итоги недели")
@@ -348,18 +432,35 @@ struct LLMChatView: View {
     private var inputBar: some View {
         VStack(alignment: .leading, spacing: DesignSystem.Space.x2) {
             HStack(spacing: DesignSystem.Space.x2) {
-                ForEach(LLMChatMode.allCases) { item in
-                    modeChip(item)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: DesignSystem.Space.x2) {
+                        ForEach(LLMChatMode.allCases) { item in
+                            modeChip(item)
+                        }
+                    }
                 }
-                Spacer()
-                if trimmedInput.count > mode.maxInputLength {
+                if mode.maxInputLength > 0, trimmedInput.count > mode.maxInputLength {
                     Text("\(trimmedInput.count)/\(mode.maxInputLength)")
                         .font(DesignSystem.Typography.caption())
                         .foregroundStyle(DesignSystem.Colors.danger)
                 }
             }
 
-            if mode == .reflection {
+            if mode == .dayPlan {
+                Button(action: requestDayPlan) {
+                    Text("Составить план на сегодня")
+                        .font(DesignSystem.Typography.bodyBold(15))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, DesignSystem.Space.x2)
+                        .background(
+                            RoundedRectangle(cornerRadius: DesignSystem.Radius.card, style: .continuous)
+                                .fill(isSending ? DesignSystem.Colors.textSecondary.opacity(0.4) : DesignSystem.Colors.accent)
+                        )
+                }
+                .buttonStyle(.plain)
+                .disabled(isSending)
+            } else if mode == .reflection {
                 HStack(spacing: DesignSystem.Space.x2) {
                     ForEach(ReflectionPeriod.allCases) { period in
                         Button {
@@ -432,18 +533,35 @@ struct LLMChatView: View {
         TaskDraftContext.make(groups: groups, tags: tags)
     }
 
-    /// В «Итогах» `text` — период (`ReflectionPeriod.rawValue`), а не ввод пользователя.
+    /// «План дня»: без задач — сообщение без запроса; перед первой отправкой — согласие (D-32).
+    private func requestDayPlan() {
+        guard !isSending else { return }
+        if DayPlanService.selectTasks(allTasks).isEmpty {
+            messages.append(LLMChatMessage(kind: .user(LLMChatMode.dayPlan.title)))
+            messages.append(LLMChatMessage(kind: .info(DayPlanError.noTasks.userMessage)))
+            return
+        }
+        if DayPlanService.hasConsent() {
+            send(LLMChatMode.dayPlan.title, mode: .dayPlan)
+        } else {
+            showingDayPlanConsent = true
+        }
+    }
+
+    /// В «Итогах» `text` — период (`ReflectionPeriod.rawValue`), в «Плане дня» — подпись сообщения,
+    /// а не ввод пользователя.
     private func send(_ text: String, mode: LLMChatMode) {
         guard !isSending, !text.isEmpty else { return }
         let period = mode == .reflection ? ReflectionPeriod(rawValue: text) : nil
         if mode == .reflection, period == nil { return }
-        if mode != .reflection, text == trimmedInput {
+        if mode == .task || mode == .inbox, text == trimmedInput {
             input = ""
         }
         messages.append(LLMChatMessage(kind: .user(period.map { "Итоги: \($0.title.lowercased())" } ?? text)))
         isSending = true
         let context = draftContext
         let stats = period.map { ReflectionService.compute(tasks: allTasks, habits: habits, period: $0) }
+        let planTasks = mode == .dayPlan ? DayPlanService.selectTasks(allTasks) : []
         Task {
             defer { isSending = false }
             do {
@@ -459,10 +577,14 @@ struct LLMChatView: View {
                     guard let stats else { return }
                     let text = try await ReflectionGenerator(provider: provider).reflection(for: stats)
                     messages.append(LLMChatMessage(kind: .reflection(text, stats: stats)))
+                case .dayPlan:
+                    let plan = try await DayPlanGenerator(provider: provider).plan(for: planTasks)
+                    messages.append(LLMChatMessage(kind: .dayPlan(plan)))
                 }
             } catch {
                 let message = (error as? LLMError)?.userMessage
                     ?? (error as? TaskDraftError)?.userMessage
+                    ?? (error as? DayPlanError)?.userMessage
                     ?? LLMError.invalidResponse.userMessage
                 messages.append(LLMChatMessage(kind: .error(message, retryText: text, mode: mode)))
             }

@@ -35,7 +35,8 @@ enum LLMProviderFactory {
 
 #if DEBUG
 /// Готовые ответы по режиму (по метке в инструкции) и по словам в тексте пользователя:
-/// «ошибка» — нет сети, «мусор» — ответ не в формате JSON.
+/// «ошибка» — нет сети, «мусор» — ответ не в формате JSON, «today» — черновик со сроком на сегодня
+/// (латиница: при вставке в симуляторе кириллица искажается).
 struct DebugStubLLMProvider: LLMProvider {
     func complete(_ request: LLMRequest) async throws -> LLMResponse {
         try await Task.sleep(nanoseconds: 400_000_000)
@@ -45,6 +46,14 @@ struct DebugStubLLMProvider: LLMProvider {
         if user.contains("ошибка") { throw LLMError.offline }
         if user.contains("мусор") { return LLMResponse(text: "Не могу помочь.", model: "debug/stub") }
 
+        if system.contains(DayPlanService.modeMarker) {
+            // Номера 2 и 1 из списка, неизвестный номер 99 (отбросится), повтор 2 (уберётся).
+            return LLMResponse(text: """
+            {"summary": "Заглушка: начните с главного, остальное — после обеда.",
+             "plan": [{"id": 2, "time": "10:00", "note": "Самое важное"}, {"id": 1, "time": null, "note": ""},
+                      {"id": 99, "time": "11:00", "note": "Лишний"}, {"id": "2", "time": "12:00", "note": "Повтор"}]}
+            """, model: "debug/stub")
+        }
         if system.contains(ReflectionService.modeMarker) {
             return LLMResponse(text: "Заглушка: период прошёл ровно. Закройте одну просроченную задачу первой — станет легче.", model: "debug/stub")
         }
@@ -61,7 +70,7 @@ struct DebugStubLLMProvider: LLMProvider {
         }
         return LLMResponse(text: """
         {"title": "Тестовая задача из заглушки", "details": "Ответ отладочной заглушки", \
-        "date": "\(Self.day(offset: 1))", "time": "09:30", "priority": "high", "tags": [], "group": null}
+        "date": "\(Self.day(offset: user.contains("today") ? 0 : 1))", "time": "23:30", "priority": "high", "tags": [], "group": null}
         """, model: "debug/stub")
     }
 
