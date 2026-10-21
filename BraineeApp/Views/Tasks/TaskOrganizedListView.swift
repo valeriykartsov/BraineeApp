@@ -324,7 +324,7 @@ struct TaskOrganizedListView: View {
     private func taskStack(_ items: [TaskItem]) -> some View {
         VStack(spacing: 0) {
             ForEach(Array(items.enumerated()), id: \.element.uuid) { index, task in
-                taskRow(task)
+                taskRow(task, isLast: index == items.count - 1)
                 if index < items.count - 1 {
                     InsetDivider(leading: DesignSystem.Space.rowIconInset)
                 }
@@ -334,8 +334,17 @@ struct TaskOrganizedListView: View {
 
     /// Ручка drag стоит СНАРУЖИ SwipeToDeleteRow, чтобы жест свайпа
     /// не конкурировал с системным drag.
-    private func taskRow(_ task: TaskItem) -> some View {
-        HStack(spacing: 0) {
+    /// У последней строки фон скруглён снизу: контейнер папки не обрезается (см. groupSection),
+    /// и прямоугольный фон строки иначе закрывал бы его нижние углы.
+    private func taskRow(_ task: TaskItem, isLast: Bool) -> some View {
+        let radius: CGFloat = isLast ? DesignSystem.Radius.group : 0
+        let rowShape = UnevenRoundedRectangle(
+            bottomLeadingRadius: radius,
+            bottomTrailingRadius: radius,
+            style: .continuous
+        )
+
+        return HStack(spacing: 0) {
             SwipeToDeleteRow(
                 isOpen: swipedTaskUUID == task.uuid,
                 onOpen: { swipedTaskUUID = task.uuid },
@@ -379,7 +388,7 @@ struct TaskOrganizedListView: View {
                 }
                 .padding(.leading, DesignSystem.Space.x3)
                 .padding(.vertical, DesignSystem.Space.x2)
-                .background(DesignSystem.Colors.surface)
+                .background(rowShape.fill(DesignSystem.Colors.surface))
             }
 
             TaskDragHandle(taskUUID: task.uuid) {
@@ -387,7 +396,7 @@ struct TaskOrganizedListView: View {
             }
             .padding(.trailing, DesignSystem.Space.x3)
         }
-        .background(DesignSystem.Colors.surface)
+        .background(rowShape.fill(DesignSystem.Colors.surface))
     }
 
     /// Миниатюра при переносе: только название — без полей из настроек отображения.

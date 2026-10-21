@@ -47,6 +47,7 @@ xcrun simctl launch <UDID> valeravalera.BraineeApp -SeedDemoData -LLMStub
 ## Ручная проверка в симуляторе
 
 - Состояние проверять по данным, а не по скриншотам: хранилище — `sqlite3 -readonly "<контейнер>/Library/Application Support/BraineeApp/BraineeApp.store"`, настройки — `plutil -p "<контейнер>/Library/Preferences/valeravalera.BraineeApp.plist"`; контейнер — `xcrun simctl get_app_container <UDID> valeravalera.BraineeApp data` (меняется после переустановки).
+- Системный запрос уведомлений при первом запуске перекрывает экран. Чтобы его не было, при **первом** запуске после установки передать `-notificationDidRequestPermission YES` (ключ UserDefaults через аргумент; работает и в Release). Если запрос уже показан и его нечем нажать, он остаётся и после переустановки — помогает только перезагрузка симулятора (`xcrun simctl shutdown` / `boot`).
 - Ввод текста в симуляторе идёт через вставку: разрешить вставку в системном запросе; кириллица при вставке искажается, ключ в `SecureField` так не вводится.
 - Перед первым нажатием дождаться конца заставки (~4 с). Скриншот отстаёт примерно на одно действие.
 - Если приложение не отвечает — сначала загрузка процессора (`ps`), а не новые скриншоты.
