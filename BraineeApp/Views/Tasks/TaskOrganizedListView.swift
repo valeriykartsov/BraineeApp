@@ -84,8 +84,10 @@ struct TaskOrganizedListView: View {
         } else {
             ScrollView {
                 let organized = tasksGroupedByFolder
-                // VStack надёжнее LazyVStack для dropDestination между папками.
-                VStack(alignment: .leading, spacing: DesignSystem.Space.sectionGap) {
+                // Ленивый список: строятся только видимые папки и строки — на сотнях задач
+                // обычный VStack перегружал граф SwiftUI при прокрутке (п. 10, замер в backlog).
+                // Перетаскивание между папками проверяется вручную (сценарий 2.3–2.4).
+                LazyVStack(alignment: .leading, spacing: DesignSystem.Space.sectionGap) {
                     ForEach(sortedGroups) { group in
                         let groupTasks = sortedTasks(organized.byGroup[group.uuid] ?? [])
                         groupSection(group: group, tasks: groupTasks)
@@ -96,6 +98,7 @@ struct TaskOrganizedListView: View {
                 .groupedScreenPadding()
                 .padding(.vertical, DesignSystem.Space.x2 + 2)
             }
+            .taskRowClock()
         }
     }
 
@@ -322,7 +325,7 @@ struct TaskOrganizedListView: View {
     }
 
     private func taskStack(_ items: [TaskItem]) -> some View {
-        VStack(spacing: 0) {
+        LazyVStack(spacing: 0) {
             ForEach(Array(items.enumerated()), id: \.element.uuid) { index, task in
                 taskRow(task, isLast: index == items.count - 1)
                 if index < items.count - 1 {

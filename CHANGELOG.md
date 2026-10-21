@@ -3,6 +3,12 @@
 Notable changes to BraineeApp. Dates are commit dates. Decision references (D-xx) point to [`docs/decisions.md`](docs/decisions.md).
 The October 2026 work was a modernization done in phases; the detailed task plan and audit it followed are available in git history (`e1ccfff`).
 
+## 2026-10-22 — Smoother task list scrolling
+
+- Task list is lazy: only visible folders and rows are built. With ~300 tasks the main thread was busy up to ~0.8 s per second while scrolling (dropped frames); after the change it is ~8× less (simulator, Time Profiler).
+- Lighter task rows: meta chips no longer sit in a horizontal scroll view of their own (chips that don't fit are cut at the right edge), one clock per screen instead of a timer in every row, the swipe-to-delete background is built only while swiping, and the swipe gesture no longer has high priority over scrolling.
+- Debug-only `-DemoTaskCount N` (with `-SeedDemoData`) adds N tasks for performance checks.
+
 ## 2026-10-22 — LLM chat: mode menu and Copy
 
 - Chat mode is picked from a drop-down menu instead of a horizontally scrolling row: the button shows the current mode's icon and name in the accent color, the list marks it with a checkmark.

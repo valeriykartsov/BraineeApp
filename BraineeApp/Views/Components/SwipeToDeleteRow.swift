@@ -23,12 +23,16 @@ struct SwipeToDeleteRow<Content: View>: View {
 
     var body: some View {
         ZStack(alignment: .trailing) {
-            deleteBackground
-                .opacity(offset < -4 ? 1 : 0)
+            // Подложка с кнопкой — только пока строка сдвинута: в покое её не строим (п. 10).
+            if offset < 0 || isDragging {
+                deleteBackground
+                    .opacity(offset < -4 ? 1 : 0)
+            }
 
+            // Обычный приоритет: вертикальная прокрутка, начатая на строке, не ждёт этот жест.
             content()
                 .offset(x: offset)
-                .highPriorityGesture(swipeGesture)
+                .gesture(swipeGesture)
         }
         .clipped()
         .onChange(of: isOpen) { _, open in

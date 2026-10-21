@@ -38,6 +38,7 @@ struct TaskKanbanBoardView: View {
         }
         .padding(.bottom, DesignSystem.Space.x2)
         .appScreenBackground()
+        .taskRowClock()
     }
 
     private func column(for status: TaskStatus, height: CGFloat) -> some View {

@@ -14,6 +14,8 @@ import SwiftData
 @MainActor
 enum DemoDataSeeder {
     static let launchArgument = "-SeedDemoData"
+    /// `-DemoTaskCount N` вместе с `-SeedDemoData`: ещё N однотипных задач — для замера прокрутки (п. 10).
+    static let extraTasksKey = "DemoTaskCount"
 
     static func seedIfRequested(into context: ModelContext, now: Date = .now, calendar: Calendar = .current) {
         guard ProcessInfo.processInfo.arguments.contains(launchArgument) else { return }
@@ -76,6 +78,23 @@ enum DemoDataSeeder {
         task("Записаться к стоматологу", deadline: day(3), tags: [calls, health])
         task("Пробежка 5 км", deadline: day(0), tags: [health], done: true)
         task("Прочитать главу книги", priority: .low)
+
+        let extraCount = UserDefaults.standard.integer(forKey: extraTasksKey)
+        if extraCount > 0 {
+            let folders = ([work, home] + (1...3).map { groups.create(name: "Проект \($0)") }).compactMap { $0 }
+            for index in 0..<extraCount {
+                task(
+                    "Задача №\(index + 1)",
+                    details: index % 3 == 0 ? "Описание задачи для проверки высоты строки" : "",
+                    deadline: index % 4 == 3 ? nil : day(index % 15 - 5, index % 2 == 0 ? 9 + index % 9 : nil),
+                    withTime: index % 2 == 0,
+                    priority: TaskPriority.allCases[index % TaskPriority.allCases.count],
+                    tags: index % 5 == 0 ? [calls, health] : (index % 2 == 0 ? [calls] : []),
+                    group: index % 6 == 5 ? nil : folders[index % folders.count],
+                    done: index % 7 == 0
+                )
+            }
+        }
 
         // Отметки привычек — за последние 14 дней (столько разрешает интерфейс).
         let pattern: [(String, [Int])] = [

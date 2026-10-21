@@ -56,6 +56,7 @@ struct EisenhowerQuadrantDetailView: View {
             .padding(.top, DesignSystem.Space.x2)
             .padding(.bottom, DesignSystem.Space.x4)
         }
+        .taskRowClock()
         .appScreenBackground()
         .navigationTitle(quadrant.title)
 #if os(iOS)
