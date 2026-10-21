@@ -3,6 +3,13 @@
 Notable changes to BraineeApp. Dates are commit dates. Decision references (D-xx) point to [`docs/decisions.md`](docs/decisions.md).
 The October 2026 work was a modernization done in phases; the detailed task plan and audit it followed are available in git history (`e1ccfff`).
 
+## 2026-10-22 — Lock Screen widgets
+
+- "Calendar" (circular): weekday, date and today's tasks as "left/total" (only tasks due today; overdue ones are not counted).
+- "Today" (rectangular): habits and today's tasks with progress bars ("3 из 5", "ещё 2 из 5").
+- Both open the Calendar tab on today (falls back to Tasks if the Calendar tab is hidden). Same App Group snapshot as the Home Screen widgets, plus one derived counter (tasks due today that are done); no new entitlements.
+- After midnight, until the app rebuilds the snapshot, the widgets show the new date, "—" for tasks and 0 done habits instead of yesterday's numbers.
+
 ## 2026-10-22 — Smoother task list scrolling
 
 - Task list is lazy: only visible folders and rows are built. With ~300 tasks the main thread was busy up to ~0.8 s per second while scrolling (dropped frames); after the change it is ~8× less (simulator, Time Profiler).

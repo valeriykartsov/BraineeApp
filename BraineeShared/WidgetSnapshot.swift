@@ -10,6 +10,12 @@ enum WidgetSnapshotStore {
     static let appGroupID = "group.valeravalera.BraineeApp"
     static let fileName = "widget_snapshot.json"
     static let openURL = URL(string: "braineeapp://open")!
+    /// Виджеты экрана блокировки: вкладка «Календарь» на сегодняшнем дне (п. 11).
+    static let calendarURL = URL(string: "braineeapp://calendar")!
+
+    static func isCalendarURL(_ url: URL) -> Bool {
+        url.scheme == calendarURL.scheme && url.host == calendarURL.host
+    }
 
     private static let encoder: JSONEncoder = {
         let encoder = JSONEncoder()
@@ -75,6 +81,12 @@ struct WidgetSnapshot: Codable, Equatable {
         guard habitsTotal > 0 else { return 0 }
         return Double(habitsCompletedToday) / Double(habitsTotal)
     }
+
+    /// Снимок собран в тот же день, что и `date`. Иначе счётчики «сегодня» вчерашние:
+    /// снимок пересобирает только приложение.
+    func isFresh(at date: Date, calendar: Calendar = .current) -> Bool {
+        calendar.isDate(updatedAt, inSameDayAs: date)
+    }
 }
 
 struct WidgetTaskRow: Codable, Equatable, Identifiable {
@@ -96,18 +108,51 @@ struct WidgetStatsSnapshot: Codable, Equatable {
     var completed: Int
     var active: Int
     var overdue: Int
+    /// Задачи с дедлайном сегодня, включая выполненные.
     var today: Int
+    /// Из них выполнено. Поле появилось позже: в старом файле снимка его нет.
+    var todayCompleted: Int
 
     static let zero = WidgetStatsSnapshot(
         total: 0,
         completed: 0,
         active: 0,
         overdue: 0,
-        today: 0
+        today: 0,
+        todayCompleted: 0
     )
+
+    init(total: Int, completed: Int, active: Int, overdue: Int, today: Int, todayCompleted: Int) {
+        self.total = total
+        self.completed = completed
+        self.active = active
+        self.overdue = overdue
+        self.today = today
+        self.todayCompleted = todayCompleted
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        total = try container.decode(Int.self, forKey: .total)
+        completed = try container.decode(Int.self, forKey: .completed)
+        active = try container.decode(Int.self, forKey: .active)
+        overdue = try container.decode(Int.self, forKey: .overdue)
+        today = try container.decode(Int.self, forKey: .today)
+        todayCompleted = try container.decodeIfPresent(Int.self, forKey: .todayCompleted) ?? 0
+    }
 
     var progress: Double {
         guard total > 0 else { return 0 }
         return Double(completed) / Double(total)
+    }
+
+    /// Сколько задач на сегодня осталось выполнить.
+    var todayRemaining: Int {
+        max(today - todayCompleted, 0)
+    }
+
+    var todayProgress: Double {
+        guard today > 0 else { return 0 }
+        return Double(todayCompleted) / Double(today)
     }
 }

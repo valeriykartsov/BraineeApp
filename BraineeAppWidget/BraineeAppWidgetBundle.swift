@@ -2,7 +2,7 @@
 //  BraineeAppWidgetBundle.swift
 //  BraineeAppWidget
 //
-//  Точка входа расширения: четыре виджета BraineeApp.
+//  Точка входа расширения: четыре виджета экрана «Домой» и два — экрана блокировки.
 
 import WidgetKit
 import SwiftUI
@@ -14,5 +14,7 @@ struct BraineeAppWidgetBundle: WidgetBundle {
         HabitsProgressWidget()
         TasksDashboardWidget()
         TasksHabitsWidget()
+        LockScreenCalendarWidget()
+        LockScreenTodayWidget()
     }
 }

@@ -2,7 +2,8 @@
 //  NotificationDeepLinkRouter.swift
 //  BraineeApp
 //
-//  Маршрутизация тапа по локальному пушу → открытие карточки задачи.
+//  Маршрутизация тапа по локальному пушу → открытие карточки задачи;
+//  виджет экрана блокировки → вкладка «Календарь» на сегодняшнем дне.
 
 import Foundation
 import Combine
@@ -15,6 +16,9 @@ final class NotificationDeepLinkRouter: ObservableObject {
     /// Ожидающая открытия задача (после тапа по пушу).
     @Published var pendingTaskUUID: UUID?
 
+    /// Ожидает открытия вкладка «Календарь» на сегодняшнем дне (тап по виджету экрана блокировки).
+    @Published var pendingCalendarToday = false
+
     private init() {}
 
     func openTask(uuid: UUID) {
@@ -23,5 +27,13 @@ final class NotificationDeepLinkRouter: ObservableObject {
 
     func clearPendingTask() {
         pendingTaskUUID = nil
+    }
+
+    func openCalendarToday() {
+        pendingCalendarToday = true
+    }
+
+    func clearPendingCalendar() {
+        pendingCalendarToday = false
     }
 }

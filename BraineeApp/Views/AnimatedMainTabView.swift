@@ -98,6 +98,8 @@ struct AnimatedMainTabView: View {
         .onAppear {
             AppNavigationChrome.apply(accentRaw: accentPaletteRaw)
             ensureSelectedTabVisible()
+            // Холодный запуск с виджета: ссылка пришла раньше, чем появился этот экран.
+            openPendingCalendar()
         }
         .onChange(of: appThemeRaw) { _, _ in
             AppNavigationChrome.apply(accentRaw: accentPaletteRaw)
@@ -109,6 +111,9 @@ struct AnimatedMainTabView: View {
             withAnimation(flowAnimation) {
                 ensureSelectedTabVisible()
             }
+        }
+        .onChange(of: deepLinkRouter.pendingCalendarToday) { _, _ in
+            openPendingCalendar()
         }
         .onChange(of: deepLinkRouter.pendingTaskUUID) { _, uuid in
             guard uuid != nil else { return }
@@ -189,6 +194,19 @@ struct AnimatedMainTabView: View {
         .animation(flowAnimation, value: tabVisibilityToken)
         .padding(.horizontal, 4)
         .background(DesignSystem.Colors.surface.ignoresSafeArea(edges: .bottom))
+    }
+
+    /// Виджет экрана блокировки открывает «Календарь»; если вкладка скрыта — «Задачи».
+    private func openPendingCalendar() {
+        guard deepLinkRouter.pendingCalendarToday else { return }
+        let tab: MainTab = visibleTabs.contains(.calendar) ? .calendar : .tasks
+        withAnimation(flowAnimation) {
+            selectedTab = tab
+        }
+        // Сбрасывает флаг CalendarWeekView, когда покажет сегодняшний день.
+        if tab != .calendar {
+            deepLinkRouter.clearPendingCalendar()
+        }
     }
 
     private func ensureSelectedTabVisible() {

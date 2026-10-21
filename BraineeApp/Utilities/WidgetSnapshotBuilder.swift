@@ -16,6 +16,7 @@ enum WidgetSnapshotBuilder {
     ) -> WidgetSnapshot {
         let tasks = tasks.notInTrash
         let stats = TaskStats.compute(from: tasks)
+        let dueToday = tasks.filter { $0.isDue(on: now, calendar: calendar) }
         let todayTasks = tasks
             .filter { !$0.isCompleted && $0.isDueToday }
             .sorted { lhs, rhs in
@@ -54,7 +55,8 @@ enum WidgetSnapshotBuilder {
                 completed: stats.completed,
                 active: stats.active,
                 overdue: stats.overdue,
-                today: stats.today
+                today: dueToday.count,
+                todayCompleted: dueToday.filter(\.isCompleted).count
             ),
             habits: habitRows,
             habitsCompletedToday: completedToday,
