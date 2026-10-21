@@ -88,4 +88,14 @@ struct HabitService {
     func saveOrder() {
         onChange(context)
     }
+
+    /// Конец перетаскивания (drop). Привычка из `payload` (uuid строкой) встаёт на место целевой —
+    /// даже если живое вытеснение при наведении не сработало; порядок сохраняется один раз.
+    /// `targetID == nil` — отпустили не на строке: только сохраняем то, что уже переставлено.
+    func finishDrag(payload: [String], onto targetID: UUID?) {
+        if let targetID, let draggedID = payload.lazy.compactMap(UUID.init(uuidString:)).first {
+            move(draggedID, onto: targetID)
+        }
+        saveOrder()
+    }
 }

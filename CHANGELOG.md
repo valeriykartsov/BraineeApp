@@ -3,6 +3,10 @@
 Notable changes to BraineeApp. Dates are commit dates. Decision references (D-xx) point to [`docs/decisions.md`](docs/decisions.md).
 The October 2026 work was a modernization done in phases; the detailed task plan and audit it followed are available in git history (`e1ccfff`).
 
+## 2026-10-22 — Habit reordering fix
+
+- Drag and drop of habits works again: the long-press gesture on the handle was cancelled by the system drag and cleared the drag state, so rows did not move. The drop now also reorders by the dragged habit's id and saves the order once; dropping between rows ends the drag cleanly.
+
 ## 2026-10-21 — Meetings from the iPhone Calendar
 
 - Calendar tab: optional read-only "Meetings" block under the day's tasks — events from all calendars except "BraineeApp", all-day first, then by start time, with start time and duration on the left; a meeting that started the day before shows "until HH:MM" (D-37).

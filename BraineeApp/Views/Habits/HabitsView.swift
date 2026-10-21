@@ -78,6 +78,12 @@ struct HabitsView: View {
                     .padding(.top, DesignSystem.Space.x2)
                     .padding(.bottom, DesignSystem.Space.x4)
                 }
+                // Отпустили мимо строк (между ними, над прогрессом): перетаскивание всё равно
+                // заканчивается — порядок сохраняется, подсветка строки снимается.
+                .dropDestination(for: String.self) { items, _ in
+                    finishDrag(items, onto: nil)
+                    return true
+                }
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .navigationBar)
@@ -335,11 +341,7 @@ struct HabitsView: View {
 
             HabitDragHandle(
                 habitUUID: habit.uuid,
-                onLift: { draggingUUID = habit.uuid },
-                onEnded: {
-                    draggingUUID = nil
-                    habitService.saveOrder()
-                }
+                onDragStart: { draggingUUID = habit.uuid }
             ) {
                 habitDragPreview(habit)
             }
@@ -349,9 +351,8 @@ struct HabitsView: View {
         .scaleEffect(isDragging ? 1.03 : 1)
         .opacity(isDragging ? 0.92 : 1)
         .zIndex(isDragging ? 1 : 0)
-        .dropDestination(for: String.self) { _, _ in
-            draggingUUID = nil
-            habitService.saveOrder()
+        .dropDestination(for: String.self) { items, _ in
+            finishDrag(items, onto: habit.uuid)
             return true
         } isTargeted: { hovering in
             guard hovering, let draggingUUID, draggingUUID != habit.uuid else { return }
@@ -409,19 +410,26 @@ struct HabitsView: View {
         }
     }
 
+    private func finishDrag(_ items: [String], onto targetID: UUID?) {
+        withAnimation(springAnimation) {
+            habitService.finishDrag(payload: items, onto: targetID)
+        }
+        draggingUUID = nil
+    }
+
     /// Живое вытеснение: при наведении на другую строку порядок обновляется сразу.
     private func liveReorder(draggedID: UUID, onto targetID: UUID) {
         habitService.move(draggedID, onto: targetID)
     }
 }
 
-/// Ручка drag: lift + колбэки для анимации вытеснения.
+/// Ручка drag. Только `.draggable` — без LongPressGesture: системный drag отменял долгое
+/// нажатие, его завершение обнулял `draggingUUID`, и перестановка при наведении не работала (п. 6).
+/// Начало перетаскивания — момент, когда система показывает превью (как у задач).
 private struct HabitDragHandle<Preview: View>: View {
     let habitUUID: UUID
-    var onLift: () -> Void
-    var onEnded: () -> Void
+    var onDragStart: () -> Void
     @ViewBuilder var preview: () -> Preview
-    @GestureState private var isLiftSelected = false
 
     var body: some View {
         Image(systemName: DesignSystem.Icon.drag)
@@ -430,20 +438,12 @@ private struct HabitDragHandle<Preview: View>: View {
             .frame(width: 32, height: DesignSystem.Space.x11)
             .contentShape(Rectangle())
             .accessibilityLabel("Перетащить привычку")
-            .draggable(habitUUID.uuidString, preview: preview)
-            .simultaneousGesture(
-                LongPressGesture(minimumDuration: 0.35)
-                    .updating($isLiftSelected) { currentState, gestureState, _ in
-                        gestureState = currentState
+            .draggable(habitUUID.uuidString) {
+                preview()
+                    .onAppear {
+                        HapticFeedback.lift()
+                        onDragStart()
                     }
-            )
-            .onChange(of: isLiftSelected) { _, selected in
-                if selected {
-                    HapticFeedback.lift()
-                    onLift()
-                } else {
-                    onEnded()
-                }
             }
     }
 }
