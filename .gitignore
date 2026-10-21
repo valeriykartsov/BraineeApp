@@ -30,3 +30,13 @@ fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots
 fastlane/test_output
+
+# graphify — local internal tool: the skill and the knowledge graph it builds
+.claude/skills/graphify/
+graphify-out/
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Local backlog (owner notes, not published)
+backlog.md
