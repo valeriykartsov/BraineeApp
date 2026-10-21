@@ -84,7 +84,7 @@ enum TaskDraftService {
                 LLMMessage(role: .system, content: systemPrompt(context: context)),
                 LLMMessage(role: .user, content: input)
             ],
-            maxTokens: 600,
+            maxTokens: 1000,
             temperature: 0
         )
     }

@@ -31,9 +31,15 @@ struct OpenRouterProvider: LLMProvider {
 
     func complete(_ request: LLMRequest) async throws -> LLMResponse {
         let body = try await chatCompletion(request)
-        guard let text = body.choices?.first?.message?.content?
+        let choice = body.choices?.first
+        guard let text = choice?.message?.content?
             .trimmingCharacters(in: .whitespacesAndNewlines),
-              !text.isEmpty else { throw LLMError.emptyResponse }
+              !text.isEmpty else {
+            // Рассуждающие модели (в том числе выбранные `openrouter/auto`) могут потратить весь
+            // max_tokens на скрытые рассуждения: тогда текста нет, а finish_reason = "length".
+            if choice?.finish_reason == "length" { throw LLMError.outputLimitReached(model: body.model) }
+            throw LLMError.emptyResponse
+        }
         return LLMResponse(text: text, model: body.model)
     }
 
@@ -44,8 +50,9 @@ struct OpenRouterProvider: LLMProvider {
         urlRequest.httpBody = try JSONEncoder().encode(ChatCompletionRequest(
             model: model,
             messages: request.messages,
-            max_tokens: request.maxTokens,
-            temperature: request.temperature
+            max_tokens: Self.effectiveMaxTokens(request.maxTokens, model: model),
+            temperature: request.temperature,
+            reasoning: .init(effort: "low", exclude: true)
         ))
         let data = try await send(urlRequest)
         guard let body = try? JSONDecoder().decode(ChatCompletionBody.self, from: data) else {
@@ -57,6 +64,18 @@ struct OpenRouterProvider: LLMProvider {
         }
         guard body.choices?.isEmpty == false else { throw LLMError.invalidResponse }
         return body
+    }
+
+    /// Бесплатные модели (`openrouter/free`, `…:free`) сейчас все рассуждающие, и большинство не понимает
+    /// `reasoning.effort`: рассуждения съедают лимит ответа. Платить за них не нужно, поэтому лимит ×4.
+    static let freeModelTokenMultiplier = 4
+
+    static func isFreeModel(_ model: String) -> Bool {
+        model == "openrouter/free" || model.hasSuffix(":free")
+    }
+
+    static func effectiveMaxTokens(_ requested: Int, model: String) -> Int {
+        isFreeModel(model) ? requested * freeModelTokenMultiplier : requested
     }
 
     // MARK: - Key info
@@ -161,6 +180,14 @@ struct OpenRouterProvider: LLMProvider {
         let messages: [LLMMessage]
         let max_tokens: Int
         let temperature: Double?
+        /// Меньше скрытых рассуждений — больше лимита на сам ответ; рассуждения в ответ не включаются.
+        /// Модели без рассуждений этот параметр игнорируют.
+        let reasoning: Reasoning
+
+        struct Reasoning: Encodable {
+            let effort: String
+            let exclude: Bool
+        }
     }
 
     private struct ChatCompletionBody: Decodable {
@@ -169,6 +196,7 @@ struct OpenRouterProvider: LLMProvider {
                 let content: String?
             }
             let message: Message?
+            let finish_reason: String?
         }
         let model: String?
         let choices: [Choice]?

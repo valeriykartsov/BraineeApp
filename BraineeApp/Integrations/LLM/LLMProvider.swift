@@ -46,6 +46,8 @@ enum LLMError: Error, Equatable {
     case badRequest(String?)
     case server(Int)
     case emptyResponse
+    /// Лимит ответа закончился раньше текста — обычно его съели скрытые рассуждения модели.
+    case outputLimitReached(model: String?)
     case invalidResponse
     case unexpectedStatus(Int)
     case network(String)
@@ -54,7 +56,7 @@ enum LLMError: Error, Equatable {
     var userMessage: String {
         switch self {
         case .missingKey:
-            return "Ключ OpenRouter не задан. Добавьте его в «Профиль → Ещё → LLM»."
+            return "Ключ OpenRouter не задан. Добавьте его в «Профиль → Настройки → LLM»."
         case .offline:
             return "Нет подключения к интернету. Проверьте сеть и повторите."
         case .timeout:
@@ -78,6 +80,9 @@ enum LLMError: Error, Equatable {
             return "Некорректный запрос" + Self.detail(message)
         case .server(let code):
             return "Сбой на стороне OpenRouter (код \(code)). Повторите позже."
+        case .outputLimitReached(let model):
+            let name = model.map { "«\($0)» " } ?? ""
+            return "Модель \(name)израсходовала лимит ответа на размышления и не дописала ответ. Повторите или укажите в настройках LLM модель без рассуждений."
         case .emptyResponse:
             return "Модель вернула пустой ответ. Повторите или выберите другую модель."
         case .invalidResponse:
