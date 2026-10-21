@@ -28,7 +28,7 @@ struct TaskOrganizedListView: View {
     /// Одна открытая свайпом строка удаления.
     @State private var swipedTaskUUID: UUID?
 
-    /// Фиксированный id drop-зоны «Без папки» (без force unwrap).
+    /// Фиксированный id drop-зоны «Входящие» (без force unwrap).
     private static let ungroupedDropID = UUID(uuid: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1))
 
     /// Ширина превью при переносе (вместо устаревшего UIScreen.main).
@@ -70,9 +70,9 @@ struct TaskOrganizedListView: View {
             }
         } message: {
             if let name = groupPendingDeletion?.name {
-                Text("Группа «\(name)» будет удалена. Задачи из неё останутся в «Без папки».")
+                Text("Группа «\(name)» будет удалена. Задачи из неё перейдут во «Входящие».")
             } else {
-                Text("Задачи из группы останутся в «Без папки».")
+                Text("Задачи из группы перейдут во «Входящие».")
             }
         }
     }
@@ -158,7 +158,7 @@ struct TaskOrganizedListView: View {
                     .font(.system(size: 16, weight: .regular))
                     .foregroundStyle(DesignSystem.Colors.accent)
                     .frame(width: DesignSystem.Space.x5, height: DesignSystem.Space.x5)
-                Text("Без папки")
+                Text("Входящие")
                     .font(DesignSystem.Typography.body(16))
                     .foregroundStyle(DesignSystem.Colors.textPrimary)
                 if !ungrouped.isEmpty {

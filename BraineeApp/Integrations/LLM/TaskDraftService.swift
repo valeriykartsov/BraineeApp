@@ -212,7 +212,7 @@ enum TaskDraftService {
             if let match = existingName(rawGroup, in: context.groupNames) {
                 groupName = match
             } else {
-                notes.append("Папка «\(rawGroup)» не найдена — задача будет без папки.")
+                notes.append("Папка «\(rawGroup)» не найдена — задача попадёт во «Входящие».")
             }
         }
 

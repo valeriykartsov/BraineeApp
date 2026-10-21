@@ -6,6 +6,7 @@ The October 2026 work was a modernization done in phases; the detailed task plan
 ## 2026-10-21 — UI polish
 
 - Tag library, dashboard and widget counters use one rule: tasks in the trash are never counted.
+- "No folder" block renamed to **Inbox** («Входящие») in the task list, the delete-folder confirmation, FAQ and the LLM draft note.
 
 ## 2026-10-21 — Repository cleanup
 

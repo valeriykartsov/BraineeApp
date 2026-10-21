@@ -35,7 +35,7 @@ enum TaskSortHelper {
         return lhs.sortOrder < rhs.sortOrder
     }
 
-    /// Переносит задачу в конец своей группы (или «без папки»).
+    /// Переносит задачу в конец своей группы (или во «Входящих»).
     static func moveToEnd(of peers: [TaskItem], task: TaskItem) {
         let others = peers.filter { $0.uuid != task.uuid }
         let maxOrder = others.map(\.sortOrder).max() ?? -1

@@ -69,7 +69,7 @@ struct GroupAndTagServiceTests {
         #expect(counter.count == 1)
     }
 
-    // Удаление группы: задачи (активные и из корзины) остаются, но «Без папки».
+    // Удаление группы: задачи (активные и из корзины) остаются и переходят во «Входящие».
     @Test func удалениеГруппы_задачиОстаютсяБезПапки() throws {
         let context = container.mainContext
         let group = TaskGroup(name: "Проект")
