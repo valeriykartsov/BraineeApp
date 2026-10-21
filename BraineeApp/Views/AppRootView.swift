@@ -39,6 +39,9 @@ struct AppRootView: View {
         }
         .task {
             AppDataPersistence.bootstrap(into: modelContext)
+#if DEBUG
+            DemoDataSeeder.seedIfRequested(into: modelContext)
+#endif
             isReady = true
             // Подтянуть иконку Springboard под сохранённый акцент (без алерта).
             AppIconSwitcher.syncWithCurrentAccent()

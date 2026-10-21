@@ -1,88 +1,119 @@
 # BraineeApp
 
-Личный iOS-органайзер задач и привычек («второй мозг» на устройстве).
+**A personal "second brain" for iPhone: tasks, habits and an optional AI assistant — offline-first, all data stays on the device.**
 
-> **Статус:** персональный pet-project. Данные хранятся локально на устройстве (SwiftData + автобэкап JSON). Публикация в App Store / TestFlight в этом репозитории не описана как свершившийся факт — запускайте из Xcode.
+![Platform](https://img.shields.io/badge/platform-iOS%2018.2%2B-lightgrey)
+![Swift](https://img.shields.io/badge/Swift-5-orange)
+![UI](https://img.shields.io/badge/UI-SwiftUI%20%2B%20SwiftData-blue)
+![Dependencies](https://img.shields.io/badge/dependencies-none-brightgreen)
+![License](https://img.shields.io/badge/license-GPL--3.0-blue)
 
-## Что умеет приложение
+[Русская версия](README.ru.md)
 
-- **Задачи** — создание и редактирование, статусы, дедлайн и время, приоритет, описание, теги, группы (папки), soft delete и папка «Удалённые»
-- **Список и канбан** — группировка по папкам или колонкам статусов
-- **Календарь** — неделя и задачи выбранного дня
-- **Матрица Эйзенхауэра** — квадранты по приоритету и срочности (вкладка включается в профиле)
-- **Привычки** — до 7 штук, contribution-календарь (3 месяца), прогресс за день, отметки за сегодня и до 14 дней назад
-- **Напоминания** — локальные пуши: ежедневные о задачах и привычках (время в настройках), дедлайны; открытие задачи по тапу
-- **Наклейка на иконке** — настраиваемый счётчик (выкл / просроченные / сегодня+просроченные); тот же счётчик на вкладке «Задачи»
-- **Виджеты** — задачи на сегодня, привычки, дашборд (размеры S / M / L)
-- **Профиль** — имя, аватар, тема, акцент, иконка приложения, FAQ, панель вкладок
-- **Резервная копия** — экспорт всех задач, групп, тегов, привычек и профиля (без аватара) в один JSON-файл через «Файлы» и восстановление из него (Профиль → Хранение данных); автобэкап раз в сутки при сворачивании, последние 7 копий
+| Tasks | Calendar | AI assistant | Habits | Profile |
+|:---:|:---:|:---:|:---:|:---:|
+| <img src="docs/images/tasks.png" width="180" alt="Tasks"> | <img src="docs/images/calendar.png" width="180" alt="Calendar"> | <img src="docs/images/llm.png" width="180" alt="AI weekly reflection"> | <img src="docs/images/habits.png" width="180" alt="Habits"> | <img src="docs/images/profile.png" width="180" alt="Profile"> |
 
-## Стек
+The app UI is in Russian. Screenshots use demo data.
 
-| Слой | Технология |
-|------|------------|
+## Features
+
+- **Tasks** — deadlines with optional time, priorities, statuses, descriptions, tags, folders, drag-and-drop, list and kanban views, soft delete with a trash.
+- **Calendar** — week strip with the tasks of the selected day; optional one-way export to an app-owned "BraineeApp" calendar in the iPhone Calendar (iCloud).
+- **Habits** — up to 7 habits, a three-month contribution grid, check-ins for today and up to 14 days back.
+- **AI assistant (optional, OpenRouter)** — turn a phrase into a task draft, split a brain dump into several drafts, get a short day/week reflection, get a suggested plan for today. Drafts are saved only after you confirm them in the regular task form.
+- **Eisenhower Matrix** — quadrants by priority and urgency.
+- **Reminders and badge** — local notifications for tasks and habits, deadline alerts, configurable app icon badge.
+- **Widgets** — today's tasks, habits, dashboard (S / M / L).
+- **Backup** — one-file JSON export through Files, daily auto-backup (last 7 copies), "replace all" restore with a safety snapshot.
+- **Personalization** — light/dark theme, accent colors with matching app icons, configurable tab bar.
+
+## Privacy
+
+- All data lives in a local SwiftData store on the device. No account, no analytics, no iCloud sync of app data.
+- The AI assistant is off until you add your own [OpenRouter](https://openrouter.ai) API key. The key is stored in the Keychain on this device only.
+- Requests are sent only when you ask, one at a time, without chat history:
+
+| Mode | What is sent |
+|---|---|
+| Task / Inbox | your text, today's date, time zone, names of your folders and tags |
+| Reflection | numbers only (completed, created, overdue, habit check-ins) — no titles |
+| Day plan | titles, priorities, deadline times and overdue flags of today's and overdue tasks (max 30) — asked once for consent |
+
+Task descriptions, tags of tasks, profile data and backups are never sent.
+
+## Tech stack
+
+| Area | Technology |
+|---|---|
 | UI | SwiftUI |
-| Хранение | SwiftData, файл `Application Support/BraineeApp/BraineeApp.store` (схема `SchemaV1`) |
-| Бэкап | JSON (`BackupDocument`) — ручной экспорт в «Файлы» и автобэкап в `Application Support/Backups/auto/` |
-| Виджеты | WidgetKit + App Group |
-| Уведомления | UserNotifications |
-| Мин. iOS | 18.2 |
-| Зависимости | только Apple SDK (без SPM / CocoaPods) |
+| Storage | SwiftData (versioned schema, persistent store in Application Support) |
+| Backup | JSON documents via Files |
+| Calendar | EventKit (one-way export) |
+| AI | OpenRouter Chat Completions over `URLSession` |
+| Secrets | Keychain |
+| Widgets | WidgetKit + App Group |
+| Notifications | UserNotifications |
+| Tests | Swift Testing — 329 unit tests |
+| Dependencies | none (Apple SDK only) |
 
-## Архитектура (кратко)
+## Architecture
 
-1. Старт: `BraineeAppApp` открывает постоянное хранилище SwiftData → `AppRootView` → `AppDataPersistence.bootstrap()` (хранилище при старте не очищается).
-2. Экраны читают данные через `@Query`; изменения делают сервисы `Domain/`, после них — `didChange()` (сохранение, виджет, уведомления).
-3. При уходе в фон — сохранение и автобэкап JSON (не чаще раза в сутки).
-4. Виджеты получают снимок через App Group.
+SwiftUI views read data with `@Query`; every change goes through domain services (`Domain/`), which then trigger side effects in one place — save, widgets, notifications and calendar export. Integrations (EventKit, OpenRouter) live in `Integrations/` and never get write access to the store. Details: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Design decisions with their reasoning: [`docs/decisions.md`](docs/decisions.md).
 
-Подробные соглашения для разработки — в [`CLAUDE.md`](CLAUDE.md) и [`docs/`](docs/) (`.cursorrules` частично устарел).
+## Getting started
 
-## Структура репозитория
+**Requirements:** macOS with Xcode 16.2 or later, iOS 18.2+ simulator or device.
+
+1. Clone the repository and open `BraineeApp.xcodeproj`.
+2. Select the **BraineeApp** scheme and a simulator or your device.
+3. For a device, set your own team in *Signing & Capabilities* (the app and widget share an App Group).
+4. Build and run (⌘R).
+5. Optional: add an OpenRouter key in *Профиль → Настройки → LLM* (Profile → Settings → LLM) to enable the assistant.
+
+To try the app with demo data in a simulator (Debug build): launch with `-SeedDemoData`, and add `-LLMStub` to use the assistant without a key — see [`docs/TESTING.md`](docs/TESTING.md).
+
+## Testing
+
+```bash
+scripts/test.sh                  # all unit tests
+scripts/test.sh TaskServiceTests # selected suites
+scripts/test.sh --build          # build only
+```
+
+More in [`docs/TESTING.md`](docs/TESTING.md); manual scenarios in [`docs/manual-test-scenarios.md`](docs/manual-test-scenarios.md).
+
+## Project structure
 
 ```
-BraineeApp/          # основное приложение
-BraineeAppTests/     # юнит-тесты (Swift Testing)
-BraineeAppUITests/   # UI-тесты (шаблон Xcode)
-BraineeAppWidget/    # расширение виджетов
-BraineeShared/       # общий снимок для виджетов
-TEST_SCENARIOS.md    # ручные сценарии приёмки
-README.md            # этот файл
+BraineeApp/            app: Views, Domain, Models, Persistence, Integrations, Utilities
+BraineeAppTests/       unit tests (Swift Testing)
+BraineeAppUITests/     Xcode UI test template (unused)
+BraineeAppWidget/      widget extension
+BraineeShared/         data snapshot shared with widgets
+docs/                  architecture, decisions, testing, screenshots
+scripts/test.sh        compact test runner
+CLAUDE.md              working rules for the AI coding assistant
 ```
 
-## Как запустить
+## Documentation
 
-1. Открыть `BraineeApp.xcodeproj` в Xcode 16+.
-2. Выбрать схему **BraineeApp** и симулятор / устройство с iOS 18.2+.
-3. Собрать и запустить (⌘R).
-4. Юнит-тесты: ⌘U или  
-   `scripts/test.sh` (все тесты; `scripts/test.sh <НаборТестов>` — один набор, `--build` — только сборка).
+| Document | Contents |
+|---|---|
+| [ARCHITECTURE](docs/ARCHITECTURE.md) | layers, storage, backup, calendar export, AI integration (Russian) |
+| [Decisions](docs/decisions.md) | architecture decision log D-01…D-36 (Russian) |
+| [Testing](docs/TESTING.md) | automated tests, debug launch arguments, simulator checks (Russian) |
+| [Manual scenarios](docs/manual-test-scenarios.md) | step-by-step acceptance scenarios (Russian) |
+| [Changelog](CHANGELOG.md) | history of notable changes |
 
-Signing: Personal Team / ваш Apple ID. Bundle ID в проекте: `valeravalera.BraineeApp`.
+## Status
 
-## Версии и Git
+A personal project, built and used by its author. The current feature set is frozen; further development follows a separate backlog. It is not published on the App Store. Issues are welcome; pull requests are not expected.
 
-- Основная ветка: `main`
-- Фичи: ветки вида `ver0.x` / `1.x.0`, merge через Pull Request
-- Сообщения коммитов: `feat(…)`, `fix(…)`, `docs(…)` и т.п.
+## License
 
-## Документация и актуальность README
+[GNU General Public License v3.0](LICENSE).
 
-Этот README — витрина проекта. Его нужно **обновлять при крупных изменениях**, например:
+## Author
 
-- новый крупный раздел или экран (как Привычки, Матрица, виджеты);
-- смена архитектуры хранения / интеграций;
-- изменение минимальной iOS или способа запуска;
-- появление / отмена публикации (TestFlight, App Store);
-- существенное изменение набора возможностей для пользователя.
-
-Мелкие UI-правки и багфиксы README обычно не требуют. Чеклист для агента/разработки — в `.cursorrules`.
-
-Ручная приёмка фич: [`TEST_SCENARIOS.md`](TEST_SCENARIOS.md).
-
-## Чего в проекте нет (намеренно или пока)
-
-- облачной синхронизации (iCloud не используется);
-- бэкенда и сетевых API;
-- CI/CD в репозитории;
-- метрик аналитики и публичных релизов GitHub Releases (если не добавлены отдельно).
+Valerii Kartcov — [@valeriykartsov](https://github.com/valeriykartsov)
