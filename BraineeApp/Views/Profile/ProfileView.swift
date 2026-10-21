@@ -2,7 +2,8 @@
 //  ProfileView.swift
 //  BraineeApp
 //
-//  Профиль: пользователь, дашборд, теги, ещё (оформление, вкладки, FAQ), хранение.
+//  Профиль: пользователь, дашборд, дополнительно (матрица, FAQ, удалённые),
+//  настройки (оформление, уведомления, календарь, LLM, вкладки), теги, хранение, автор и проект на GitHub.
 
 import SwiftUI
 import SwiftData
@@ -64,20 +65,26 @@ struct ProfileView: View {
                         userSection
                     }
 
-                    if matches("дашборд", "статистика", "прогресс", "задачи", "дополнительно", "матрица", "эйзенхауэр") {
+                    if matches("дашборд", "статистика", "прогресс", "задачи") {
                         TaskDashboardView()
+                    }
+
+                    if matches(
+                        "дополнительно", "матрица", "эйзенхауэр",
+                        "faq", "вопрос", "вопросы", "помощь", "справка",
+                        "удалённые", "удалить", "корзина"
+                    ) {
                         extraSection
                     }
 
                     if matches(
-                        "ещё", "удалённые", "удалить", "корзина", "панель", "вкладки",
-                        "привычки", "календарь", "faq", "вопрос", "вопросы", "помощь", "справка",
+                        "настройки", "панель", "вкладки", "привычки", "календарь",
                         "тема", "оформление", "светлая", "тёмная", "акцент", "цвет",
                         "ориентация", "положение", "вертикал", "горизонтал",
                         "уведомлен", "напоминал", "дедлайн", "пуш",
                         "llm", "openrouter", "ключ", "модель", "ассистент"
                     ) {
-                        moreSection
+                        settingsSection
                     }
 
                     if matches("тег", "теги", "библиотека") {
@@ -86,6 +93,10 @@ struct ProfileView: View {
 
                     if matches("хранение", "данные", "json", "папка", "бэкап", "резерв", "экспорт", "восстан", "импорт") {
                         storageSection
+                    }
+
+                    if matches("github", "гитхаб", "автор", "проект", "исходный код") {
+                        aboutFooter
                     }
                 }
                 .groupedScreenPadding()
@@ -279,14 +290,32 @@ struct ProfileView: View {
                 GroupedNavRow(title: "Матрица Эйзенхауэра", systemImage: "square.grid.2x2")
             }
             .buttonStyle(.plain)
+
+            InsetDivider(leading: DesignSystem.Space.rowIconInset)
+
+            NavigationLink {
+                FAQView()
+            } label: {
+                GroupedNavRow(title: "FAQ", systemImage: "questionmark.circle")
+            }
+            .buttonStyle(.plain)
+
+            InsetDivider(leading: DesignSystem.Space.rowIconInset)
+
+            NavigationLink {
+                DeletedTasksFolderView()
+            } label: {
+                GroupedNavRow(title: "Удалённые задачи", systemImage: DesignSystem.Icon.trash)
+            }
+            .buttonStyle(.plain)
         }
         .sheet(isPresented: $showingMatrix) {
             EisenhowerMatrixView()
         }
     }
 
-    private var moreSection: some View {
-        GroupedSection(title: "Ещё") {
+    private var settingsSection: some View {
+        GroupedSection(title: "Настройки") {
             NavigationLink {
                 AppearanceSettingsView()
             } label: {
@@ -329,25 +358,26 @@ struct ProfileView: View {
                 GroupedNavRow(title: "Панель вкладок", systemImage: "square.grid.2x2")
             }
             .buttonStyle(.plain)
-
-            InsetDivider(leading: DesignSystem.Space.rowIconInset)
-
-            NavigationLink {
-                FAQView()
-            } label: {
-                GroupedNavRow(title: "FAQ", systemImage: "questionmark.circle")
-            }
-            .buttonStyle(.plain)
-
-            InsetDivider(leading: DesignSystem.Space.rowIconInset)
-
-            NavigationLink {
-                DeletedTasksFolderView()
-            } label: {
-                GroupedNavRow(title: "Удалённые задачи", systemImage: DesignSystem.Icon.trash)
-            }
-            .buttonStyle(.plain)
         }
+    }
+
+    private static let authorGitHubURL = URL(string: "https://github.com/valeriykartsov")!
+    private static let projectGitHubURL = URL(string: "https://github.com/valeriykartsov/BraineeApp")!
+
+    /// Самый низ Профиля: автор и проект на GitHub.
+    private var aboutFooter: some View {
+        VStack(spacing: DesignSystem.Space.x1) {
+            Link(destination: Self.authorGitHubURL) {
+                Label("@valeriykartsov", systemImage: DesignSystem.Icon.person)
+            }
+            Link(destination: Self.projectGitHubURL) {
+                Label("github.com/valeriykartsov/BraineeApp", systemImage: "chevron.left.forwardslash.chevron.right")
+            }
+        }
+        .font(DesignSystem.Typography.caption())
+        .foregroundStyle(accentPalette.color)
+        .frame(maxWidth: .infinity)
+        .padding(.top, DesignSystem.Space.x2)
     }
 
     private var storageSection: some View {

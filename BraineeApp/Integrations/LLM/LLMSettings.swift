@@ -9,7 +9,7 @@ import Foundation
 
 enum LLMSettings {
     static let modelKey = "llmModel"
-    /// Модель по умолчанию: автоматический выбор OpenRouter. Меняется в «Профиль → Ещё → LLM».
+    /// Модель по умолчанию: автоматический выбор OpenRouter. Меняется в «Профиль → Настройки → LLM».
     static let defaultModel = "openrouter/auto"
     static let modelsCatalogURL = URL(string: "https://openrouter.ai/models")!
     static let keysPageURL = URL(string: "https://openrouter.ai/settings/keys")!

@@ -54,7 +54,7 @@ enum LLMError: Error, Equatable {
     var userMessage: String {
         switch self {
         case .missingKey:
-            return "Ключ OpenRouter не задан. Добавьте его в «Профиль → Ещё → LLM»."
+            return "Ключ OpenRouter не задан. Добавьте его в «Профиль → Настройки → LLM»."
         case .offline:
             return "Нет подключения к интернету. Проверьте сеть и повторите."
         case .timeout:

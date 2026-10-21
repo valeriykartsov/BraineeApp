@@ -2,7 +2,7 @@
 //  LLMSettingsView.swift
 //  BraineeApp
 //
-//  «Профиль → Ещё → LLM» (LLM-1): ключ OpenRouter (Keychain) и модель (UserDefaults).
+//  «Профиль → Настройки → LLM» (LLM-1): ключ OpenRouter (Keychain) и модель (UserDefaults).
 //  Ключ после сохранения не показывается целиком — только последние 4 символа.
 
 import SwiftUI

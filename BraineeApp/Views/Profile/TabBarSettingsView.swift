@@ -46,7 +46,7 @@ struct TabBarSettingsView: View {
                     .foregroundStyle(DesignSystem.Colors.textSecondary)
                     .textCase(nil)
             } footer: {
-                Text("Порядок в меню: Задачи → Календарь → LLM → Привычки → Профиль. Задачи и Профиль всегда видны. Матрица Эйзенхауэра — в Профиле, «Дашборд → Дополнительно».")
+                Text("Порядок в меню: Задачи → Календарь → LLM → Привычки → Профиль. Задачи и Профиль всегда видны. Матрица Эйзенхауэра — в Профиле, раздел «Дополнительно».")
                     .font(DesignSystem.Typography.caption())
                     .foregroundStyle(DesignSystem.Colors.textSecondary)
             }
