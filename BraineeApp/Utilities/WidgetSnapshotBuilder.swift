@@ -14,6 +14,7 @@ enum WidgetSnapshotBuilder {
         now: Date = .now,
         calendar: Calendar = .current
     ) -> WidgetSnapshot {
+        let tasks = tasks.notInTrash
         let stats = TaskStats.compute(from: tasks)
         let todayTasks = tasks
             .filter { !$0.isCompleted && $0.isDueToday }

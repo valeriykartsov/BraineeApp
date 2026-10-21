@@ -232,7 +232,7 @@ struct TaskServiceTests {
         #expect(counter.count == 1)
     }
 
-    // Перенос в «Без папки» (nil) — в конец задач без группы.
+    // Перенос во «Входящие» (nil) — в конец задач без группы.
     @Test func переносБезПапки_вКонецБезПапки() throws {
         let context = container.mainContext
         let group = TaskGroup(name: "Проект")

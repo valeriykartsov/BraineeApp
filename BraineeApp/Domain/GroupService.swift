@@ -39,7 +39,7 @@ struct GroupService {
         return true
     }
 
-    /// Удаление папки не удаляет задачи: они остаются «Без папки», включая задачи в корзине.
+    /// Удаление папки не удаляет задачи: они переходят во «Входящие», включая задачи в корзине.
     /// У таких задач меняется группа, поэтому обновляется их updatedAt.
     func delete(_ group: TaskGroup) {
         let tasks = (try? context.fetch(FetchDescriptor<TaskItem>())) ?? []

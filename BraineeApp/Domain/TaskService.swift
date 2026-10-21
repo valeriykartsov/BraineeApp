@@ -57,7 +57,7 @@ struct TaskService {
         onChange(context)
     }
 
-    /// Чекбокс: выполненная уходит в конец своей группы (или «Без папки»),
+    /// Чекбокс: выполненная уходит в конец своей группы (или во «Входящих»),
     /// снятие отметки — в конец незакрытых той же группы.
     func toggleCompletion(_ task: TaskItem) {
         task.applyCompletionToggle()
@@ -94,7 +94,7 @@ struct TaskService {
         onChange(context)
     }
 
-    /// Перенос в группу (drag-and-drop) или в «Без папки» (`group == nil`): в конец целевой группы.
+    /// Перенос в группу (drag-and-drop) или во «Входящие» (`group == nil`): в конец целевой группы.
     /// Задачи из корзины не переносятся.
     func move(_ task: TaskItem, to group: TaskGroup?) {
         guard !task.isSoftDeleted else { return }

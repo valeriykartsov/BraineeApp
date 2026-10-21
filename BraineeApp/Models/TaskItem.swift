@@ -178,3 +178,10 @@ final class TaskItem {
         }
     }
 }
+
+extension Sequence where Element == TaskItem {
+    /// Задачи не из корзины — единое правило для счётчиков (теги, дашборд, виджет).
+    var notInTrash: [TaskItem] {
+        filter { !$0.isSoftDeleted }
+    }
+}

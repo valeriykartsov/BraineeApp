@@ -39,13 +39,8 @@ struct ProfileView: View {
         AccentPalette.resolved(from: accentPaletteRaw)
     }
 
-    private var query: String {
-        searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-    }
-
     private func matches(_ keywords: String...) -> Bool {
-        guard !query.isEmpty else { return true }
-        return keywords.contains { $0.lowercased().contains(query) }
+        SettingsSearch.matches(query: searchText, keywords: keywords)
     }
 
     var body: some View {
@@ -81,7 +76,7 @@ struct ProfileView: View {
                         "настройки", "панель", "вкладки", "привычки", "календарь",
                         "тема", "оформление", "светлая", "тёмная", "акцент", "цвет",
                         "ориентация", "положение", "вертикал", "горизонтал",
-                        "уведомлен", "напоминал", "дедлайн", "пуш",
+                        "уведомлен", "напомина", "дедлайн", "пуш", "пуши",
                         "llm", "openrouter", "ключ", "модель", "ассистент"
                     ) {
                         settingsSection
@@ -91,7 +86,7 @@ struct ProfileView: View {
                         TagLibraryView()
                     }
 
-                    if matches("хранение", "данные", "json", "папка", "бэкап", "резерв", "экспорт", "восстан", "импорт") {
+                    if matches("хранение", "данные", "json", "папка", "бэкап", "резерв", "копия", "экспорт", "восстан", "импорт") {
                         storageSection
                     }
 
@@ -106,12 +101,7 @@ struct ProfileView: View {
             .appScreenBackground()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Text("Профиль")
-                        .font(DesignSystem.Typography.title(24))
-                        .foregroundStyle(DesignSystem.Colors.textPrimary)
-                        .accessibilityAddTraits(.isHeader)
-                }
+                ProfileLogoToolbarItem()
 #if os(iOS)
                 ToolbarItem(placement: .topBarTrailing) {
                     searchToggleButton
@@ -508,6 +498,40 @@ struct ProfileView: View {
 
     private func saveProfile(name: String, age: Int?, gender: UserGender, avatarData: Data?) {
         profileService.update(name: name, age: age, gender: gender, avatarData: avatarData)
+    }
+}
+
+/// Логотип вместо заголовка: знак приложения и название. Нажатие ничего не делает.
+private struct ProfileLogoTitle: View {
+    var body: some View {
+        HStack(spacing: DesignSystem.Space.x1) {
+            AppLogoMark(size: 32)
+            Text("BraineeApp")
+                .font(DesignSystem.Typography.title(24))
+                .foregroundStyle(DesignSystem.Colors.textPrimary)
+        }
+        // Панель iOS 26+ сжимает элемент по ширине — без fixedSize название обрезается.
+        .fixedSize()
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("BraineeApp")
+        .accessibilityAddTraits(.isHeader)
+    }
+}
+
+/// На iOS 26 система рисует вокруг элементов панели стеклянную «капсулу» —
+/// логотипу она не нужна: это не кнопка.
+private struct ProfileLogoToolbarItem: ToolbarContent {
+    var body: some ToolbarContent {
+        if #available(iOS 26.0, *) {
+            ToolbarItem(placement: .topBarLeading) {
+                ProfileLogoTitle()
+            }
+            .sharedBackgroundVisibility(.hidden)
+        } else {
+            ToolbarItem(placement: .topBarLeading) {
+                ProfileLogoTitle()
+            }
+        }
     }
 }
 
