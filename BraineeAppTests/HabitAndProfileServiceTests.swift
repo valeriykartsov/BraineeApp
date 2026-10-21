@@ -171,6 +171,39 @@ struct HabitAndProfileServiceTests {
         #expect(habit.sortOrder == 7)
     }
 
+    // Отпускание на строке переставляет по данным перетаскивания, даже без перестановки при наведении (п. 6).
+    @Test func отпусканиеНаСтроке_переставляетИСохраняетОдинРаз() throws {
+        let context = container.mainContext
+        let first = Habit(title: "A", sortOrder: 0)
+        let second = Habit(title: "B", sortOrder: 1)
+        let third = Habit(title: "C", sortOrder: 2)
+        for habit in [first, second, third] { context.insert(habit) }
+        let counter = ChangeCounter()
+        let service = habits(counter)
+
+        service.finishDrag(payload: [first.uuid.uuidString], onto: third.uuid)
+
+        #expect(service.habits.map(\.title) == ["B", "C", "A"])
+        #expect(service.habits.map(\.sortOrder) == [0, 1, 2])
+        #expect(counter.count == 1)
+    }
+
+    // Отпускание мимо строк или с чужими данными порядок не меняет, но уже переставленное сохраняет.
+    @Test func отпусканиеМимоСтрок_толькоСохраняет() throws {
+        let context = container.mainContext
+        let first = Habit(title: "A", sortOrder: 0)
+        let second = Habit(title: "B", sortOrder: 1)
+        for habit in [first, second] { context.insert(habit) }
+        let counter = ChangeCounter()
+        let service = habits(counter)
+
+        service.finishDrag(payload: [first.uuid.uuidString], onto: nil)
+        service.finishDrag(payload: ["не uuid"], onto: second.uuid)
+
+        #expect(service.habits.map(\.title) == ["A", "B"])
+        #expect(counter.count == 2)
+    }
+
     // MARK: - Профиль
 
     // Профиля нет — создаётся один пустой; повторный вызов не создаёт второй.
