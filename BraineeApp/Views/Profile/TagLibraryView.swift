@@ -106,7 +106,7 @@ struct TagLibraryView: View {
 
             Spacer(minLength: DesignSystem.Space.x2)
 
-            Text("\(tag.tasks?.count ?? 0)")
+            Text("\(tag.activeTaskCount)")
                 .font(DesignSystem.Typography.caption())
                 .foregroundStyle(DesignSystem.Colors.textSecondary)
 

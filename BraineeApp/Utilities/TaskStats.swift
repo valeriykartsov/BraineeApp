@@ -2,7 +2,7 @@
 //  TaskStats.swift
 //  BraineeApp
 //
-//  Цифры дашборда по всем активным задачам.
+//  Цифры дашборда по всем задачам не из корзины.
 
 import Foundation
 
@@ -14,8 +14,10 @@ struct TaskStats: Equatable {
     let today: Int
     let progress: Double
 
-    /// Статистика по уже отфильтрованным активным задачам (без мягко удалённых).
-    static func compute(from tasks: [TaskItem]) -> TaskStats {
+    /// Статистика по задачам не из корзины: удалённые отбрасываются здесь же,
+    /// даже если вызывающий передал их (дашборд, виджет).
+    static func compute(from allTasks: [TaskItem]) -> TaskStats {
+        let tasks = allTasks.notInTrash
         var completed = 0
         var overdue = 0
         var today = 0

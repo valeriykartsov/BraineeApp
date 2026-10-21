@@ -149,4 +149,21 @@ struct GroupAndTagServiceTests {
         #expect(try context.fetch(FetchDescriptor<TaskItem>()).count == 1)
         #expect(counter.count == 1)
     }
+
+    // Счётчик тега: задачи из корзины не считаются, выполненные — считаются.
+    @Test func счётчикТега_безЗадачИзКорзины() throws {
+        let context = container.mainContext
+        let tag = TaskTag(name: "работа")
+        context.insert(tag)
+        let active = TaskItem(title: "Активная")
+        let done = TaskItem(title: "Выполненная", isCompleted: true)
+        let trashed = TaskItem(title: "В корзине", isSoftDeleted: true, deletedAt: .now)
+        for task in [active, done, trashed] {
+            context.insert(task)
+            task.tags = [tag]
+        }
+        try context.save()
+
+        #expect(tag.activeTaskCount == 2)
+    }
 }

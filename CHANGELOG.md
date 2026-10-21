@@ -3,6 +3,10 @@
 Notable changes to BraineeApp. Dates are commit dates. Decision references (D-xx) point to [`docs/decisions.md`](docs/decisions.md).
 The October 2026 work was a modernization done in phases; the detailed task plan and audit it followed are available in git history (`e1ccfff`).
 
+## 2026-10-21 — UI polish
+
+- Tag library, dashboard and widget counters use one rule: tasks in the trash are never counted.
+
 ## 2026-10-21 — Repository cleanup
 
 - Feature scope frozen (D-35): Obsidian/Markdown viewer, server, sync, Telegram bot and ops phases removed from plans.

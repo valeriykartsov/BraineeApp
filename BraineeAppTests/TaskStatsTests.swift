@@ -66,4 +66,26 @@ struct TaskStatsTests {
         let stats = TaskStats.compute(from: activeOnly)
         #expect(stats.total == 1)
     }
+
+    // Задачи из корзины не входят ни в один счётчик дашборда, даже если их передали.
+    @Test func задачиИзКорзины_неСчитаются() {
+        let active = TaskItem(title: "Активная")
+        let done = TaskItem(title: "Выполненная", isCompleted: true)
+        let trashedDone = TaskItem(title: "Удалённая выполненная", isCompleted: true, isSoftDeleted: true, deletedAt: .now)
+        let trashedOverdue = TaskItem(
+            title: "Удалённая просроченная",
+            deadline: TestHelpers.daysFromNow(-3),
+            isSoftDeleted: true,
+            deletedAt: .now
+        )
+
+        let stats = TaskStats.compute(from: [active, done, trashedDone, trashedOverdue])
+
+        #expect(stats.total == 2)
+        #expect(stats.completed == 1)
+        #expect(stats.active == 1)
+        #expect(stats.overdue == 0)
+        #expect(stats.progress == 0.5)
+    }
+
 }

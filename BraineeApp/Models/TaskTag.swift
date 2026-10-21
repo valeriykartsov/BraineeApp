@@ -28,3 +28,10 @@ final class TaskTag {
         self.updatedAt = updatedAt ?? createdAt
     }
 }
+
+extension TaskTag {
+    /// Сколько задач с этим тегом не в корзине (выполненные считаются).
+    var activeTaskCount: Int {
+        (tasks ?? []).notInTrash.count
+    }
+}
