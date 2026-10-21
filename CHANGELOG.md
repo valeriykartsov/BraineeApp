@@ -6,6 +6,7 @@ The October 2026 work was a modernization done in phases; the detailed task plan
 ## 2026-10-21 — UI polish
 
 - Tag library, dashboard and widget counters use one rule: tasks in the trash are never counted.
+- Dashboard details: Active / All switch at the top (All includes tasks in the trash, marked "В корзине"), a summary block, and a tag pie chart with a legend in percent (tag marks share, sums to 100%).
 - "No folder" block renamed to **Inbox** («Входящие») in the task list, the delete-folder confirmation, FAQ and the LLM draft note.
 - Folder cards in the task list keep their rounded bottom corners (drag and drop between folders unchanged).
 - Profile shows the app logo and "BraineeApp" in the top-left corner instead of the "Profile" title; no glass capsule on iOS 26+.

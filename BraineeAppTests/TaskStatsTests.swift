@@ -88,4 +88,16 @@ struct TaskStatsTests {
         #expect(stats.progress == 0.5)
     }
 
+    // Режим «Все» в детализации: удалённые задачи считаются как обычные.
+    @Test func режимВсе_удалённыеСчитаются() {
+        let active = TaskItem(title: "Активная")
+        let trashedDone = TaskItem(title: "Удалённая выполненная", isCompleted: true, isSoftDeleted: true, deletedAt: .now)
+
+        let stats = TaskStats.compute(from: [active, trashedDone], includingTrash: true)
+
+        #expect(stats.total == 2)
+        #expect(stats.completed == 1)
+        #expect(stats.active == 1)
+        #expect(stats.progress == 0.5)
+    }
 }
