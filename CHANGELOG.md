@@ -3,6 +3,11 @@
 Notable changes to BraineeApp. Dates are commit dates. Decision references (D-xx) point to [`docs/decisions.md`](docs/decisions.md).
 The October 2026 work was a modernization done in phases; the detailed task plan and audit it followed are available in git history (`e1ccfff`).
 
+## 2026-10-22 — LLM chat: mode menu and Copy
+
+- Chat mode is picked from a drop-down menu instead of a horizontally scrolling row: the button shows the current mode's icon and name in the accent color, the list marks it with a checkmark.
+- "Copy" under the Reflection and Day plan answers (and in the long-press menu) puts the answer as plain text on the clipboard; nothing is sent anywhere.
+
 ## 2026-10-22 — Habit reordering fix
 
 - Drag and drop of habits works again: the long-press gesture on the handle was cancelled by the system drag and cleared the drag state, so rows did not move. The drop now also reorders by the dragged habit's id and saves the order once; dropping between rows ends the drag cleanly.
