@@ -49,11 +49,14 @@ struct CalendarWeekView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                Text("Календарь")
-                    .font(DesignSystem.Typography.title(24))
-                    .foregroundStyle(DesignSystem.Colors.textPrimary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, DesignSystem.Space.screenInset)
+                HStack {
+                    Text("Календарь")
+                        .font(DesignSystem.Typography.title(24))
+                        .foregroundStyle(DesignSystem.Colors.textPrimary)
+                    Spacer()
+                    shareDayButton
+                }
+                .padding(.horizontal, DesignSystem.Space.screenInset)
                     .padding(.top, DesignSystem.Space.x1)
                     .padding(.bottom, DesignSystem.Space.x2)
 
@@ -134,6 +137,18 @@ struct CalendarWeekView: View {
     private func resetToToday() {
         selectedDay = Calendar.current.startOfDay(for: .now)
         weekStart = CalendarWeekHelper.startOfWeek(containing: selectedDay)
+    }
+
+    /// «Поделиться» задачами выбранного дня (п. 23a): состав текста — D-38, отправляет пользователь.
+    private var shareDayButton: some View {
+        ShareLink(item: DayTasksShareText.make(tasks: tasks, day: selectedDay)) {
+            Image(systemName: "square.and.arrow.up")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(DesignSystem.Colors.accent)
+                .frame(width: DesignSystem.Space.x10, height: DesignSystem.Space.x10)
+                .contentShape(Rectangle())
+        }
+        .accessibilityLabel("Поделиться задачами дня")
     }
 
     private var weekHeader: some View {
