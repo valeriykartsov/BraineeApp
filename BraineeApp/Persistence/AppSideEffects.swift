@@ -51,7 +51,10 @@ struct BackgroundSaveModifier: ViewModifier {
                 guard phase == .background else { return }
                 modelContext.didChange()
                 do {
-                    try AutoBackup().performIfDue(context: modelContext)
+                    // Запись в журнал — только когда файл действительно создан (раз в 24 ч).
+                    if let url = try AutoBackup().performIfDue(context: modelContext) {
+                        SessionLog.shared.add(.backup, "Автобэкап создан", subject: url.lastPathComponent)
+                    }
                 } catch {
                     print("AutoBackup failed: \(error)")
                 }

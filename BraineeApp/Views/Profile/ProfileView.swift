@@ -298,6 +298,15 @@ struct ProfileView: View {
                 GroupedNavRow(title: "Удалённые задачи", systemImage: DesignSystem.Icon.trash)
             }
             .buttonStyle(.plain)
+
+            InsetDivider(leading: DesignSystem.Space.rowIconInset)
+
+            NavigationLink {
+                SessionLogView()
+            } label: {
+                GroupedNavRow(title: "Журнал сессии", systemImage: "list.bullet.rectangle")
+            }
+            .buttonStyle(.plain)
         }
         .sheet(isPresented: $showingMatrix) {
             EisenhowerMatrixView()
@@ -445,6 +454,7 @@ struct ProfileView: View {
         switch result {
         case .success(let url):
             backupMessage = "Сохранено: \(url.lastPathComponent)\n\(pendingBackupSummary)"
+            SessionLog.shared.add(.backup, "Бэкап сохранён", subject: url.lastPathComponent)
         case .failure(let error):
             if (error as? CocoaError)?.code != .userCancelled {
                 print("Backup export failed: \(error)")
@@ -480,6 +490,11 @@ struct ProfileView: View {
             let safetyURL = try BackupRestore().restore(preview, into: modelContext.container)
             modelContext.didChange()
             AppIconSwitcher.syncWithCurrentAccent()
+            SessionLog.shared.add(
+                .backup,
+                "Данные восстановлены из бэкапа",
+                subject: "от \(SessionLogDiff.date(preview.exportedAt, hasTime: true))"
+            )
             backupMessage = "Данные восстановлены.\n\(preview.summary)\n"
                 + "Прежние данные сохранены: \(safetyURL.lastPathComponent)"
         } catch {

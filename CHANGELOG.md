@@ -3,6 +3,13 @@
 Notable changes to BraineeApp. Dates are commit dates. Decision references (D-xx) point to [`docs/decisions.md`](docs/decisions.md).
 The October 2026 work was a modernization done in phases; the detailed task plan and audit it followed are available in git history (`e1ccfff`).
 
+## 2026-10-23 — Session log
+
+- "Profile → More → Session log": what was done since the app was launched, newest first, up to 500 entries. Kept in memory only — gone when the app is unloaded; never stored, backed up or sent anywhere.
+- Logged: tasks (created, edited with "old → new" per field, completed, moved to another folder, trashed, restored, deleted for good), folders, tags and habits (created, renamed, checked, deleted), profile changes (avatar — only the fact), settings and theme, API key saved/removed (never the key), manual backup, auto-backup, restore.
+- Not logged: reordering within a list; a task's description shows only "Описание изменено", never its text.
+- Domain services write the entries; settings are watched by one observer over a fixed list of UserDefaults keys, so each change is logged once.
+
 ## 2026-10-22 — Lock Screen widgets
 
 - "Calendar" (circular): weekday, date and today's tasks as "left/total" (only tasks due today; overdue ones are not counted).

@@ -46,6 +46,8 @@ struct AppRootView: View {
             DemoDataSeeder.seedIfRequested(into: modelContext)
             DemoMeetingsSeeder.seedIfRequested()
 #endif
+            // После подготовки и демо-данных: их записи в UserDefaults не попадают в журнал сессии.
+            SettingsChangeObserver.shared.start()
             isReady = true
             // Подтянуть иконку Springboard под сохранённый акцент (без алерта).
             AppIconSwitcher.syncWithCurrentAccent()
