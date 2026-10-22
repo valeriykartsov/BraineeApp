@@ -345,7 +345,8 @@ struct LLMChatView: View {
         )
     }
 
-    /// Ответ ассистента с кнопкой «Копировать» под карточкой и тем же пунктом в контекстном меню (п. 8).
+    /// Ответ ассистента с кнопками «Копировать» (п. 8) и «Поделиться» (п. 23a, D-38) под карточкой
+    /// и теми же пунктами в контекстном меню. Делится тем же текстом, что копируется.
     private func copyableAnswer<Card: View>(
         _ id: UUID,
         text: String,
@@ -360,7 +361,22 @@ struct LLMChatView: View {
                     } label: {
                         Label("Копировать", systemImage: "doc.on.doc")
                     }
+                    ShareLink(item: text) {
+                        Label("Поделиться", systemImage: "square.and.arrow.up")
+                    }
                 }
+            HStack(spacing: DesignSystem.Space.x2) {
+                ShareLink(item: text) {
+                    Label("Поделиться", systemImage: "square.and.arrow.up")
+                        .font(DesignSystem.Typography.caption())
+                        .foregroundStyle(DesignSystem.Colors.accent)
+                        .padding(.horizontal, DesignSystem.Space.x1)
+                        .padding(.vertical, DesignSystem.Space.x1)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Поделиться ответом")
+
             Button {
                 copy(text, messageID: id)
             } label: {
@@ -373,6 +389,7 @@ struct LLMChatView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(isCopied ? "Ответ скопирован" : "Копировать ответ")
+            }
         }
     }
 

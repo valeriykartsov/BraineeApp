@@ -19,7 +19,7 @@ The app UI is in Russian. Screenshots use demo data.
 ## Features
 
 - **Tasks** — deadlines with optional time, priorities, statuses, descriptions, tags, folders, drag-and-drop, list and kanban views, soft delete with a trash.
-- **Calendar** — week strip with the tasks of the selected day; optional one-way export to an app-owned "BraineeApp" calendar in the iPhone Calendar (iCloud); optional read-only list of the day's meetings from your calendars, sorted by time with start and duration.
+- **Calendar** — week strip with the tasks of the selected day; optional one-way export to an app-owned "BraineeApp" calendar in the iPhone Calendar (iCloud); optional read-only list of the day's meetings from your calendars, sorted by time with start and duration; share the day's open tasks as text (e.g. to Telegram).
 - **Habits** — up to 7 habits, a three-month contribution grid, check-ins for today and up to 14 days back.
 - **AI assistant (optional, OpenRouter)** — turn a phrase into a task draft, split a brain dump into several drafts, get a short day/week reflection, get a suggested plan for today. Drafts are saved only after you confirm them in the regular task form.
 - **Dashboard** — progress, overdue and today counters; details with a tag pie chart (percent legend) and an Active / All (including trash) switch.
@@ -44,6 +44,8 @@ The app UI is in Russian. Screenshots use demo data.
 | Day plan | titles, priorities, deadline times and overdue flags of today's and overdue tasks (max 30) — asked once for consent |
 
 Task descriptions, tags of tasks, profile data and backups are never sent.
+
+"Share" (Calendar tab, Day plan and Reflection answers) hands plain text to the system share sheet; you choose where it goes. The day's tasks are sent as deadline time and title only (D-38).
 
 ## Tech stack
 

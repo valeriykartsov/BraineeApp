@@ -3,6 +3,12 @@
 Notable changes to BraineeApp. Dates are commit dates. Decision references (D-xx) point to [`docs/decisions.md`](docs/decisions.md).
 The October 2026 work was a modernization done in phases; the detailed task plan and audit it followed are available in git history (`e1ccfff`).
 
+## 2026-10-23 — Share the day's tasks and LLM answers
+
+- Calendar tab: a Share button next to the title sends the selected day's open tasks as plain text through the system share sheet (Telegram, Messages, Notes…): weekday and date, then "HH:MM Title" for timed tasks and "• Title" for the rest. No descriptions, tags, folders, priorities, completed or overdue tasks, no meetings (D-38).
+- LLM chat: "Share" next to "Copy" under Day plan and Reflection answers (and in the long-press menu), with the same text as Copy.
+- Nothing is sent by the app itself: you pick the recipient in the system menu; no network, no tokens.
+
 ## 2026-10-23 — Session log
 
 - "Profile → More → Session log": what was done since the app was launched, newest first, up to 500 entries. Kept in memory only — gone when the app is unloaded; never stored, backed up or sent anywhere.
