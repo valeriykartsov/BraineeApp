@@ -15,6 +15,8 @@ struct TagService {
     var onChange: (ModelContext) -> Void = { $0.didChange() }
     /// Текущее время для updatedAt; в тестах подменяется фиксированной датой.
     var now: () -> Date = { .now }
+    /// Журнал сессии (п. 16); в тестах — свой экземпляр.
+    var log: SessionLog = .shared
 
     private var existingNames: [String] {
         ((try? context.fetch(FetchDescriptor<TaskTag>())) ?? []).map(\.name)
@@ -26,6 +28,7 @@ struct TagService {
         guard TaskInputValidation.canCreateTag(name: name, existingNames: existingNames) else { return nil }
         let tag = TaskTag(name: TaskInputValidation.normalizedTagName(name), createdAt: now())
         context.insert(tag)
+        log.add(.tag, "Тег создан", subject: tag.name)
         onChange(context)
         return tag
     }
@@ -38,7 +41,11 @@ struct TagService {
             existingNames: existingNames,
             currentName: tag.name
         ) else { return false }
+        let oldName = tag.name
         tag.name = TaskInputValidation.normalizedTagName(name)
+        if let change = SessionLogDiff.line(nil, SessionLogDiff.quoted(oldName), SessionLogDiff.quoted(tag.name)) {
+            log.add(.tag, "Тег переименован", subject: tag.name, changes: [change])
+        }
         tag.updatedAt = now()
         onChange(context)
         return true
@@ -46,9 +53,16 @@ struct TagService {
 
     /// Тег снимается со всех задач (связь обнуляется); у этих задач обновляется updatedAt.
     func delete(_ tag: TaskTag) {
-        for task in tag.tasks ?? [] {
+        let tasks = tag.tasks ?? []
+        for task in tasks {
             task.updatedAt = now()
         }
+        log.add(
+            .tag,
+            "Тег удалён",
+            subject: tag.name,
+            changes: tasks.isEmpty ? [] : ["Снят с задач: \(tasks.count)"]
+        )
         context.delete(tag)
         onChange(context)
     }

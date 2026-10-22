@@ -310,6 +310,8 @@ struct LLMSettingsView: View {
         }
         do {
             try secrets.set(key, for: .openRouterAPIKey)
+            // Только факт, без значения ключа (п. 16).
+            SessionLog.shared.add(.settings, "Ключ OpenRouter сохранён")
             keyInput = ""
             isReplacingKey = false
             focusedField = nil
@@ -325,6 +327,7 @@ struct LLMSettingsView: View {
     private func deleteKey() {
         do {
             try secrets.remove(.openRouterAPIKey)
+            SessionLog.shared.add(.settings, "Ключ OpenRouter удалён")
             keyError = nil
             isReplacingKey = false
             reloadKey()

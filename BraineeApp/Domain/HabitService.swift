@@ -15,6 +15,8 @@ struct HabitService {
     var onChange: (ModelContext) -> Void = { $0.didChange() }
     /// Текущее время для updatedAt; в тестах подменяется фиксированной датой.
     var now: () -> Date = { .now }
+    /// Журнал сессии (п. 16); в тестах — свой экземпляр.
+    var log: SessionLog = .shared
 
     /// Привычки в порядке отображения.
     var habits: [Habit] {
@@ -37,6 +39,7 @@ struct HabitService {
             createdAt: now()
         )
         context.insert(habit)
+        log.add(.habit, "Привычка создана", subject: habit.title)
         onChange(context)
         return habit
     }
@@ -45,7 +48,11 @@ struct HabitService {
     @discardableResult
     func rename(_ habit: Habit, to title: String) -> Bool {
         guard TaskInputValidation.canSaveTitle(title) else { return false }
+        let oldTitle = habit.title
         habit.title = TaskInputValidation.normalizedTitle(title)
+        if let change = SessionLogDiff.line(nil, SessionLogDiff.quoted(oldTitle), SessionLogDiff.quoted(habit.title)) {
+            log.add(.habit, "Привычка переименована", subject: habit.title, changes: [change])
+        }
         habit.updatedAt = now()
         onChange(context)
         return true
@@ -59,11 +66,19 @@ struct HabitService {
         habit.toggleCompletion(on: allowedDay, calendar: calendar)
         // self.now — время изменения; параметр now — «сегодня» для правила допустимых дней.
         habit.updatedAt = self.now()
+        let isCompleted = habit.isCompleted(on: allowedDay, calendar: calendar)
+        log.add(
+            .habit,
+            isCompleted ? "Привычка отмечена" : "Отметка привычки снята",
+            subject: habit.title,
+            changes: ["День: \(SessionLogDiff.date(allowedDay, timeZone: calendar.timeZone))"]
+        )
         onChange(context)
-        return habit.isCompleted(on: allowedDay, calendar: calendar)
+        return isCompleted
     }
 
     func delete(_ habit: Habit) {
+        log.add(.habit, "Привычка удалена", subject: habit.title)
         context.delete(habit)
         onChange(context)
     }
