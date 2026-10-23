@@ -30,7 +30,28 @@ struct ProfileDocumentTests {
         #expect(document.age == nil)
         #expect(document.genderRaw == UserGender.unspecified.rawValue)
         #expect(document.accentPaletteRaw == AccentPalette.orange.rawValue)
+        #expect(document.status == "")
         #expect(document.version == ProfileDocument.currentVersion)
+    }
+
+    // Статус (D-45) переживает кодирование и чтение; normalize делает его одной строкой до 60 символов.
+    @Test func статус_вJSONИНормализация() throws {
+        var document = ProfileDocument.empty
+        document.status = "на связи\nвечером"
+        document.normalize()
+        #expect(document.status == "на связи вечером")
+
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let decoded = try decoder.decode(ProfileDocument.self, from: encoder.encode(document))
+        #expect(decoded.status == "на связи вечером")
+
+        var long = ProfileDocument.empty
+        long.status = String(repeating: "а", count: 100)
+        long.normalize()
+        #expect(long.status.count == ProfileStatus.maxLength)
     }
 
     // Новый профиль с возрастом и полом сохраняет значения после normalize.

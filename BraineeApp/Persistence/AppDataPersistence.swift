@@ -193,7 +193,7 @@ enum AppDataPersistence {
         )
     }
 
-    static func exportProfile(from context: ModelContext) -> ProfileDocument {
+    static func exportProfile(from context: ModelContext, defaults: UserDefaults = .standard) -> ProfileDocument {
         let profiles = (try? context.fetch(FetchDescriptor<UserProfile>())) ?? []
         let profile = profiles.first
 
@@ -204,9 +204,10 @@ enum AppDataPersistence {
             avatarBase64: profile?.avatarData?.base64EncodedString(),
             age: profile?.age,
             genderRaw: profile?.genderRaw ?? UserGender.unspecified.rawValue,
-            appThemeRaw: UserDefaults.standard.string(forKey: "appTheme") ?? AppTheme.system.rawValue,
-            accentPaletteRaw: UserDefaults.standard.string(forKey: AccentPalette.storageKey)
+            appThemeRaw: defaults.string(forKey: "appTheme") ?? AppTheme.system.rawValue,
+            accentPaletteRaw: defaults.string(forKey: AccentPalette.storageKey)
                 ?? AccentPalette.orange.rawValue,
+            status: ProfileStatus.load(defaults: defaults),
             createdAt: profile?.createdAt ?? .now
         )
         document.normalize()

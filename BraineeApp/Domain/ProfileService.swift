@@ -15,6 +15,8 @@ struct ProfileService {
     var onChange: (ModelContext) -> Void = { $0.didChange() }
     /// Журнал сессии (п. 16); в тестах — свой экземпляр.
     var log: SessionLog = .shared
+    /// Статус профиля (D-45) и тема с акцентом — в UserDefaults; в тестах — свой домен.
+    var defaults: UserDefaults = .standard
 
     /// Профиль один; если его нет (новая установка или в JSON его не было) — создаётся пустой.
     @discardableResult
@@ -28,9 +30,13 @@ struct ProfileService {
         return profile
     }
 
-    func update(name: String, age: Int?, gender: UserGender, avatarData: Data?) {
+    /// `status` — текстовый статус (D-45); `nil` — не менять.
+    func update(name: String, age: Int?, gender: UserGender, avatarData: Data?, status: String? = nil) {
         let profile = ensureProfile()
-        // Аватар — только факт смены, без данных (п. 16).
+        // Без `status` UserDefaults не читаются и не пишутся.
+        let oldStatus = status == nil ? nil : ProfileStatus.load(defaults: defaults)
+        let newStatus = status.map(ProfileStatus.normalized)
+        // Аватар и статус — только факт смены, без данных (п. 16).
         let changes = [
             SessionLogDiff.line("Имя", SessionLogDiff.quoted(profile.displayName), SessionLogDiff.quoted(name)),
             SessionLogDiff.line(
@@ -39,7 +45,8 @@ struct ProfileService {
                 age.map(String.init) ?? SessionLogDiff.none
             ),
             SessionLogDiff.line("Пол", profile.gender.title, gender.title),
-            profile.avatarData != avatarData ? "Аватар изменён" : nil
+            profile.avatarData != avatarData ? "Аватар изменён" : nil,
+            oldStatus != newStatus ? "Статус изменён" : nil
         ].compactMap { $0 }
         if !changes.isEmpty {
             log.add(.profile, "Профиль изменён", changes: changes)
@@ -48,6 +55,9 @@ struct ProfileService {
         profile.age = age
         profile.gender = gender
         profile.avatarData = avatarData
+        if let newStatus {
+            ProfileStatus.save(newStatus, defaults: defaults)
+        }
         onChange(context)
     }
 

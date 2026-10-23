@@ -18,6 +18,8 @@ struct ProfileView: View {
     var isActive: Bool = true
 
     @AppStorage(AccentPalette.storageKey) private var accentPaletteRaw = AccentPalette.orange.rawValue
+    /// Текстовый статус (D-45); меняется только через «Изменить профиль» → ProfileService.
+    @AppStorage(ProfileStatus.storageKey) private var statusRaw = ""
 
     @State private var searchText = ""
     @State private var isSearchExpanded = false
@@ -56,7 +58,7 @@ struct ProfileView: View {
                         .transition(.move(edge: .top).combined(with: .opacity))
                     }
 
-                    if matches("пользователь", "профиль", "имя", "аватар", "возраст", "пол") {
+                    if matches("пользователь", "профиль", "имя", "статус", "аватар", "возраст", "пол") {
                         userSection
                     }
 
@@ -132,9 +134,10 @@ struct ProfileView: View {
                     initialName: profile?.displayName ?? "",
                     initialAge: profile?.age,
                     initialGender: profile?.gender ?? .unspecified,
-                    initialAvatarData: profile?.avatarData
-                ) { name, age, gender, avatarData in
-                    saveProfile(name: name, age: age, gender: gender, avatarData: avatarData)
+                    initialAvatarData: profile?.avatarData,
+                    initialStatus: statusText
+                ) { name, age, gender, avatarData, status in
+                    saveProfile(name: name, age: age, gender: gender, avatarData: avatarData, status: status)
                 }
             }
             .fileExporter(
@@ -219,9 +222,20 @@ struct ProfileView: View {
                 )
 
                 VStack(alignment: .leading, spacing: DesignSystem.Space.x2) {
-                    Text(displayNameText)
-                        .font(DesignSystem.Typography.headline())
-                        .foregroundStyle(DesignSystem.Colors.textPrimary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(displayNameText)
+                            .font(DesignSystem.Typography.headline())
+                            .foregroundStyle(DesignSystem.Colors.textPrimary)
+                        // Статус под именем: курсив, одна строка; пустой не показывается (п. 35).
+                        if !statusText.isEmpty {
+                            Text(statusText)
+                                .font(DesignSystem.Typography.body(15))
+                                .italic()
+                                .foregroundStyle(DesignSystem.Colors.textSecondary)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                        }
+                    }
 
                     HStack(alignment: .top, spacing: DesignSystem.Space.x3) {
                         labeledValue(title: "Возраст", value: ageText)
@@ -252,6 +266,10 @@ struct ProfileView: View {
     private var displayNameText: String {
         let name = profile?.displayName.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return name.isEmpty ? "Без имени" : name
+    }
+
+    private var statusText: String {
+        ProfileStatus.normalized(statusRaw)
     }
 
     private var ageText: String {
@@ -511,8 +529,8 @@ struct ProfileView: View {
         profileService.ensureProfile()
     }
 
-    private func saveProfile(name: String, age: Int?, gender: UserGender, avatarData: Data?) {
-        profileService.update(name: name, age: age, gender: gender, avatarData: avatarData)
+    private func saveProfile(name: String, age: Int?, gender: UserGender, avatarData: Data?, status: String) {
+        profileService.update(name: name, age: age, gender: gender, avatarData: avatarData, status: status)
     }
 }
 
