@@ -15,4 +15,6 @@ struct TaskFormData {
     var status: TaskStatus
     var taskDetails: String
     var selectedTags: [TaskTag]
+    /// Длительность в минутах; nil — по умолчанию (30 мин, D-40).
+    var durationMinutes: Int? = nil
 }

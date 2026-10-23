@@ -17,6 +17,8 @@ struct TaskFormSnapshot: Equatable {
     var deadlineMinute: Int?
     var reminderOffsets: [TaskReminderOffset]
     var selectedTagUUIDs: Set<UUID>
+    /// Как сохранится в задаче (`TaskDuration.stored`): 30 мин и nil — одно и то же.
+    var durationMinutes: Int?
 
     init(
         title: String = "",
@@ -27,7 +29,8 @@ struct TaskFormSnapshot: Equatable {
         hasDeadlineTime: Bool = false,
         deadline: Date? = nil,
         reminderOffsets: [TaskReminderOffset] = [],
-        selectedTagUUIDs: Set<UUID> = []
+        selectedTagUUIDs: Set<UUID> = [],
+        durationMinutes: Int? = nil
     ) {
         self.title = title
         self.taskDetails = taskDetails
@@ -44,6 +47,7 @@ struct TaskFormSnapshot: Equatable {
             ? TaskReminderOffset.normalizedList(reminderOffsets.map(\.rawValue))
             : []
         self.selectedTagUUIDs = selectedTagUUIDs
+        self.durationMinutes = TaskDuration.stored(durationMinutes, hasDeadlineTime: self.hasDeadlineTime)
     }
 
     init(task: TaskItem) {
@@ -56,7 +60,8 @@ struct TaskFormSnapshot: Equatable {
             hasDeadlineTime: task.hasDeadlineTime,
             deadline: task.deadline,
             reminderOffsets: task.reminderOffsets,
-            selectedTagUUIDs: Set(task.tags.map(\.uuid))
+            selectedTagUUIDs: Set(task.tags.map(\.uuid)),
+            durationMinutes: task.durationMinutes
         )
     }
 

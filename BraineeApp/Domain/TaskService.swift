@@ -35,7 +35,8 @@ struct TaskService {
             status: .new,
             createdAt: now(),
             taskDetails: form.taskDetails,
-            sortOrder: nextOrder
+            sortOrder: nextOrder,
+            durationMinutes: TaskDuration.stored(form.durationMinutes, hasDeadlineTime: form.hasDeadlineTime && form.deadline != nil)
         )
         context.insert(task)
         // Теги — после insert: связь «многие ко многим», заданная в init до вставки,
@@ -50,7 +51,9 @@ struct TaskService {
         let before = TaskLogFields(task)
         task.title = form.title
         task.deadline = form.deadline
-        task.hasDeadlineTime = form.hasDeadlineTime
+        task.hasDeadlineTime = form.hasDeadlineTime && form.deadline != nil
+        // Длительность только у задачи со временем: убрали время или дату — сброс (D-40).
+        task.durationMinutes = TaskDuration.stored(form.durationMinutes, hasDeadlineTime: task.hasDeadlineTime)
         task.reminderOffsets = form.reminderOffsets
         task.priority = form.priority
         task.status = form.status

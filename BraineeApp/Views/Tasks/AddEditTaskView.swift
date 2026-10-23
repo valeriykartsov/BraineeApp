@@ -22,6 +22,8 @@ struct AddEditTaskView: View {
     @State private var hasDeadlineTime: Bool
     @State private var deadline: Date
     @State private var reminderOffsets: [TaskReminderOffset]
+    /// nil — по умолчанию (30 мин, D-40).
+    @State private var durationMinutes: Int?
     @State private var priority: TaskPriority
     @State private var status: TaskStatus
     @State private var taskDetails: String
@@ -58,7 +60,8 @@ struct AddEditTaskView: View {
             hasDeadlineTime: hasDeadlineTime,
             deadline: hasDeadline ? deadline : nil,
             reminderOffsets: reminderOffsets,
-            selectedTagUUIDs: selectedTagUUIDs
+            selectedTagUUIDs: selectedTagUUIDs,
+            durationMinutes: durationMinutes
         )
     }
 
@@ -120,6 +123,7 @@ struct AddEditTaskView: View {
         _hasDeadline = State(initialValue: snapshot.hasDeadline)
         _hasDeadlineTime = State(initialValue: snapshot.hasDeadlineTime)
         _reminderOffsets = State(initialValue: snapshot.reminderOffsets)
+        _durationMinutes = State(initialValue: snapshot.durationMinutes)
         _selectedTagUUIDs = State(initialValue: snapshot.selectedTagUUIDs)
         _deadline = State(initialValue: deadline ?? Date())
     }
@@ -197,6 +201,11 @@ struct AddEditTaskView: View {
                                     focusedField = nil
                                     showingTimePicker = true
                                 }
+                            }
+
+                            if hasDeadline, hasDeadlineTime {
+                                InsetDivider(leading: DesignSystem.Space.x3)
+                                durationRow
                             }
                         }
                     }
@@ -321,6 +330,7 @@ struct AddEditTaskView: View {
                     onReset: {
                         hasDeadline = false
                         hasDeadlineTime = false
+                        durationMinutes = nil
                         reminderOffsets = []
                         showingDatePicker = false
                     }
@@ -338,6 +348,7 @@ struct AddEditTaskView: View {
                     },
                     onReset: {
                         hasDeadlineTime = false
+                        durationMinutes = nil
                         deadline = Calendar.current.startOfDay(for: deadline)
                         showingTimePicker = false
                     }
@@ -346,6 +357,7 @@ struct AddEditTaskView: View {
             .onChange(of: hasDeadline) { _, enabled in
                 if !enabled {
                     hasDeadlineTime = false
+                    durationMinutes = nil
                     reminderOffsets = []
                 }
             }
@@ -354,6 +366,39 @@ struct AddEditTaskView: View {
                     lastFocusedField = field
                 }
             }
+        }
+    }
+
+    // MARK: - Длительность (D-40)
+
+    /// Меню с фиксированным списком; значение не из списка (например, из бэкапа) показывается как есть.
+    private var durationRow: some View {
+        let current = TaskDuration.effective(durationMinutes)
+        return Menu {
+            ForEach(TaskDuration.options, id: \.self) { minutes in
+                Button {
+                    durationMinutes = minutes == TaskDuration.defaultMinutes ? nil : minutes
+                } label: {
+                    if minutes == current {
+                        Label(TaskDuration.title(minutes), systemImage: "checkmark")
+                    } else {
+                        Text(TaskDuration.title(minutes))
+                    }
+                }
+            }
+        } label: {
+            HStack {
+                Text("Длительность")
+                    .font(DesignSystem.Typography.body(16))
+                    .foregroundStyle(DesignSystem.Colors.textPrimary)
+                Spacer()
+                Text(TaskDuration.title(current))
+                    .font(DesignSystem.Typography.body(16))
+                    .foregroundStyle(DesignSystem.Colors.accent)
+            }
+            .padding(.horizontal, DesignSystem.Space.x3)
+            .padding(.vertical, DesignSystem.Space.x2 + 2)
+            .contentShape(Rectangle())
         }
     }
 
@@ -645,7 +690,8 @@ struct AddEditTaskView: View {
             priority: priority,
             status: isEditing ? status : .new,
             taskDetails: TaskInputValidation.clampedDetails(taskDetails),
-            selectedTags: resolvedTags()
+            selectedTags: resolvedTags(),
+            durationMinutes: TaskDuration.stored(durationMinutes, hasDeadlineTime: hasDeadline && hasDeadlineTime)
         )
         onSave(formData)
         dismiss()
