@@ -26,7 +26,6 @@ struct TaskOrganizedListView: View {
     @State private var groupPendingDeletion: TaskGroup?
     @State private var showingDeleteGroupConfirm = false
     /// Одна открытая свайпом строка удаления.
-    @State private var swipedTaskUUID: UUID?
 
     /// Фиксированный id drop-зоны «Входящие» (без force unwrap).
     private static let ungroupedDropID = UUID(uuid: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1))
@@ -327,7 +326,7 @@ struct TaskOrganizedListView: View {
     private func taskStack(_ items: [TaskItem]) -> some View {
         LazyVStack(spacing: 0) {
             ForEach(Array(items.enumerated()), id: \.element.uuid) { index, task in
-                taskRow(task, isLast: index == items.count - 1)
+                taskRow(task)
                 if index < items.count - 1 {
                     InsetDivider(leading: DesignSystem.Space.rowIconInset)
                 }
@@ -335,71 +334,18 @@ struct TaskOrganizedListView: View {
         }
     }
 
-    /// Ручка drag стоит СНАРУЖИ SwipeToDeleteRow, чтобы жест свайпа
-    /// не конкурировал с системным drag.
-    /// У последней строки фон скруглён снизу: контейнер папки не обрезается (см. groupSection),
-    /// и прямоугольный фон строки иначе закрывал бы его нижние углы.
-    private func taskRow(_ task: TaskItem, isLast: Bool) -> some View {
-        let radius: CGFloat = isLast ? DesignSystem.Radius.group : 0
-        let rowShape = UnevenRoundedRectangle(
-            bottomLeadingRadius: radius,
-            bottomTrailingRadius: radius,
-            style: .continuous
+    /// Перетаскивание — всей карточкой по долгому удержанию (п. 37): без ручки, меню и свайпа.
+    private func taskRow(_ task: TaskItem) -> some View {
+        TaskRowView(
+            task: task,
+            displaySettings: displaySettings,
+            onToggle: { onToggle(task) },
+            onOpen: { onEdit(task) },
+            onDelete: { onDelete(task) }
         )
-
-        return HStack(spacing: 0) {
-            SwipeToDeleteRow(
-                isOpen: swipedTaskUUID == task.uuid,
-                onOpen: { swipedTaskUUID = task.uuid },
-                onClose: {
-                    if swipedTaskUUID == task.uuid {
-                        swipedTaskUUID = nil
-                    }
-                },
-                onDelete: { onDelete(task) }
-            ) {
-                TaskRowView(
-                    task: task,
-                    displaySettings: displaySettings,
-                    showsActionButtons: true,
-                    onToggle: { onToggle(task) },
-                    onEdit: { onEdit(task) },
-                    onDelete: { onDelete(task) }
-                )
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    if swipedTaskUUID != nil {
-                        withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
-                            swipedTaskUUID = nil
-                        }
-                    } else {
-                        onEdit(task)
-                    }
-                }
-                .contextMenu {
-                    Button {
-                        onEdit(task)
-                    } label: {
-                        Label("Редактировать", systemImage: DesignSystem.Icon.pencil)
-                    }
-                    Button(role: .destructive) {
-                        onDelete(task)
-                    } label: {
-                        Label("Удалить", systemImage: DesignSystem.Icon.trash)
-                    }
-                }
-                .padding(.leading, DesignSystem.Space.x3)
-                .padding(.vertical, DesignSystem.Space.x2)
-                .background(rowShape.fill(DesignSystem.Colors.surface))
-            }
-
-            TaskDragHandle(taskUUID: task.uuid) {
-                taskDragPreview(task)
-            }
-            .padding(.trailing, DesignSystem.Space.x3)
+        .draggable(task.uuid.uuidString) {
+            taskDragPreview(task)
         }
-        .background(rowShape.fill(DesignSystem.Colors.surface))
     }
 
     /// Миниатюра при переносе: только название — без полей из настроек отображения.
@@ -440,22 +386,5 @@ struct TaskOrganizedListView: View {
         withAnimation {
             TaskService(context: modelContext).move(task, to: group)
         }
-    }
-}
-
-/// Ручка drag. Только `.draggable` — без дополнительных LongPress-жестов,
-/// которые конфликтовали с системным drag-interaction.
-private struct TaskDragHandle<Preview: View>: View {
-    let taskUUID: UUID
-    @ViewBuilder var preview: () -> Preview
-
-    var body: some View {
-        Image(systemName: DesignSystem.Icon.drag)
-            .font(.system(size: 17, weight: .semibold))
-            .foregroundStyle(DesignSystem.Colors.textSecondary.opacity(0.75))
-            .frame(width: 32, height: DesignSystem.Space.x11)
-            .contentShape(Rectangle())
-            .accessibilityLabel("Перетащить задачу")
-            .draggable(taskUUID.uuidString, preview: preview)
     }
 }

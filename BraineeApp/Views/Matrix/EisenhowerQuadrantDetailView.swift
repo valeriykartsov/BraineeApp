@@ -31,19 +31,10 @@ struct EisenhowerQuadrantDetailView: View {
                             TaskRowView(
                                 task: task,
                                 displaySettings: displaySettings,
-                                showsActionButtons: true,
                                 onToggle: { toggleTask(task) },
-                                onEdit: { editingTask = task },
+                                onOpen: { editingTask = task },
                                 onDelete: { softDelete(task) }
                             )
-                            .padding(.horizontal, DesignSystem.Space.x3)
-                            .padding(.vertical, DesignSystem.Space.x2)
-                            .contentShape(Rectangle())
-                            .onTapGesture { editingTask = task }
-                            .contextMenu {
-                                Button("Редактировать") { editingTask = task }
-                                Button("Удалить", role: .destructive) { softDelete(task) }
-                            }
 
                             if index < tasks.count - 1 {
                                 InsetDivider(leading: DesignSystem.Space.rowIconInset)

@@ -3,6 +3,13 @@
 Notable changes to BraineeApp. Dates are commit dates. Decision references (D-xx) point to [`docs/decisions.md`](docs/decisions.md).
 The October 2026 work was a modernization done in phases; the detailed task plan and audit it followed are available in git history (`e1ccfff`).
 
+## 2026-10-23 — Task card redesign
+
+- One compact task card in the list, kanban, Calendar tab and matrix: title on one line, description up to 2 lines, labels in the order deadline, status, priority, up to 3 tags, subtasks — a label that does not fit moves to the next line. Same paddings everywhere, height follows the content; an overdue card gets a red background without changing its size.
+- Tap opens the task form; the pencil button is gone. The trash button always asks "Удалить задачу?" before moving the task to the trash.
+- No long-press menu and no swipe-to-delete anywhere. In the list a long press on the card starts dragging it to another folder (the "≡" handle is gone); in the Calendar tab and the matrix a long press does nothing.
+- Display settings of the list are unchanged.
+
 ## 2026-10-23 — LLM "Matrix" mode
 
 - New chat mode "Матрица": for active tasks without a deadline (up to 30, by priority) the model suggests "schedule" (this week / this month / later), "delegate" or "drop", with a short reason and a one-line summary (D-42). View only — deadlines, priorities and the trash are not changed.

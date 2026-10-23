@@ -104,18 +104,10 @@ struct TaskKanbanBoardView: View {
             TaskRowView(
                 task: task,
                 displaySettings: displaySettings,
-                showsActionButtons: true,
                 onToggle: { onToggle(task) },
-                onEdit: { onEdit(task) },
+                onOpen: { onEdit(task) },
                 onDelete: { onDelete(task) }
             )
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(Rectangle())
-            .onTapGesture { onEdit(task) }
-            .contextMenu {
-                Button("Редактировать") { onEdit(task) }
-                Button("Удалить", role: .destructive) { onDelete(task) }
-            }
 
             Image(systemName: DesignSystem.Icon.drag)
                 .font(.system(size: 15, weight: .semibold))
