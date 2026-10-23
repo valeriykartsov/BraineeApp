@@ -2,7 +2,8 @@
 //  DayTasksShareTextTests.swift
 //  BraineeAppTests
 //
-//  Текст «Задачи на день» для «Поделиться» (п. 23a, D-38): только то, что разрешено отправлять.
+//  Текст «Задачи на день» для «Поделиться» (п. 23a, D-38, D-43): только то, что разрешено отправлять;
+//  встречи — отдельным блоком под задачами.
 
 import Foundation
 import Testing
@@ -79,5 +80,56 @@ struct DayTasksShareTextTests {
     @Test func пустойДень_задачНет() {
         let tasks = [task("Сделано", at: day(9), completed: true)]
         #expect(DayTasksShareText.make(tasks: tasks, day: day(), calendar: calendar) == "Задачи на чт, 22 октября: задач нет")
+    }
+
+    private func meeting(_ title: String, _ start: Date, _ end: Date, allDay: Bool = false) -> DayMeeting {
+        let event = CalendarMeeting(id: title, title: title, start: start, end: end, isAllDay: allDay, calendarTitle: "Работа")
+        return CalendarMeetingRules.meetings(on: start, from: [event], calendar: calendar)[0]
+    }
+
+    // Встречи — блоком «Встречи» под задачами, через пустую строку, в переданном порядке (D-43).
+    @Test func встречи_блокомПодЗадачами() {
+        let tasks = [task("Созвон", at: day(10))]
+        let meetings = [
+            meeting("Конференция", day(0), day(0, dayOffset: 1), allDay: true),
+            meeting("Планёрка", day(9, 30), day(10)),
+        ]
+
+        let text = DayTasksShareText.make(tasks: tasks, meetings: meetings, day: day(), calendar: calendar)
+
+        #expect(text == """
+        Задачи на чт, 22 октября
+        10:00 Созвон
+
+        Встречи
+        Весь день — Конференция (Работа)
+        09:30 · 30 мин — Планёрка (Работа)
+        """)
+    }
+
+    // Задач нет, встречи есть — «задач нет», затем блок встреч.
+    @Test func задачНет_встречиЕсть_обаБлока() {
+        let text = DayTasksShareText.make(
+            tasks: [],
+            meetings: [meeting("Планёрка", day(9, 30), day(10))],
+            day: day(),
+            calendar: calendar
+        )
+
+        #expect(text == """
+        Задачи на чт, 22 октября: задач нет
+
+        Встречи
+        09:30 · 30 мин — Планёрка (Работа)
+        """)
+    }
+
+    // Встреч нет (или настройка выключена — экран передаёт пустой список) — блока нет.
+    @Test func встречНет_блокаНет() {
+        let tasks = [task("Созвон", at: day(10))]
+        let text = DayTasksShareText.make(tasks: tasks, meetings: [], day: day(), calendar: calendar)
+
+        #expect(!text.contains("Встречи"))
+        #expect(text == DayTasksShareText.make(tasks: tasks, day: day(), calendar: calendar))
     }
 }

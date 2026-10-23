@@ -153,8 +153,13 @@ struct CalendarWeekView: View {
     }
 
     /// «Поделиться» задачами выбранного дня (п. 23a): состав текста — D-38, отправляет пользователь.
+    /// Встречи — те же, что на экране, и только при включённой настройке и доступе (D-43).
     private var shareDayButton: some View {
-        ShareLink(item: DayTasksShareText.make(tasks: tasks, day: selectedDay)) {
+        ShareLink(item: DayTasksShareText.make(
+            tasks: tasks,
+            meetings: meetingsAvailable ? meetings : [],
+            day: selectedDay
+        )) {
             Image(systemName: "square.and.arrow.up")
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(DesignSystem.Colors.accent)
@@ -328,29 +333,16 @@ struct CalendarWeekView: View {
     }
 
     private func meetingRow(_ item: DayMeeting) -> some View {
-        let meeting = item.meeting
-        let time: String
-        let duration: String?
-        switch item.timing {
-        case .allDay:
-            time = "Весь день"
-            duration = nil
-        case .starts(let start):
-            time = CalendarMeetingRules.timeText(start)
-            duration = CalendarMeetingRules.durationText(from: meeting.start, to: meeting.end)
-        case .continuesUntil(let end):
-            time = "до \(CalendarMeetingRules.timeText(end))"
-            duration = CalendarMeetingRules.durationText(from: meeting.start, to: meeting.end)
-        }
+        let text = DayMeetingText(item)
 
         return HStack(alignment: .firstTextBaseline, spacing: DesignSystem.Space.x3) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(time)
+                Text(text.time)
                     .font(DesignSystem.Typography.headline(15))
                     .monospacedDigit()
                     .foregroundStyle(DesignSystem.Colors.textPrimary)
                     .lineLimit(2)
-                if let duration {
+                if let duration = text.duration {
                     Text(duration)
                         .font(DesignSystem.Typography.caption(11))
                         .foregroundStyle(DesignSystem.Colors.textSecondary)
@@ -359,11 +351,11 @@ struct CalendarWeekView: View {
             .frame(width: 76, alignment: .leading)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(meeting.title.isEmpty ? "Без названия" : meeting.title)
+                Text(text.title)
                     .font(DesignSystem.Typography.body(15))
                     .foregroundStyle(DesignSystem.Colors.textPrimary)
                     .lineLimit(2)
-                Text(meeting.calendarTitle)
+                Text(text.calendarTitle)
                     .font(DesignSystem.Typography.caption(11))
                     .foregroundStyle(DesignSystem.Colors.textSecondary)
                     .lineLimit(1)

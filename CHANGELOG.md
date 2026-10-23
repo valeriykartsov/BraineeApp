@@ -3,6 +3,11 @@
 Notable changes to BraineeApp. Dates are commit dates. Decision references (D-xx) point to [`docs/decisions.md`](docs/decisions.md).
 The October 2026 work was a modernization done in phases; the detailed task plan and audit it followed are available in git history (`e1ccfff`).
 
+## 2026-10-23 — Meetings in the Calendar tab "Share"
+
+- The "Share" text of the Calendar tab gets a "Встречи" block under the tasks: the same meetings and data as on screen — start ("Весь день", "до ЧЧ:ММ"), duration, title ("Без названия" if empty) and calendar name, e.g. "09:30 · 30 мин — Планёрка (Работа)" (D-43).
+- Only when "Meetings from Calendar" is on and access is granted; no meetings that day — no block. Meetings are still not stored and not sent to the LLM or widgets.
+
 ## 2026-10-23 — Add a task from the Calendar tab
 
 - A "+" next to "Share" in the Calendar tab opens the new-task form with the selected day as the deadline (no time). Works for past days too — such a task is simply overdue. The task goes to Inbox.
