@@ -3,6 +3,13 @@
 Notable changes to BraineeApp. Dates are commit dates. Decision references (D-xx) point to [`docs/decisions.md`](docs/decisions.md).
 The October 2026 work was a modernization done in phases; the detailed task plan and audit it followed are available in git history (`e1ccfff`).
 
+## 2026-10-23 — Meetings in LLM "Day plan" and "Reflection"
+
+- Day plan: with "Meetings from Calendar" on, the request also gets today's busy time — only ranges like "10:00–11:00" and "весь день", no titles, calendars, places or attendees; overlapping meetings merged, finished ones dropped, max 20 (D-44). The model is asked not to put tasks on busy time.
+- The Day plan consent is asked once again, now mentioning busy time; the earlier consent no longer counts. Revoke in "Profile → Settings → LLM".
+- Reflection: two more numbers — meetings in the period and time in them (all-day events excluded); a "Встречи: 3 (2 ч 30 мин)" row on the card and in Copy/Share. No consent needed — numbers only.
+- Supersedes D-34; extends D-31 and D-32.
+
 ## 2026-10-23 — Meetings in the Calendar tab "Share"
 
 - The "Share" text of the Calendar tab gets a "Встречи" block under the tasks: the same meetings and data as on screen — start ("Весь день", "до ЧЧ:ММ"), duration, title ("Без названия" if empty) and calendar name, e.g. "09:30 · 30 мин — Планёрка (Работа)" (D-43).

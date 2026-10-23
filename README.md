@@ -33,15 +33,15 @@ The app UI is in Russian. Screenshots use demo data.
 ## Privacy
 
 - All data lives in a local SwiftData store on the device. No account, no analytics, no iCloud sync of app data.
-- Meetings from the iPhone Calendar (if enabled) are read on screen only: never stored, backed up or sent anywhere.
+- Meetings from the iPhone Calendar (if enabled) are never stored or backed up; they leave the device only as share text you send yourself and, for the AI assistant, as anonymous busy time and counts (see below).
 - The AI assistant is off until you add your own [OpenRouter](https://openrouter.ai) API key. The key is stored in the Keychain on this device only.
 - Requests are sent only when you ask, one at a time, without chat history:
 
 | Mode | What is sent |
 |---|---|
 | Task / Inbox | your text, today's date, time zone, names of your folders and tags |
-| Reflection | numbers only (completed, created, overdue, habit check-ins) — no titles |
-| Day plan | titles, priorities, deadline times and overdue flags of today's and overdue tasks (max 30) — asked once for consent |
+| Reflection | numbers only (completed, created, overdue, habit check-ins; with Calendar meetings on — number of meetings and time in them) — no titles |
+| Day plan | titles, priorities, deadline times and overdue flags of today's and overdue tasks (max 30); with Calendar meetings on — today's busy time like 10:00–11:00 without meeting details (max 20) — asked once for consent |
 | Matrix | titles, priorities and matrix quadrants of tasks without a deadline (max 30) — asked once for consent, separately |
 
 Task descriptions, tags of tasks, subtasks, profile data and backups are never sent.

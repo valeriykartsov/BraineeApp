@@ -176,4 +176,64 @@ struct ReflectionServiceTests {
             #expect(error as? LLMError == .insufficientCredits)
         }
     }
+
+    // MARK: - Встречи (D-44)
+
+    private func meeting(
+        _ title: String, _ start: Date, _ end: Date, allDay: Bool = false, calendarTitle: String = "Работа"
+    ) -> CalendarMeeting {
+        CalendarMeeting(id: title, title: title, start: start, end: end, isAllDay: allDay, calendarTitle: calendarTitle)
+    }
+
+    /// Неделя с понедельника 19.10 до «сейчас» — среды 21.10, 12:00.
+    private var weekEvents: [CalendarMeeting] {
+        [
+            meeting("Воскресная", LLMTestSupport.date(2026, 10, 18, 10), LLMTestSupport.date(2026, 10, 18, 11)),
+            meeting("Планёрка", LLMTestSupport.date(2026, 10, 19, 10), LLMTestSupport.date(2026, 10, 19, 11)),
+            meeting("Разбор", LLMTestSupport.date(2026, 10, 20, 14), LLMTestSupport.date(2026, 10, 20, 15, 30)),
+            meeting("Праздник", LLMTestSupport.date(2026, 10, 20), LLMTestSupport.date(2026, 10, 21), allDay: true),
+            meeting("Задача", LLMTestSupport.date(2026, 10, 20, 9), LLMTestSupport.date(2026, 10, 20, 10),
+                    calendarTitle: CalendarEventRules.calendarTitle),
+            meeting("Идёт сейчас", LLMTestSupport.date(2026, 10, 21, 11, 30), LLMTestSupport.date(2026, 10, 21, 12, 30)),
+            meeting("Вечером", LLMTestSupport.date(2026, 10, 21, 15), LLMTestSupport.date(2026, 10, 21, 16)),
+        ]
+    }
+
+    // Считаются встречи с начала периода до «сейчас»: без событий на весь день и календаря «BraineeApp»;
+    // время — только часть, попавшая в период (идущая встреча — до «сейчас»).
+    @Test func встречи_числоИВремяЗаПериод() {
+        let stats = ReflectionService.compute(
+            tasks: [], habits: [], period: .week, meetingEvents: weekEvents, now: Self.now, calendar: Self.calendar
+        )
+
+        #expect(stats.meetings == 3)
+        #expect(stats.meetingMinutes == 180)
+        #expect(stats.meetingsText == "3 (3 ч)")
+    }
+
+    // В запрос — только два числа о встречах, без названий и календарей; без доступа строки нет.
+    @Test func встречи_вЗапросеТолькоЧисла() {
+        let stats = ReflectionService.compute(
+            tasks: [], habits: [], period: .week, meetingEvents: weekEvents, now: Self.now, calendar: Self.calendar
+        )
+        let everything = ReflectionService.makeRequest(stats: stats).messages.map(\.content).joined(separator: "\n")
+
+        #expect(everything.contains("Встреч в календаре: 3, во встречах: 3 ч."))
+        for secret in ["Планёрка", "Разбор", "Идёт сейчас", "Работа"] {
+            #expect(!everything.contains(secret), "\(secret)")
+        }
+
+        let unavailable = compute(.week)
+        #expect(unavailable.meetings == nil)
+        #expect(unavailable.meetingsText == nil)
+        #expect(!ReflectionService.numbersMessage(unavailable).contains("Встреч"))
+    }
+
+    // Время во встречах словами: минуты, часы, часы с минутами.
+    @Test func встречи_времяСловами() {
+        #expect(ReflectionService.meetingTimeText(minutes: 0) == "0 мин")
+        #expect(ReflectionService.meetingTimeText(minutes: 45) == "45 мин")
+        #expect(ReflectionService.meetingTimeText(minutes: 120) == "2 ч")
+        #expect(ReflectionService.meetingTimeText(minutes: 150) == "2 ч 30 мин")
+    }
 }

@@ -100,7 +100,7 @@ struct LLMSettingsView: View {
                 if dayPlanConsent {
                     GroupedSection(title: "План дня") {
                         VStack(alignment: .leading, spacing: DesignSystem.Space.x2) {
-                            Text("Разрешено отправлять в OpenRouter названия задач на сегодня и просроченных.")
+                            Text("Разрешено отправлять в OpenRouter названия задач на сегодня и просроченных и занятое время сегодня (без названий встреч).")
                                 .font(DesignSystem.Typography.body(15))
                                 .foregroundStyle(DesignSystem.Colors.textPrimary)
                             Button("Отозвать разрешение") {
