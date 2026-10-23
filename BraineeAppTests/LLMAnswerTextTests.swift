@@ -32,6 +32,17 @@ struct LLMAnswerTextTests {
         """)
     }
 
+    // Встречи учитывались (D-44) — строка «Встречи: число (время)» после привычек.
+    @Test func итогиСоВстречами_строкаВстреч() {
+        var withMeetings = stats(period: .today, habitPossible: 2)
+        withMeetings.meetings = 3
+        withMeetings.meetingMinutes = 150
+
+        let text = LLMAnswerText.reflection(text: "", stats: withMeetings)
+
+        #expect(text.hasSuffix("Привычки: 1 из 2 (50%)\nВстречи: 3 (2 ч 30 мин)"))
+    }
+
     // Без привычек строки «Привычки» нет; пустой текст модели не добавляет пустых строк.
     @Test func итогиБезПривычек_безЛишнихСтрок() {
         let text = LLMAnswerText.reflection(text: "", stats: stats(period: .week, habitPossible: 0))

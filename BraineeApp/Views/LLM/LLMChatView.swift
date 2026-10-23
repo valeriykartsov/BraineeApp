@@ -160,14 +160,14 @@ struct LLMChatView: View {
                 save(formData, from: draft)
             }
         }
-        .alert("Отправить названия задач?", isPresented: $showingDayPlanConsent) {
+        .alert("Отправить задачи и занятое время?", isPresented: $showingDayPlanConsent) {
             Button("Отправить") {
                 DayPlanService.giveConsent()
                 send(LLMChatMode.dayPlan.title, mode: .dayPlan)
             }
             Button("Отмена", role: .cancel) {}
         } message: {
-            Text("Для плана дня в OpenRouter уйдут названия задач на сегодня и просроченных (до \(DayPlanService.maxTasks)): название, приоритет, время срока и признак просрочки. Описания, теги и папки не отправляются. Спросим один раз; отозвать можно в «Профиль → Настройки → LLM».")
+            Text("Для плана дня в OpenRouter уйдут названия задач на сегодня и просроченных (до \(DayPlanService.maxTasks)): название, приоритет, время срока и признак просрочки. Если включены «Встречи из Календаря» — ещё занятое время сегодня («10:00–11:00», «весь день», до \(DayPlanService.maxBusySlots) промежутков) без названий, календарей, мест и участников встреч. Описания, теги и папки не отправляются. Спросим один раз; отозвать можно в «Профиль → Настройки → LLM».")
         }
         .alert("Отправить названия задач без срока?", isPresented: $showingMatrixConsent) {
             Button("Отправить") {
@@ -202,9 +202,9 @@ struct LLMChatView: View {
         case .task, .inbox:
             "В OpenRouter уходят только ваш текст, сегодняшняя дата, часовой пояс и названия папок и тегов. История чата не сохраняется."
         case .reflection:
-            "В OpenRouter уходят только числа: сколько задач выполнено, создано и просрочено, процент отметок привычек. Названия задач и привычек не отправляются. История чата не сохраняется."
+            "В OpenRouter уходят только числа: сколько задач выполнено, создано и просрочено, процент отметок привычек, а при включённых «Встречах из Календаря» — число встреч и время в них. Названия задач, привычек и встреч не отправляются. История чата не сохраняется."
         case .dayPlan:
-            "В OpenRouter уходят названия задач на сегодня и просроченных (до \(DayPlanService.maxTasks)), их приоритет, время срока и текущее время. Описания, теги и папки не отправляются. История чата не сохраняется."
+            "В OpenRouter уходят названия задач на сегодня и просроченных (до \(DayPlanService.maxTasks)), их приоритет, время срока и текущее время, а при включённых «Встречах из Календаря» — занятое время сегодня без названий встреч. Описания, теги и папки не отправляются. История чата не сохраняется."
         case .matrix:
             "В OpenRouter уходят названия задач без срока (до \(MatrixReviewService.maxTasks)), их приоритет и квадрант матрицы. Описания, теги, папки и подзадачи не отправляются. История чата не сохраняется."
         }
@@ -546,6 +546,9 @@ struct LLMChatView: View {
                 if let rate = stats.habitRatePercent {
                     draftRow("Привычки", "\(stats.habitCheckins) из \(stats.habitPossible) (\(rate)%)")
                 }
+                if let meetings = stats.meetingsText {
+                    draftRow("Встречи", meetings)
+                }
             }
             Text(text)
                 .font(DesignSystem.Typography.body(15))
@@ -733,8 +736,21 @@ struct LLMChatView: View {
         messages.append(LLMChatMessage(kind: .user(period.map { "Итоги: \($0.title.lowercased())" } ?? text)))
         isSending = true
         let context = draftContext
-        let stats = period.map { ReflectionService.compute(tasks: allTasks, habits: habits, period: $0) }
-        let planTasks = mode == .dayPlan ? DayPlanService.selectTasks(allTasks) : []
+        // Встречи (D-44) — только при включённых «Встречах из Календаря» и доступе; иначе nil / пусто.
+        let now = Date.now
+        let stats = period.map { period in
+            ReflectionService.compute(
+                tasks: allTasks,
+                habits: habits,
+                period: period,
+                meetingEvents: CalendarMeetings.events(from: period.start(now: now, calendar: .current), to: now),
+                now: now
+            )
+        }
+        let planTasks = mode == .dayPlan ? DayPlanService.selectTasks(allTasks, now: now) : []
+        let busySlots = mode == .dayPlan
+            ? DayPlanService.busySlots(from: CalendarMeetings.meetings(on: now), now: now)
+            : []
         let matrixTasks = mode == .matrix ? MatrixReviewService.selectTasks(allTasks) : []
         Task {
             defer { isSending = false }
@@ -752,7 +768,7 @@ struct LLMChatView: View {
                     let text = try await ReflectionGenerator(provider: provider).reflection(for: stats)
                     messages.append(LLMChatMessage(kind: .reflection(text, stats: stats)))
                 case .dayPlan:
-                    let plan = try await DayPlanGenerator(provider: provider).plan(for: planTasks)
+                    let plan = try await DayPlanGenerator(provider: provider).plan(for: planTasks, busySlots: busySlots, now: now)
                     messages.append(LLMChatMessage(kind: .dayPlan(plan)))
                 case .matrix:
                     let review = try await MatrixReviewGenerator(provider: provider).review(for: matrixTasks)

@@ -2,8 +2,8 @@
 //  DayPlanServiceTests.swift
 //  BraineeAppTests
 //
-//  LLM-4 «План дня» (D-32…D-34): какие задачи попадают в запрос и что о них уходит,
-//  сопоставление номеров из ответа с задачами, согласие на отправку. «Сейчас» — 21.10.2026 12:00.
+//  LLM-4 «План дня» (D-32, D-33, D-44): какие задачи попадают в запрос и что о них уходит,
+//  занятое время из встреч, сопоставление номеров из ответа с задачами, согласие на отправку. «Сейчас» — 21.10.2026 12:00.
 
 import Foundation
 import Testing
@@ -185,5 +185,77 @@ struct DayPlanServiceTests {
         #expect(DayPlanService.hasConsent(defaults: defaults))
         DayPlanService.revokeConsent(defaults: defaults)
         #expect(DayPlanService.hasConsent(defaults: defaults) == false)
+    }
+
+    // MARK: - Занятое время (D-44)
+
+    private func meeting(_ title: String, _ start: Date, _ end: Date, allDay: Bool = false) -> CalendarMeeting {
+        CalendarMeeting(id: title, title: title, start: start, end: end, isAllDay: allDay, calendarTitle: "Секретный календарь")
+    }
+
+    private func busySlots(_ events: [CalendarMeeting]) -> [String] {
+        let meetings = CalendarMeetingRules.meetings(on: Self.now, from: events, calendar: Self.calendar)
+        return DayPlanService.busySlots(from: meetings, now: Self.now, calendar: Self.calendar)
+    }
+
+    // «Весь день» первым; прошедшие отброшены; пересекающиеся и смежные склеены; уходящая за полночь — до 24:00.
+    @Test func занятоеВремя_склейкаИПрошедшие() {
+        let slots = busySlots([
+            meeting("Отпуск", date(21), date(22), allDay: true),
+            meeting("Утро", date(21, 9), date(21, 10)),
+            meeting("Ночной перелёт", date(20, 22), date(21, 1)),
+            meeting("Идёт сейчас", date(21, 11, 30), date(21, 12, 30)),
+            meeting("Пересекается", date(21, 12, 15), date(21, 13)),
+            meeting("Встык", date(21, 13), date(21, 13, 30)),
+            meeting("После обеда", date(21, 15), date(21, 16)),
+            meeting("Поздно", date(21, 23), date(22, 1)),
+        ])
+
+        #expect(slots == ["весь день", "11:30–13:30", "15:00–16:00", "23:00–24:00"])
+    }
+
+    // Промежутков не больше 20.
+    @Test func занятоеВремя_неБольше20() {
+        let events = (0..<25).map { index in
+            let start = date(21, 12, 30).addingTimeInterval(Double(index) * 20 * 60)
+            return meeting("Встреча \(index)", start, start.addingTimeInterval(10 * 60))
+        }
+
+        #expect(busySlots(events).count == DayPlanService.maxBusySlots)
+    }
+
+    // В запрос уходят только промежутки — без названий встреч и календарей; без встреч блока нет.
+    @Test func запрос_занятоеВремяБезДанныхВстреч() throws {
+        let items = DayPlanService.inputItems(
+            for: select([task("Отчёт", deadline: date(21))]), now: Self.now, calendar: Self.calendar
+        )
+        let slots = busySlots([meeting("Тайное совещание", date(21, 15), date(21, 16))])
+
+        let request = try DayPlanService.makeRequest(items: items, busySlots: slots, now: Self.now, calendar: Self.calendar)
+        let everything = request.messages.map(\.content).joined(separator: "\n")
+        #expect(request.messages[1].content == "1. Отчёт; приоритет: средний\n\nЗанятое время сегодня (встречи):\n15:00–16:00")
+        #expect(!everything.contains("Тайное совещание"))
+        #expect(!everything.contains("Секретный календарь"))
+
+        let withoutMeetings = try DayPlanService.makeRequest(items: items, now: Self.now, calendar: Self.calendar)
+        #expect(!withoutMeetings.messages[1].content.contains("Занятое время"))
+    }
+
+    // Согласие по старому составу данных (без занятого времени) не действует; отзыв убирает оба ключа.
+    @Test func согласие_старогоНедостаточно() {
+        let name = "DayPlanServiceTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: name)!
+        defer { defaults.removePersistentDomain(forName: name) }
+        defaults.set(true, forKey: DayPlanService.legacyConsentKey)
+
+        #expect(DayPlanService.hasConsent(defaults: defaults) == false)
+        DayPlanService.giveConsent(defaults: defaults)
+        #expect(DayPlanService.hasConsent(defaults: defaults))
+        #expect(defaults.object(forKey: DayPlanService.legacyConsentKey) == nil)
+
+        defaults.set(true, forKey: DayPlanService.legacyConsentKey)
+        DayPlanService.revokeConsent(defaults: defaults)
+        #expect(defaults.object(forKey: DayPlanService.consentKey) == nil)
+        #expect(defaults.object(forKey: DayPlanService.legacyConsentKey) == nil)
     }
 }

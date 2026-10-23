@@ -171,6 +171,12 @@ enum CalendarMeetings {
         UserDefaults.standard.set(false, forKey: enabledKey)
     }
 
+    /// События за промежуток для «Итогов» (D-44); `nil`, если настройка выключена или доступа нет.
+    static func events(from start: Date, to end: Date) -> [CalendarMeeting]? {
+        guard isAvailable else { return nil }
+        return CalendarExport.store.meetings(from: start, to: end)
+    }
+
     /// Встречи выбранного дня; пусто, если настройка выключена или доступа нет.
     static func meetings(on day: Date, calendar: Calendar = .current) -> [DayMeeting] {
         guard isAvailable else { return [] }

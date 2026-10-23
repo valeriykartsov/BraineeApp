@@ -5,7 +5,9 @@
 //  «План дня» (LLM-4, D-32…D-34). Наружу впервые уходят названия задач: только задачи на сегодня
 //  и просроченные (до 30) — номер, название, приоритет, время срока, признак «просрочена».
 //  Без описаний, тегов, папок и uuid: модель видит номера 1…N, код сам сопоставляет их с задачами.
-//  План только для просмотра — сроки и порядок задач не меняются (D-33). Календарь не используется (D-34).
+//  План только для просмотра — сроки и порядок задач не меняются (D-33).
+//  Встречи из Календаря (D-44) — только обезличенные занятые промежутки сегодня («10:00–11:00», «весь день»),
+//  без названий, календарей, мест и участников; не больше 20; только при включённых «Встречах из Календаря».
 
 import Foundation
 
@@ -54,10 +56,13 @@ enum DayPlanError: Error, Equatable {
 
 enum DayPlanService {
     static let maxTasks = 30
+    static let maxBusySlots = 20
     /// Метка режима в инструкции — по ней отладочная заглушка выбирает ответ.
     static let modeMarker = "Режим: план дня."
-    /// Согласие на отправку названий задач (D-32) — спрашивается один раз.
-    static let consentKey = "llmDayPlanConsent"
+    /// Согласие на отправку названий задач и занятого времени (D-32, D-44) — спрашивается один раз.
+    /// Новый ключ: согласие по старому составу данных (`llmDayPlanConsent`) для нового не действует.
+    static let consentKey = "llmDayPlanConsentV2"
+    static let legacyConsentKey = "llmDayPlanConsent"
 
     static func hasConsent(defaults: UserDefaults = .standard) -> Bool {
         defaults.bool(forKey: consentKey)
@@ -65,10 +70,12 @@ enum DayPlanService {
 
     static func giveConsent(defaults: UserDefaults = .standard) {
         defaults.set(true, forKey: consentKey)
+        defaults.removeObject(forKey: legacyConsentKey)
     }
 
     static func revokeConsent(defaults: UserDefaults = .standard) {
         defaults.removeObject(forKey: consentKey)
+        defaults.removeObject(forKey: legacyConsentKey)
     }
 
     // MARK: - Выбор задач
@@ -107,14 +114,62 @@ enum DayPlanService {
         }
     }
 
+    // MARK: - Занятое время (D-44)
+
+    /// Занятые промежутки сегодня из встреч дня: только время, без данных о встречах.
+    /// «весь день» — если есть событие на весь день; остальные — «ЧЧ:ММ–ЧЧ:ММ» по времени,
+    /// пересекающиеся и смежные склеены, уже закончившиеся отброшены; не больше 20.
+    static func busySlots(from meetings: [DayMeeting], now: Date = .now, calendar: Calendar = .current) -> [String] {
+        let dayStart = calendar.startOfDay(for: now)
+        guard let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) else { return [] }
+
+        var slots: [String] = []
+        if meetings.contains(where: { $0.timing == .allDay }) {
+            slots.append("весь день")
+        }
+
+        let ranges = meetings.compactMap { item -> (start: Date, end: Date)? in
+            guard item.timing != .allDay else { return nil }
+            let start = max(item.meeting.start, dayStart)
+            let end = min(item.meeting.end, dayEnd)
+            guard end > now, end > start else { return nil }
+            return (start, end)
+        }.sorted { $0.start < $1.start }
+
+        var merged: [(start: Date, end: Date)] = []
+        for range in ranges {
+            if let last = merged.last, range.start <= last.end {
+                merged[merged.count - 1].end = max(last.end, range.end)
+            } else {
+                merged.append(range)
+            }
+        }
+
+        slots += merged.map { range in
+            let end = range.end >= dayEnd ? "24:00" : CalendarMeetingRules.timeText(range.end, calendar: calendar)
+            return "\(CalendarMeetingRules.timeText(range.start, calendar: calendar))–\(end)"
+        }
+        return Array(slots.prefix(maxBusySlots))
+    }
+
     // MARK: - Запрос
 
-    static func makeRequest(items: [DayPlanInputItem], now: Date = .now, calendar: Calendar = .current) throws -> LLMRequest {
+    /// `busySlots` — из `busySlots(from:)`; пусто — о занятом времени модель не узнаёт.
+    static func makeRequest(
+        items: [DayPlanInputItem],
+        busySlots: [String] = [],
+        now: Date = .now,
+        calendar: Calendar = .current
+    ) throws -> LLMRequest {
         guard !items.isEmpty else { throw DayPlanError.noTasks }
+        var userMessage = tasksMessage(items)
+        if !busySlots.isEmpty {
+            userMessage += "\n\n" + busyMessage(busySlots)
+        }
         return LLMRequest(
             messages: [
                 LLMMessage(role: .system, content: systemPrompt(now: now, calendar: calendar)),
-                LLMMessage(role: .user, content: tasksMessage(items))
+                LLMMessage(role: .user, content: userMessage)
             ],
             maxTokens: 2000,
             temperature: 0.2
@@ -137,7 +192,13 @@ enum DayPlanService {
         - note — короткий совет к задаче (до 10 слов) или пустая строка.
         - summary — 1–2 предложения о дне по-русски: что главное, что можно перенести.
         - Учитывай приоритет и просрочку; не придумывай новых задач.
+        - Если после списка дано занятое время — не ставь задачи на эти промежутки; «весь день» — на день есть событие, оставь задачи без жёсткого времени или с запасом.
         """
+    }
+
+    /// Занятое время для модели: только промежутки, без названий и других данных встреч.
+    static func busyMessage(_ slots: [String]) -> String {
+        (["Занятое время сегодня (встречи):"] + slots).joined(separator: "\n")
     }
 
     /// Список задач для модели. Только номер, название, приоритет, время срока и просрочка.
@@ -256,9 +317,14 @@ enum DayPlanService {
 struct DayPlanGenerator {
     let provider: LLMProvider
 
-    func plan(for tasks: [TaskItem], now: Date = .now, calendar: Calendar = .current) async throws -> DayPlan {
+    func plan(
+        for tasks: [TaskItem],
+        busySlots: [String] = [],
+        now: Date = .now,
+        calendar: Calendar = .current
+    ) async throws -> DayPlan {
         let items = DayPlanService.inputItems(for: tasks, now: now, calendar: calendar)
-        let request = try DayPlanService.makeRequest(items: items, now: now, calendar: calendar)
+        let request = try DayPlanService.makeRequest(items: items, busySlots: busySlots, now: now, calendar: calendar)
         let response = try await provider.complete(request)
         return try DayPlanService.parse(response.text, tasks: tasks)
     }

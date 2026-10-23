@@ -19,6 +19,9 @@ enum LLMAnswerText {
         if let rate = stats.habitRatePercent {
             lines.append("Привычки: \(stats.habitCheckins) из \(stats.habitPossible) (\(rate)%)")
         }
+        if let meetings = stats.meetingsText {
+            lines.append("Встречи: \(meetings)")
+        }
         let body = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if !body.isEmpty {
             lines.append("")
@@ -78,5 +81,13 @@ enum LLMAnswerText {
         let note = item.note.trimmingCharacters(in: .whitespacesAndNewlines)
         let detail = [item.horizon?.title, note.isEmpty ? nil : note].compactMap { $0 }.joined(separator: ". ")
         return detail.isEmpty ? item.title : "\(item.title) — \(detail)"
+    }
+}
+
+extension ReflectionStats {
+    /// «3 (2 ч 30 мин)» для карточки и копии «Итогов»; `nil` — встречи не учитывались (D-44).
+    var meetingsText: String? {
+        guard let meetings, let meetingMinutes else { return nil }
+        return "\(meetings) (\(ReflectionService.meetingTimeText(minutes: meetingMinutes)))"
     }
 }
