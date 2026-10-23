@@ -21,7 +21,7 @@ The app UI is in Russian. Screenshots use demo data.
 - **Tasks** — deadlines with optional time and duration (30 min to 3 h), subtasks with checkboxes (up to 10, progress like "2/5" in the list), priorities, statuses, descriptions, tags, folders, drag-and-drop, list and kanban views, soft delete with a trash.
 - **Calendar** — week strip with the tasks of the selected day; optional one-way export to an app-owned "BraineeApp" calendar in the iPhone Calendar (iCloud), events as long as the task; optional read-only list of the day's meetings from your calendars, sorted by time with start and duration; share the day's open tasks as text (e.g. to Telegram).
 - **Habits** — up to 7 habits, a three-month contribution grid, check-ins for today and up to 14 days back.
-- **AI assistant (optional, OpenRouter)** — turn a phrase into a task draft, split a brain dump into several drafts, get a short day/week reflection, get a suggested plan for today. Drafts are saved only after you confirm them in the regular task form.
+- **AI assistant (optional, OpenRouter)** — turn a phrase into a task draft, split a brain dump into several drafts, get a short day/week reflection, get a suggested plan for today, get advice on tasks without a deadline (schedule / delegate / drop). Drafts are saved only after you confirm them in the regular task form.
 - **Dashboard** — progress, overdue and today counters; details with a tag pie chart (percent legend) and an Active / All (including trash) switch.
 - **Eisenhower Matrix** — quadrants by priority and urgency.
 - **Reminders and badge** — local notifications for tasks and habits, deadline alerts, configurable app icon badge.
@@ -42,10 +42,11 @@ The app UI is in Russian. Screenshots use demo data.
 | Task / Inbox | your text, today's date, time zone, names of your folders and tags |
 | Reflection | numbers only (completed, created, overdue, habit check-ins) — no titles |
 | Day plan | titles, priorities, deadline times and overdue flags of today's and overdue tasks (max 30) — asked once for consent |
+| Matrix | titles, priorities and matrix quadrants of tasks without a deadline (max 30) — asked once for consent, separately |
 
-Task descriptions, tags of tasks, profile data and backups are never sent.
+Task descriptions, tags of tasks, subtasks, profile data and backups are never sent.
 
-"Share" (Calendar tab, Day plan and Reflection answers) hands plain text to the system share sheet; you choose where it goes. The day's tasks are sent as deadline time and title only (D-38).
+"Share" (Calendar tab, Day plan, Reflection and Matrix answers) hands plain text to the system share sheet; you choose where it goes. The day's tasks are sent as deadline time and title only (D-38).
 
 ## Tech stack
 

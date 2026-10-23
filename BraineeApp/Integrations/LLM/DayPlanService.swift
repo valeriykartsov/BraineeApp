@@ -150,7 +150,8 @@ enum DayPlanService {
         }.joined(separator: "\n")
     }
 
-    private static func priorityName(_ priority: TaskPriority) -> String {
+    /// Приоритет словом для запросов «Плана дня» и «Матрицы».
+    static func priorityName(_ priority: TaskPriority) -> String {
         switch priority {
         case .low: "низкий"
         case .medium: "средний"

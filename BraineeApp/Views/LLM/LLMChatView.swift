@@ -20,6 +20,7 @@ enum LLMChatMode: CaseIterable, Identifiable {
     case inbox
     case reflection
     case dayPlan
+    case matrix
 
     var id: Self { self }
 
@@ -29,6 +30,7 @@ enum LLMChatMode: CaseIterable, Identifiable {
         case .inbox: "Разбор"
         case .reflection: "Итоги"
         case .dayPlan: "План дня"
+        case .matrix: "Матрица"
         }
     }
 
@@ -38,6 +40,7 @@ enum LLMChatMode: CaseIterable, Identifiable {
         case .inbox: "tray.full"
         case .reflection: "chart.bar"
         case .dayPlan: "calendar.day.timeline.left"
+        case .matrix: "square.grid.2x2"
         }
     }
 
@@ -45,7 +48,7 @@ enum LLMChatMode: CaseIterable, Identifiable {
         switch self {
         case .task: "Опишите задачу…"
         case .inbox: "Вставьте список дел или мысли…"
-        case .reflection, .dayPlan: ""
+        case .reflection, .dayPlan, .matrix: ""
         }
     }
 
@@ -53,7 +56,7 @@ enum LLMChatMode: CaseIterable, Identifiable {
         switch self {
         case .task: TaskDraftService.maxInputLength
         case .inbox: InboxDraftService.maxInputLength
-        case .reflection, .dayPlan: 0
+        case .reflection, .dayPlan, .matrix: 0
         }
     }
 }
@@ -68,6 +71,8 @@ struct LLMChatMessage: Identifiable {
         case reflection(String, stats: ReflectionStats)
         /// «План дня»: порядок задач от модели, сопоставленный с задачами приложения.
         case dayPlan(DayPlan)
+        /// «Матрица»: советы по задачам без срока, сопоставленные с задачами приложения (D-42).
+        case matrixReview(MatrixReview)
         /// Сообщение приложения без запроса к модели.
         case info(String)
         case error(String, retryText: String, mode: LLMChatMode)
@@ -98,6 +103,7 @@ struct LLMChatView: View {
     @State private var openedDraft: TaskDraft?
     @State private var savedDraftIDs: Set<UUID> = []
     @State private var showingDayPlanConsent = false
+    @State private var showingMatrixConsent = false
     /// Ответ, который только что скопировали: на кнопке на пару секунд «Скопировано».
     @State private var copiedMessageID: UUID?
     @FocusState private var isInputFocused: Bool
@@ -163,6 +169,15 @@ struct LLMChatView: View {
         } message: {
             Text("Для плана дня в OpenRouter уйдут названия задач на сегодня и просроченных (до \(DayPlanService.maxTasks)): название, приоритет, время срока и признак просрочки. Описания, теги и папки не отправляются. Спросим один раз; отозвать можно в «Профиль → Настройки → LLM».")
         }
+        .alert("Отправить названия задач без срока?", isPresented: $showingMatrixConsent) {
+            Button("Отправить") {
+                MatrixReviewService.giveConsent()
+                send(LLMChatMode.matrix.title, mode: .matrix)
+            }
+            Button("Отмена", role: .cancel) {}
+        } message: {
+            Text("Для разбора матрицы в OpenRouter уйдут задачи без срока (до \(MatrixReviewService.maxTasks)): название, приоритет и квадрант матрицы. Описания, теги, папки и подзадачи не отправляются. Спросим один раз; отозвать можно в «Профиль → Настройки → LLM».")
+        }
     }
 
     // MARK: - Сообщения
@@ -190,6 +205,8 @@ struct LLMChatView: View {
             "В OpenRouter уходят только числа: сколько задач выполнено, создано и просрочено, процент отметок привычек. Названия задач и привычек не отправляются. История чата не сохраняется."
         case .dayPlan:
             "В OpenRouter уходят названия задач на сегодня и просроченных (до \(DayPlanService.maxTasks)), их приоритет, время срока и текущее время. Описания, теги и папки не отправляются. История чата не сохраняется."
+        case .matrix:
+            "В OpenRouter уходят названия задач без срока (до \(MatrixReviewService.maxTasks)), их приоритет и квадрант матрицы. Описания, теги, папки и подзадачи не отправляются. История чата не сохраняется."
         }
     }
 
@@ -199,6 +216,7 @@ struct LLMChatView: View {
         case .inbox: "Вставьте всё, что в голове"
         case .reflection: "Итоги дня или недели"
         case .dayPlan: "План на сегодня"
+        case .matrix: "Задачи без срока"
         }
     }
 
@@ -212,6 +230,8 @@ struct LLMChatView: View {
             "LLM предложит порядок задач на сегодня и просроченных, примерное время и короткие советы. План только для просмотра — сроки и порядок задач в приложении не меняются."
         case .reflection:
             "Приложение посчитает выполненные, созданные и просроченные задачи и отметки привычек, а LLM коротко опишет, как прошёл период. Данные не меняются."
+        case .matrix:
+            "LLM посмотрит на задачи без срока и для каждой посоветует: запланировать (на этой неделе, в этом месяце или позже), делегировать или убрать. Только для просмотра — сроки, приоритеты и корзина не меняются."
         }
     }
 
@@ -240,6 +260,10 @@ struct LLMChatView: View {
         case .dayPlan(let plan):
             copyableAnswer(message.id, text: LLMAnswerText.dayPlan(plan)) {
                 dayPlanCard(plan)
+            }
+        case .matrixReview(let review):
+            copyableAnswer(message.id, text: LLMAnswerText.matrixReview(review)) {
+                matrixReviewCard(review)
             }
         case .info(let text):
             Label(text, systemImage: "info.circle")
@@ -411,6 +435,58 @@ struct LLMChatView: View {
         }
     }
 
+    private func matrixReviewCard(_ review: MatrixReview) -> some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Space.x2) {
+            Text("Задачи без срока")
+                .font(DesignSystem.Typography.sectionHeader())
+                .foregroundStyle(DesignSystem.Colors.textSecondary)
+            if !review.summary.isEmpty {
+                Text(review.summary)
+                    .font(DesignSystem.Typography.body(15))
+                    .foregroundStyle(DesignSystem.Colors.textPrimary)
+            }
+            ForEach(MatrixReviewAction.allCases, id: \.self) { action in
+                let items = review.items(for: action)
+                if !items.isEmpty {
+                    VStack(alignment: .leading, spacing: DesignSystem.Space.x1) {
+                        Text(action.title)
+                            .font(DesignSystem.Typography.bodyBold(15))
+                            .foregroundStyle(DesignSystem.Colors.accent)
+                        ForEach(items) { item in
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(item.title)
+                                    .font(DesignSystem.Typography.body(15))
+                                    .foregroundStyle(DesignSystem.Colors.textPrimary)
+                                let detail = [item.horizon?.title, item.note.isEmpty ? nil : item.note]
+                                    .compactMap { $0 }
+                                    .joined(separator: ". ")
+                                if !detail.isEmpty {
+                                    Text(detail)
+                                        .font(DesignSystem.Typography.caption())
+                                        .foregroundStyle(DesignSystem.Colors.textSecondary)
+                                }
+                            }
+                        }
+                    }
+                    .padding(.top, DesignSystem.Space.x1)
+                }
+            }
+            ForEach(review.notes, id: \.self) { note in
+                Label(note, systemImage: "info.circle")
+                    .font(DesignSystem.Typography.caption())
+                    .foregroundStyle(DesignSystem.Colors.textSecondary)
+            }
+            Text("Только для просмотра: сроки, приоритеты и корзина не меняются.")
+                .font(DesignSystem.Typography.caption())
+                .foregroundStyle(DesignSystem.Colors.textSecondary)
+        }
+        .padding(DesignSystem.Space.x3)
+        .background(
+            RoundedRectangle(cornerRadius: DesignSystem.Radius.group, style: .continuous)
+                .fill(DesignSystem.Colors.surface)
+        )
+    }
+
     private func dayPlanCard(_ plan: DayPlan) -> some View {
         VStack(alignment: .leading, spacing: DesignSystem.Space.x2) {
             Text("План на сегодня")
@@ -516,9 +592,9 @@ struct LLMChatView: View {
                 }
             }
 
-            if mode == .dayPlan {
-                Button(action: requestDayPlan) {
-                    Text("Составить план на сегодня")
+            if mode == .dayPlan || mode == .matrix {
+                Button(action: mode == .dayPlan ? requestDayPlan : requestMatrixReview) {
+                    Text(mode == .dayPlan ? "Составить план на сегодня" : "Разобрать задачи без срока")
                         .font(DesignSystem.Typography.bodyBold(15))
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
@@ -630,6 +706,21 @@ struct LLMChatView: View {
         }
     }
 
+    /// «Матрица»: без задач без срока — сообщение без запроса; перед первой отправкой — согласие (D-42).
+    private func requestMatrixReview() {
+        guard !isSending else { return }
+        if MatrixReviewService.selectTasks(allTasks).isEmpty {
+            messages.append(LLMChatMessage(kind: .user(LLMChatMode.matrix.title)))
+            messages.append(LLMChatMessage(kind: .info(MatrixReviewError.noTasks.userMessage)))
+            return
+        }
+        if MatrixReviewService.hasConsent() {
+            send(LLMChatMode.matrix.title, mode: .matrix)
+        } else {
+            showingMatrixConsent = true
+        }
+    }
+
     /// В «Итогах» `text` — период (`ReflectionPeriod.rawValue`), в «Плане дня» — подпись сообщения,
     /// а не ввод пользователя.
     private func send(_ text: String, mode: LLMChatMode) {
@@ -644,6 +735,7 @@ struct LLMChatView: View {
         let context = draftContext
         let stats = period.map { ReflectionService.compute(tasks: allTasks, habits: habits, period: $0) }
         let planTasks = mode == .dayPlan ? DayPlanService.selectTasks(allTasks) : []
+        let matrixTasks = mode == .matrix ? MatrixReviewService.selectTasks(allTasks) : []
         Task {
             defer { isSending = false }
             do {
@@ -662,11 +754,15 @@ struct LLMChatView: View {
                 case .dayPlan:
                     let plan = try await DayPlanGenerator(provider: provider).plan(for: planTasks)
                     messages.append(LLMChatMessage(kind: .dayPlan(plan)))
+                case .matrix:
+                    let review = try await MatrixReviewGenerator(provider: provider).review(for: matrixTasks)
+                    messages.append(LLMChatMessage(kind: .matrixReview(review)))
                 }
             } catch {
                 let message = (error as? LLMError)?.userMessage
                     ?? (error as? TaskDraftError)?.userMessage
                     ?? (error as? DayPlanError)?.userMessage
+                    ?? (error as? MatrixReviewError)?.userMessage
                     ?? LLMError.invalidResponse.userMessage
                 messages.append(LLMChatMessage(kind: .error(message, retryText: text, mode: mode)))
             }

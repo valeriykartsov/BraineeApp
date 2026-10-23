@@ -25,6 +25,7 @@ struct LLMSettingsView: View {
     @State private var isChecking = false
     @State private var checkResult: CheckResult?
     @State private var dayPlanConsent = DayPlanService.hasConsent()
+    @State private var matrixConsent = MatrixReviewService.hasConsent()
 
     private enum CheckResult: Equatable {
         case success(String)
@@ -117,6 +118,27 @@ struct LLMSettingsView: View {
                     }
                 }
 
+                if matrixConsent {
+                    GroupedSection(title: "Матрица") {
+                        VStack(alignment: .leading, spacing: DesignSystem.Space.x2) {
+                            Text("Разрешено отправлять в OpenRouter названия задач без срока.")
+                                .font(DesignSystem.Typography.body(15))
+                                .foregroundStyle(DesignSystem.Colors.textPrimary)
+                            Button("Отозвать разрешение") {
+                                MatrixReviewService.revokeConsent()
+                                matrixConsent = false
+                            }
+                            .font(DesignSystem.Typography.body(15))
+                            .foregroundStyle(DesignSystem.Colors.danger)
+                            .buttonStyle(.plain)
+                            Text("После отзыва «Матрица» снова спросит разрешение перед отправкой.")
+                                .font(DesignSystem.Typography.caption())
+                                .foregroundStyle(DesignSystem.Colors.textSecondary)
+                        }
+                        .padding(DesignSystem.Space.x3)
+                    }
+                }
+
                 Text("Провайдер — OpenRouter. Наружу отправляется только то, что нужно конкретному действию; приложение работает и без LLM.")
                     .font(DesignSystem.Typography.caption())
                     .foregroundStyle(DesignSystem.Colors.textSecondary)
@@ -135,6 +157,7 @@ struct LLMSettingsView: View {
         .onAppear {
             reloadKey()
             dayPlanConsent = DayPlanService.hasConsent()
+            matrixConsent = MatrixReviewService.hasConsent()
         }
         .task(id: savedKeyMask) { await loadKeyInfo() }
         .alert("Удалить ключ?", isPresented: $showingDeleteConfirm) {
