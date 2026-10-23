@@ -47,6 +47,7 @@ struct TagChipView: View {
 }
 
 /// Раскладывает теги в несколько строк, как перенос слов в тексте.
+/// Элемент шире всей строки сжимается до её ширины (текст обрезается «…»), а не выходит за край.
 struct TagFlowLayout: Layout {
     var spacing: CGFloat = DesignSystem.Space.x1
 
@@ -60,32 +61,40 @@ struct TagFlowLayout: Layout {
         for (index, position) in result.positions.enumerated() {
             subviews[index].place(
                 at: CGPoint(x: bounds.minX + position.x, y: bounds.minY + position.y),
-                proposal: .unspecified
+                proposal: ProposedViewSize(result.sizes[index])
             )
         }
     }
 
-    private func arrange(proposal: ProposedViewSize, subviews: Subviews) -> (size: CGSize, positions: [CGPoint]) {
+    private func arrange(
+        proposal: ProposedViewSize,
+        subviews: Subviews
+    ) -> (size: CGSize, positions: [CGPoint], sizes: [CGSize]) {
         let maxWidth = proposal.width ?? .infinity
         var positions: [CGPoint] = []
+        var sizes: [CGSize] = []
         var x: CGFloat = 0
         var y: CGFloat = 0
         var rowHeight: CGFloat = 0
         var maxX: CGFloat = 0
 
         for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
+            var size = subview.sizeThatFits(.unspecified)
+            if size.width > maxWidth {
+                size = subview.sizeThatFits(ProposedViewSize(width: maxWidth, height: nil))
+            }
             if x + size.width > maxWidth, x > 0 {
                 x = 0
                 y += rowHeight + spacing
                 rowHeight = 0
             }
             positions.append(CGPoint(x: x, y: y))
+            sizes.append(size)
             rowHeight = max(rowHeight, size.height)
             x += size.width + spacing
             maxX = max(maxX, x)
         }
 
-        return (CGSize(width: maxX, height: y + rowHeight), positions)
+        return (CGSize(width: maxX, height: y + rowHeight), positions, sizes)
     }
 }
