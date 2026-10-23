@@ -92,8 +92,12 @@ enum AppDataPersistence {
                 deletedAt: record.deletedAt ?? (record.isDeleted ? record.createdAt : nil),
                 updatedAt: record.updatedAt,
                 completedAt: record.completedAt,
+                durationMinutes: record.durationMinutes,
                 group: record.groupID.flatMap { groupByID[$0] },
-                tags: tags
+                tags: tags,
+                subtasks: record.subtasks.map {
+                    TaskSubtask(uuid: $0.id, title: $0.title, isDone: $0.isDone, sortOrder: $0.sortOrder)
+                }
             )
             context.insert(task)
         }
@@ -165,9 +169,15 @@ enum AppDataPersistence {
                     groupID: $0.group?.uuid,
                     tagIDs: $0.tags.map(\.uuid),
                     isDeleted: $0.isSoftDeleted,
-                    deletedAt: $0.isSoftDeleted ? ($0.deletedAt ?? .now) : nil,
+                    // Без даты удаления — время изменения: экспорт одного и того же хранилища
+                    // должен давать одинаковый результат (сверка при переходе на V2, D-39).
+                    deletedAt: $0.isSoftDeleted ? ($0.deletedAt ?? $0.updatedAt) : nil,
                     updatedAt: $0.updatedAt,
-                    completedAt: $0.completedAt
+                    completedAt: $0.completedAt,
+                    durationMinutes: $0.durationMinutes,
+                    subtasks: $0.sortedSubtasks.map {
+                        SubtaskRecord(id: $0.uuid, title: $0.title, isDone: $0.isDone, sortOrder: $0.sortOrder)
+                    }
                 )
             },
             habits: habits.map {

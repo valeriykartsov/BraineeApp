@@ -3,6 +3,13 @@
 Notable changes to BraineeApp. Dates are commit dates. Decision references (D-xx) point to [`docs/decisions.md`](docs/decisions.md).
 The October 2026 work was a modernization done in phases; the detailed task plan and audit it followed are available in git history (`e1ccfff`).
 
+## 2026-10-23 — Storage schema V2 (task duration and subtasks, data only)
+
+- First SwiftData schema migration (D-39): `SchemaV2` adds an optional duration to tasks (`durationMinutes`, empty = not chosen, i.e. 30 min for timed tasks) and a new `TaskSubtask` model (text, checkbox, order). No UI yet — that comes with the next steps. Existing records are not rewritten.
+- Safe upgrade on first launch (`SchemaUpgrade`): copy of the SQLite files and a full data snapshot (restorable backup, with avatar) in `Application Support/Backups/pre-schema-v2/` → lightweight migration → every record checked against the snapshot → marker. On failure: error screen, no marker; a retry reuses the saved backup and never creates a second one.
+- Backup JSON: tasks carry `durationMinutes` and nested `subtasks`; backup format version 2 (older builds refuse it instead of silently dropping subtasks); version 1 backups still restore.
+- Schema V1 is frozen in `Persistence/Schema/Schema.swift`; tests migrate a real store created by the V1 build (`BraineeAppTests/Fixtures/SchemaV1-demo.store`).
+
 ## 2026-10-23 — Share the day's tasks and LLM answers
 
 - Calendar tab: a Share button next to the title sends the selected day's open tasks as plain text through the system share sheet (Telegram, Messages, Notes…): weekday and date, then "HH:MM Title" for timed tasks and "• Title" for the rest. No descriptions, tags, folders, priorities, completed or overdue tasks, no meetings (D-38).

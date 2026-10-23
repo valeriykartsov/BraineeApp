@@ -17,7 +17,7 @@ struct MyTasksDocument: Codable {
     var tasks: [TaskRecord]
     var habits: [HabitRecord]
 
-    static let currentVersion = 9
+    static let currentVersion = 10
     static let empty = MyTasksDocument(
         version: currentVersion,
         lastSavedAt: nil,
@@ -88,6 +88,7 @@ struct MyTasksDocument: Codable {
 
         let validGroupIDs = Set(groups.map(\.id))
         let validTagIDs = Set(tags.map(\.id))
+        var seenSubtaskIDs = Set<UUID>()
 
         // v3: все разделы (career/sport/mental) сливаются в единый «Задачи».
         for index in groups.indices {
@@ -127,6 +128,16 @@ struct MyTasksDocument: Codable {
             if status != .done {
                 tasks[index].completedAt = nil
             }
+
+            // v10: длительность — от 1 минуты до суток; иначе «не выбрана».
+            if let minutes = tasks[index].durationMinutes, !(1...TaskRecord.maxDurationMinutes).contains(minutes) {
+                tasks[index].durationMinutes = nil
+            }
+
+            // v10: подзадачи по порядку; uuid подзадачи уникален во всём файле (`#Unique`).
+            tasks[index].subtasks = tasks[index].subtasks
+                .filter { seenSubtaskIDs.insert($0.id).inserted }
+                .sorted { ($0.sortOrder, $0.id.uuidString) < ($1.sortOrder, $1.id.uuidString) }
         }
 
         for index in habits.indices {
@@ -160,6 +171,12 @@ struct TaskRecord: Codable, Identifiable {
     var updatedAt: Date
     /// v9. Для старых файлов — nil (дата закрытия неизвестна, D-03).
     var completedAt: Date?
+    /// v10. Длительность в минутах; nil — не выбрана (старые файлы, D-39).
+    var durationMinutes: Int?
+    /// v10. Подзадачи; в старых файлах их нет.
+    var subtasks: [SubtaskRecord]
+
+    static let maxDurationMinutes = 24 * 60
 
     init(
         id: UUID,
@@ -179,7 +196,9 @@ struct TaskRecord: Codable, Identifiable {
         isDeleted: Bool = false,
         deletedAt: Date? = nil,
         updatedAt: Date? = nil,
-        completedAt: Date? = nil
+        completedAt: Date? = nil,
+        durationMinutes: Int? = nil,
+        subtasks: [SubtaskRecord] = []
     ) {
         self.id = id
         self.title = title
@@ -203,6 +222,8 @@ struct TaskRecord: Codable, Identifiable {
         self.deletedAt = deletedAt
         self.updatedAt = updatedAt ?? createdAt
         self.completedAt = completedAt
+        self.durationMinutes = durationMinutes
+        self.subtasks = subtasks
     }
 
     /// Старые JSON без новых полей читаются с безопасными значениями по умолчанию.
@@ -252,6 +273,8 @@ struct TaskRecord: Codable, Identifiable {
         }
         updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt) ?? createdAt
         completedAt = try container.decodeIfPresent(Date.self, forKey: .completedAt)
+        durationMinutes = try container.decodeIfPresent(Int.self, forKey: .durationMinutes)
+        subtasks = try container.decodeIfPresent([SubtaskRecord].self, forKey: .subtasks) ?? []
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -261,6 +284,7 @@ struct TaskRecord: Codable, Identifiable {
         case priorityRaw, categoryRaw, statusRaw, createdAt, taskDetails
         case sortOrder, groupID, tagIDs, isDeleted, deletedAt
         case updatedAt, completedAt
+        case durationMinutes, subtasks
     }
 
     func encode(to encoder: Encoder) throws {
@@ -283,6 +307,34 @@ struct TaskRecord: Codable, Identifiable {
         try container.encodeIfPresent(deletedAt, forKey: .deletedAt)
         try container.encode(updatedAt, forKey: .updatedAt)
         try container.encodeIfPresent(completedAt, forKey: .completedAt)
+        try container.encodeIfPresent(durationMinutes, forKey: .durationMinutes)
+        // Пустой список не пишем — файл задачи без подзадач такой же, как в v9.
+        if !subtasks.isEmpty {
+            try container.encode(subtasks, forKey: .subtasks)
+        }
+    }
+}
+
+/// Подзадача в JSON (v10, D-39): внутри записи задачи.
+struct SubtaskRecord: Codable, Identifiable, Equatable {
+    var id: UUID
+    var title: String
+    var isDone: Bool
+    var sortOrder: Int
+
+    init(id: UUID, title: String, isDone: Bool = false, sortOrder: Int = 0) {
+        self.id = id
+        self.title = title
+        self.isDone = isDone
+        self.sortOrder = sortOrder
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        title = try container.decodeIfPresent(String.self, forKey: .title) ?? ""
+        isDone = try container.decodeIfPresent(Bool.self, forKey: .isDone) ?? false
+        sortOrder = try container.decodeIfPresent(Int.self, forKey: .sortOrder) ?? 0
     }
 }
 

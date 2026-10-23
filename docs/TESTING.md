@@ -18,7 +18,7 @@ scripts/test.sh --build                           # только компиля�
 |---|---|
 | Задачи и домен | `TaskServiceTests`, `TaskItemLogicTests`, `TaskCompletionOrderTests`, `TaskDeadlineTimeTests`, `TaskStatusTests`, `TaskStatsTests`, `TaskSortHelperTests`, `TaskInputValidationTests`, `TaskFormSnapshotTests`, `SoftDeleteAndGroupTests`, `GroupAndTagServiceTests`, `GroupCollapseLogicTests` |
 | Привычки и профиль | `HabitTests`, `HabitDaySelectionTests`, `HabitAndProfileServiceTests`, `UserGenderTests` |
-| Хранилище и бэкап | `ModelContainerFactoryTests`, `AppDataPersistenceRoundTripTests`, `MyTasksDocumentTests`, `ProfileDocumentTests`, `BackupDocumentTests`, `BackupImportTests`, `AutoBackupTests`, `SyncFieldsTests`, `LegacyStorageCleanupTests` |
+| Хранилище и бэкап | `ModelContainerFactoryTests`, `AppDataPersistenceRoundTripTests`, `MyTasksDocumentTests`, `ProfileDocumentTests`, `BackupDocumentTests`, `BackupImportTests`, `AutoBackupTests`, `SyncFieldsTests`, `LegacyStorageCleanupTests`, `SchemaV2MigrationTests`, `TaskSubtaskDataTests` |
 | Календарь | `CalendarEventRulesTests`, `CalendarExportServiceTests`, `CalendarWeekHelperTests`, `CalendarMeetingRulesTests` |
 | LLM | `SecretStoreTests`, `LLMSettingsTests`, `OpenRouterProviderTests`, `TaskDraftServiceTests`, `InboxDraftServiceTests`, `ReflectionServiceTests`, `DayPlanServiceTests`, `LLMAnswerTextTests` |
 | Интерфейс и настройки | `TabBarSettingsTests`, `NotificationSettingsTests`, `NotificationDeepLinkTests`, `AppBadgeCounterTests`, `AccentPaletteTests`, `AccentInstallDefaultsTests`, `OrientationLockSettingsTests`, `TaskListDisplaySettingsTests`, `EisenhowerMatrixLayoutTests`, `EisenhowerQuadrantTests`, `WidgetSnapshotBuilderTests`, `LockScreenWidgetSnapshotTests`, `SessionLogTests`, `SettingsChangeObserverTests`, `DayTasksShareTextTests`, `TaskDragPayloadTests`, `TaskFieldKeyboardResetTests`, `TaskReminderOffsetTests` |
@@ -31,6 +31,10 @@ scripts/test.sh --build                           # только компиля�
 - `ModelContainer` хранить в свойстве тестовой структуры (`init() throws`), а не в локальной переменной: иначе Swift может освободить его раньше времени и тестовый процесс упадёт.
 - Сервисам передавать свой `onChange` (например, счётчик): настоящий `didChange()` асинхронно пересчитывает уведомления.
 - «Сейчас» — фиксированная дата или параметр (`now:`, `isOverdue(at:)`, `isDue(on:)`), а не `Date()`.
+
+## Образец хранилища V1
+
+`BraineeAppTests/Fixtures/SchemaV1-demo.store` — хранилище, созданное сборкой V1 (до заморозки схемы, D-39) с `-SeedDemoData`: 9 задач, 2 папки, 2 тега, 4 привычки, профиль. `SchemaV2MigrationTests` переводит его копию на V2 — так проверяется, что замороженная `SchemaV1` совпадает с настоящим хранилищем. Файл не менять. Как сделать такой образец для следующей версии: собрать `main` до заморозки, поставить в симулятор начисто, запустить с `-SeedDemoData`, остановить, скопировать `BraineeApp.store*` из контейнера и свести в один файл: `sqlite3 BraineeApp.store "PRAGMA wal_checkpoint(TRUNCATE); PRAGMA journal_mode=DELETE;"`.
 
 ## Отладочные аргументы запуска (только Debug)
 

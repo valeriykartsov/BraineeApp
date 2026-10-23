@@ -13,10 +13,10 @@ struct BraineeAppApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 #endif
 
-    /// Данные живут в SwiftData-файле; JSON пока пишется параллельно (см. AppDataPersistence).
-    /// Если хранилище не открылось — экран ошибки вместо падения приложения.
+    /// Данные живут в SwiftData-файле. Хранилище V1 при первом запуске переводится на V2 с бэкапом
+    /// и сверкой (`SchemaUpgrade`, D-39). Если хранилище не открылось — экран ошибки вместо падения приложения.
     private let sharedModelContainer = Result {
-        try ModelContainerFactory.make(.persistent(url: ModelContainerFactory.standardStoreURL))
+        try SchemaUpgrade.standard.openStore()
     }
 
     var body: some Scene {
