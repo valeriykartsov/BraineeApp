@@ -3,6 +3,11 @@
 Notable changes to BraineeApp. Dates are commit dates. Decision references (D-xx) point to [`docs/decisions.md`](docs/decisions.md).
 The October 2026 work was a modernization done in phases; the detailed task plan and audit it followed are available in git history (`e1ccfff`).
 
+## 2026-10-23 — Add a task from the Calendar tab
+
+- A "+" next to "Share" in the Calendar tab opens the new-task form with the selected day as the deadline (no time). Works for past days too — such a task is simply overdue. The task goes to Inbox.
+- The empty-day hint now points to the "+".
+
 ## 2026-10-23 — Task card redesign
 
 - One compact task card in the list, kanban, Calendar tab and matrix: title on one line, description up to 2 lines, labels in the order deadline, status, priority, up to 3 tags, subtasks — a label that does not fit moves to the next line. Same paddings everywhere, height follows the content; an overdue card gets a red background without changing its size.

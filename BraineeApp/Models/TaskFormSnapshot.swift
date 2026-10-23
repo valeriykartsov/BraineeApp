@@ -70,6 +70,12 @@ struct TaskFormSnapshot: Equatable {
         )
     }
 
+    /// Новая задача на выбранный день вкладки «Календарь» (п. 40): срок — этот день без времени,
+    /// остальные поля — как у обычной новой задачи. Прошедший день не исключение: задача будет просроченной.
+    static func newTask(on day: Date, calendar: Calendar = .current) -> TaskFormSnapshot {
+        TaskFormSnapshot(hasDeadline: true, hasDeadlineTime: false, deadline: calendar.startOfDay(for: day))
+    }
+
     static func minuteStamp(_ date: Date, calendar: Calendar = .current) -> Int {
         let comps = calendar.dateComponents(
             [.year, .month, .day, .hour, .minute],

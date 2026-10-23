@@ -24,6 +24,9 @@ struct CalendarWeekView: View {
     @State private var weekStart = CalendarWeekHelper.startOfWeek(containing: .now)
     @State private var selectedDay = Calendar.current.startOfDay(for: .now)
     @State private var editingTask: TaskItem?
+    /// День, на который создаётся задача по «+»; запоминается при нажатии,
+    /// чтобы сброс вкладки на «сегодня» (уход в фон) не менял дату в открытой форме.
+    @State private var newTaskDay: NewTaskDay?
     @State private var displaySettings = TaskListDisplaySettings.load()
     /// Встречи дня читаются из Календаря при показе и нигде не сохраняются (D-37).
     @State private var meetings: [DayMeeting] = []
@@ -55,6 +58,7 @@ struct CalendarWeekView: View {
                         .foregroundStyle(DesignSystem.Colors.textPrimary)
                     Spacer()
                     shareDayButton
+                    addTaskButton
                 }
                 .padding(.horizontal, DesignSystem.Space.screenInset)
                     .padding(.top, DesignSystem.Space.x1)
@@ -86,6 +90,15 @@ struct CalendarWeekView: View {
                     }
                 )
                 .id(task.uuid)
+            }
+            .sheet(item: $newTaskDay) { newTask in
+                AddEditTaskView(
+                    prefill: .newTask(on: newTask.day),
+                    deadline: Calendar.current.startOfDay(for: newTask.day)
+                ) { formData in
+                    // Без папки — во «Входящих», как у «+» во вкладке «Задачи».
+                    taskService.create(from: formData)
+                }
             }
             .onAppear {
                 displaySettings = TaskListDisplaySettings.load()
@@ -149,6 +162,21 @@ struct CalendarWeekView: View {
                 .contentShape(Rectangle())
         }
         .accessibilityLabel("Поделиться задачами дня")
+    }
+
+    /// Новая задача с датой выбранного дня (п. 40).
+    private var addTaskButton: some View {
+        Button {
+            newTaskDay = NewTaskDay(day: selectedDay)
+        } label: {
+            Image(systemName: "plus")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(DesignSystem.Colors.accent)
+                .frame(width: DesignSystem.Space.x10, height: DesignSystem.Space.x10)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Добавить задачу на этот день")
     }
 
     private var weekHeader: some View {
@@ -252,7 +280,7 @@ struct CalendarWeekView: View {
             Text("На этот день задач нет")
                 .font(DesignSystem.Typography.headline())
                 .foregroundStyle(DesignSystem.Colors.textPrimary)
-            Text("Создайте задачу с дедлайном на выбранную дату в разделе «Задачи».")
+            Text("Нажмите «+», чтобы добавить задачу на этот день.")
                 .font(DesignSystem.Typography.caption())
                 .foregroundStyle(DesignSystem.Colors.textSecondary)
         }
@@ -382,4 +410,10 @@ struct CalendarWeekView: View {
 #Preview {
     CalendarWeekView()
         .modelContainer(for: [TaskItem.self, TaskGroup.self, TaskTag.self], inMemory: true)
+}
+
+/// Обёртка дня для `.sheet(item:)`.
+private struct NewTaskDay: Identifiable {
+    let day: Date
+    var id: Date { day }
 }
