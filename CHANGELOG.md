@@ -3,6 +3,13 @@
 Notable changes to BraineeApp. Dates are commit dates. Decision references (D-xx) point to [`docs/decisions.md`](docs/decisions.md).
 The October 2026 work was a modernization done in phases; the detailed task plan and audit it followed are available in git history (`e1ccfff`).
 
+## 2026-10-23 — LLM "Matrix" mode
+
+- New chat mode "Матрица": for active tasks without a deadline (up to 30, by priority) the model suggests "schedule" (this week / this month / later), "delegate" or "drop", with a short reason and a one-line summary (D-42). View only — deadlines, priorities and the trash are not changed.
+- Sent to OpenRouter: number, title, priority and matrix quadrant only — no descriptions, tags, folders, subtasks, duration or ids. Asked once for consent, separately from Day plan; revoke in "Profile → Settings → LLM".
+- "Copy" and "Share" under the answer, same text as the card (extends D-38).
+- Debug `-LLMStub` has a canned Matrix answer.
+
 ## 2026-10-23 — Subtasks
 
 - Task form: a "Subtasks" section under the description — checkbox, text, delete, "Add subtask"; Return moves to a new line (D-41). Up to 10 subtasks, 50 characters each; empty lines are dropped. Saved together with the form ("Cancel" discards them too).

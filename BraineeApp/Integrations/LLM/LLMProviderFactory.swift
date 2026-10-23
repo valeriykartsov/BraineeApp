@@ -46,6 +46,16 @@ struct DebugStubLLMProvider: LLMProvider {
         if user.contains("ошибка") { throw LLMError.offline }
         if user.contains("мусор") { return LLMResponse(text: "Не могу помочь.", model: "debug/stub") }
 
+        if system.contains(MatrixReviewService.modeMarker) {
+            // Три действия, неизвестное действие (отбросится), неизвестный номер 99 (отбросится).
+            return LLMResponse(text: """
+            {"summary": "Заглушка: главное — запланировать, мелочи можно отдать или убрать.",
+             "items": [{"id": 1, "action": "schedule", "when": "week", "note": "Важно и без срока"},
+                       {"id": 2, "action": "delegate", "when": null, "note": "Может сделать другой"},
+                       {"id": 3, "action": "eliminate", "when": "week", "note": ""},
+                       {"id": 4, "action": "maybe"}, {"id": 99, "action": "schedule"}]}
+            """, model: "debug/stub")
+        }
         if system.contains(DayPlanService.modeMarker) {
             // Номера 2 и 1 из списка, неизвестный номер 99 (отбросится), повтор 2 (уберётся).
             return LLMResponse(text: """

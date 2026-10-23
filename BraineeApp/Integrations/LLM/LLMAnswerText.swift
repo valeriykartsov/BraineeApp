@@ -49,4 +49,34 @@ enum LLMAnswerText {
         }
         return lines.joined(separator: "\n")
     }
+
+    /// «Матрица» (D-42): заголовок, общий совет, группы по действиям «• название — горизонт. совет», пометки.
+    static func matrixReview(_ review: MatrixReview) -> String {
+        var lines = ["Разбор задач без срока"]
+        let summary = review.summary.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !summary.isEmpty {
+            lines.append(summary)
+        }
+        for action in MatrixReviewAction.allCases {
+            let items = review.items(for: action)
+            guard !items.isEmpty else { continue }
+            lines.append("")
+            lines.append(action.title)
+            for item in items {
+                lines.append("• " + matrixLine(item))
+            }
+        }
+        if !review.notes.isEmpty {
+            lines.append("")
+            lines.append(contentsOf: review.notes)
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    /// «Название — на этой неделе. Совет»; без горизонта и совета — только название.
+    static func matrixLine(_ item: MatrixReviewItem) -> String {
+        let note = item.note.trimmingCharacters(in: .whitespacesAndNewlines)
+        let detail = [item.horizon?.title, note.isEmpty ? nil : note].compactMap { $0 }.joined(separator: ". ")
+        return detail.isEmpty ? item.title : "\(item.title) — \(detail)"
+    }
 }
