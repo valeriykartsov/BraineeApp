@@ -93,4 +93,24 @@ struct CalendarMeetingRulesTests {
         #expect(CalendarMeetingRules.durationText(from: start, to: start) == "0 мин")
         #expect(CalendarMeetingRules.durationText(from: start, to: date(23, 9, 0)) == "2 д")
     }
+
+    // Текст встречи (D-43) — тот же, что на экране: время/«Весь день»/«до ЧЧ:ММ», продолжительность, название, календарь.
+    @Test func текстВстречи_какНаЭкране() {
+        let events = [
+            meeting("Отпуск", date(21, 0, 0), date(22, 0, 0), allDay: true, calendarTitle: "Семья"),
+            meeting("Перелёт", date(20, 22, 0), date(21, 1, 0), calendarTitle: "Личное"),
+            meeting("", date(21, 9, 30), date(21, 10, 0)),
+            meeting("Обед", date(21, 13, 0), date(21, 14, 30), calendarTitle: ""),
+        ]
+
+        let lines = CalendarMeetingRules.meetings(on: day, from: events, calendar: calendar)
+            .map { DayMeetingText($0, calendar: calendar).shareLine }
+
+        #expect(lines == [
+            "Весь день — Отпуск (Семья)",
+            "до 01:00 · 3 ч — Перелёт (Личное)",
+            "09:30 · 30 мин — Без названия (Работа)",
+            "13:00 · 1 ч 30 мин — Обед",
+        ])
+    }
 }

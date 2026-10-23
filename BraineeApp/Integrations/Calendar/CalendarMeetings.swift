@@ -37,6 +37,41 @@ struct DayMeeting: Equatable, Identifiable {
     var id: String { meeting.id }
 }
 
+/// Встреча так, как её видит пользователь: на экране и в тексте «Поделиться» (D-37, D-43) — из одного места.
+struct DayMeetingText: Equatable {
+    /// «09:00», «Весь день», «до 11:00».
+    let time: String
+    /// «1 ч 30 мин»; у встречи на весь день нет.
+    let duration: String?
+    /// «Без названия», если у события нет названия.
+    let title: String
+    let calendarTitle: String
+
+    init(_ item: DayMeeting, calendar: Calendar = .current) {
+        let meeting = item.meeting
+        switch item.timing {
+        case .allDay:
+            time = "Весь день"
+            duration = nil
+        case .starts(let start):
+            time = CalendarMeetingRules.timeText(start, calendar: calendar)
+            duration = CalendarMeetingRules.durationText(from: meeting.start, to: meeting.end)
+        case .continuesUntil(let end):
+            time = "до \(CalendarMeetingRules.timeText(end, calendar: calendar))"
+            duration = CalendarMeetingRules.durationText(from: meeting.start, to: meeting.end)
+        }
+        title = meeting.title.isEmpty ? "Без названия" : meeting.title
+        calendarTitle = meeting.calendarTitle
+    }
+
+    /// Строка текста «Поделиться»: «09:30 · 30 мин — Планёрка (Работа)», «Весь день — Отпуск (Семья)».
+    var shareLine: String {
+        let when = [time, duration].compactMap { $0 }.joined(separator: " · ")
+        let what = calendarTitle.isEmpty ? title : "\(title) (\(calendarTitle))"
+        return "\(when) — \(what)"
+    }
+}
+
 enum CalendarMeetingRules {
     /// Встречи на день `day`: без календаря «BraineeApp» (это сами задачи, D-37);
     /// сначала «весь день», дальше по времени начала, при равенстве — по названию.
