@@ -17,4 +17,6 @@ struct TaskFormData {
     var selectedTags: [TaskTag]
     /// Длительность в минутах; nil — по умолчанию (30 мин, D-40).
     var durationMinutes: Int? = nil
+    /// Подзадачи по порядку; nil — форма их не показывала (черновик LLM, демо-данные): не трогать (D-41).
+    var subtasks: [SubtaskDraft]? = nil
 }

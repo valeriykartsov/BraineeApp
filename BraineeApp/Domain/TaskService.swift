@@ -42,6 +42,9 @@ struct TaskService {
         // Теги — после insert: связь «многие ко многим», заданная в init до вставки,
         // становится видна SwiftData только после save(); так она видна сразу.
         task.tags = form.selectedTags
+        if let subtasks = form.subtasks {
+            applySubtasks(subtasks, to: task)
+        }
         log.add(.task, "Задача создана", subject: task.title)
         onChange(context)
         return task
@@ -60,6 +63,9 @@ struct TaskService {
         task.category = .tasks
         task.taskDetails = form.taskDetails
         task.tags = form.selectedTags
+        if let subtasks = form.subtasks {
+            applySubtasks(subtasks, to: task)
+        }
         task.updatedAt = now()
         // Сохранение формы без правок в журнал не пишется.
         let changes = TaskLogFields.changes(from: before, to: TaskLogFields(task))
@@ -157,6 +163,30 @@ struct TaskService {
         }
         try? context.save()
         onChange(context)
+    }
+
+    /// Приводит подзадачи задачи к списку формы (D-41): по uuid обновляет, новые добавляет,
+    /// убранные удаляет; порядок — порядок в списке. Отметка всех подзадач задачу не закрывает.
+    private func applySubtasks(_ drafts: [SubtaskDraft], to task: TaskItem) {
+        let wanted = TaskSubtaskRules.normalized(drafts)
+        let wantedIDs = Set(wanted.map(\.id))
+        for subtask in task.subtasks where !wantedIDs.contains(subtask.uuid) {
+            context.delete(subtask)
+        }
+        let existing = Dictionary(
+            task.subtasks.filter { wantedIDs.contains($0.uuid) }.map { ($0.uuid, $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        task.subtasks = wanted.enumerated().map { index, draft in
+            let subtask = existing[draft.id] ?? TaskSubtask(uuid: draft.id, title: draft.title)
+            if existing[draft.id] == nil {
+                context.insert(subtask)
+            }
+            subtask.title = draft.title
+            subtask.isDone = draft.isDone
+            subtask.sortOrder = index
+            return subtask
+        }
     }
 
     private static func folderName(_ group: TaskGroup?) -> String {

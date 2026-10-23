@@ -55,6 +55,13 @@ struct TaskLogFields: Equatable {
     var status: String
     var details: String
     var tags: [String]
+    /// uuid → (текст, отметка); в журнал попадают только числа (D-41).
+    var subtasks: [UUID: SubtaskState]
+
+    struct SubtaskState: Equatable {
+        var title: String
+        var isDone: Bool
+    }
 
     init(_ task: TaskItem) {
         title = task.title
@@ -66,6 +73,10 @@ struct TaskLogFields: Equatable {
         status = task.status.title
         details = task.taskDetails
         tags = (task.tags ?? []).map(\.name).sorted()
+        subtasks = Dictionary(
+            task.subtasks.map { ($0.uuid, SubtaskState(title: $0.title, isDone: $0.isDone)) },
+            uniquingKeysWith: { first, _ in first }
+        )
     }
 
     /// Описание — только факт изменения, без текста (решение владельца, п. 16).
@@ -88,6 +99,21 @@ struct TaskLogFields: Equatable {
             lines.append("Описание изменено")
         }
         lines.append(D.line("Теги", D.list(old.tags), D.list(new.tags)))
+        lines.append(subtaskSummary(from: old.subtasks, to: new.subtasks))
         return lines.compactMap { $0 }
+    }
+
+    /// «Подзадачи: +2, −1, изменено 1, отмечено 1, снято 1» — только ненулевые части; nil — без изменений.
+    static func subtaskSummary(from old: [UUID: SubtaskState], to new: [UUID: SubtaskState]) -> String? {
+        let kept = Set(old.keys).intersection(new.keys)
+        let counts: [(Int, (Int) -> String)] = [
+            (new.keys.filter { old[$0] == nil }.count, { "+\($0)" }),
+            (old.keys.filter { new[$0] == nil }.count, { "−\($0)" }),
+            (kept.filter { old[$0]?.title != new[$0]?.title }.count, { "изменено \($0)" }),
+            (kept.filter { old[$0]?.isDone == false && new[$0]?.isDone == true }.count, { "отмечено \($0)" }),
+            (kept.filter { old[$0]?.isDone == true && new[$0]?.isDone == false }.count, { "снято \($0)" }),
+        ]
+        let parts = counts.filter { $0.0 > 0 }.map { $0.1($0.0) }
+        return parts.isEmpty ? nil : "Подзадачи: " + parts.joined(separator: ", ")
     }
 }
