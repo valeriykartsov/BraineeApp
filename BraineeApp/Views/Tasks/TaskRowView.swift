@@ -104,6 +104,7 @@ struct TaskRowView: View {
             || displaySettings.showStatus
             || displaySettings.showPriority
             || (displaySettings.showTags && !task.tags.isEmpty)
+            || (displaySettings.showSubtasks && !task.subtasks.isEmpty)
     }
 
     /// Метки в одну строку без своей горизонтальной прокрутки (UIScrollView в каждой строке
@@ -142,6 +143,14 @@ struct TaskRowView: View {
                 MetaChip(
                     text: task.priority.title,
                     foreground: PriorityStyle.color(for: task.priority)
+                )
+            }
+
+            // Счётчик подзадач (D-41): только если они есть.
+            if displaySettings.showSubtasks, let progress = task.subtaskProgressText {
+                MetaChip(
+                    text: "☑ \(progress)",
+                    foreground: DesignSystem.Colors.textSecondary
                 )
             }
 

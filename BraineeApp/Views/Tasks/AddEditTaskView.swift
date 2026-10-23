@@ -24,6 +24,8 @@ struct AddEditTaskView: View {
     @State private var reminderOffsets: [TaskReminderOffset]
     /// nil — по умолчанию (30 мин, D-40).
     @State private var durationMinutes: Int?
+    /// Подзадачи по порядку (D-41); сохраняются вместе с формой.
+    @State private var subtasks: [SubtaskDraft]
     @State private var priority: TaskPriority
     @State private var status: TaskStatus
     @State private var taskDetails: String
@@ -45,6 +47,7 @@ struct AddEditTaskView: View {
     private enum FormField: Hashable {
         case title
         case details
+        case subtask(UUID)
     }
 
     private var isEditing: Bool { editingTaskUUID != nil }
@@ -61,7 +64,8 @@ struct AddEditTaskView: View {
             deadline: hasDeadline ? deadline : nil,
             reminderOffsets: reminderOffsets,
             selectedTagUUIDs: selectedTagUUIDs,
-            durationMinutes: durationMinutes
+            durationMinutes: durationMinutes,
+            subtasks: subtasks
         )
     }
 
@@ -124,6 +128,7 @@ struct AddEditTaskView: View {
         _hasDeadlineTime = State(initialValue: snapshot.hasDeadlineTime)
         _reminderOffsets = State(initialValue: snapshot.reminderOffsets)
         _durationMinutes = State(initialValue: snapshot.durationMinutes)
+        _subtasks = State(initialValue: snapshot.subtasks)
         _selectedTagUUIDs = State(initialValue: snapshot.selectedTagUUIDs)
         _deadline = State(initialValue: deadline ?? Date())
     }
@@ -167,6 +172,8 @@ struct AddEditTaskView: View {
                         }
                         .padding(DesignSystem.Space.x3)
                     }
+
+                    subtasksSection
 
                     if isEditing {
                         GroupedSection(title: "Статус") {
@@ -369,6 +376,115 @@ struct AddEditTaskView: View {
         }
     }
 
+    // MARK: - Подзадачи (D-41)
+
+    private var subtasksSection: some View {
+        GroupedSection(title: "Подзадачи") {
+            VStack(spacing: 0) {
+                ForEach($subtasks) { $item in
+                    subtaskRow($item)
+                    InsetDivider(leading: DesignSystem.Space.x3)
+                }
+
+                if subtasks.count < TaskSubtaskRules.maxCount {
+                    Button {
+                        addSubtask(after: subtasks.last?.id)
+                    } label: {
+                        HStack(spacing: DesignSystem.Space.x2) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 20))
+                            Text("Добавить подзадачу")
+                                .font(DesignSystem.Typography.body(16))
+                            Spacer()
+                            if !subtasks.isEmpty {
+                                Text("\(subtasks.count)/\(TaskSubtaskRules.maxCount)")
+                                    .font(DesignSystem.Typography.caption())
+                                    .foregroundStyle(DesignSystem.Colors.textSecondary)
+                            }
+                        }
+                        .foregroundStyle(DesignSystem.Colors.accent)
+                        .padding(.horizontal, DesignSystem.Space.x3)
+                        .padding(.vertical, DesignSystem.Space.x2 + 2)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    Text("Не больше \(TaskSubtaskRules.maxCount) подзадач")
+                        .font(DesignSystem.Typography.caption())
+                        .foregroundStyle(DesignSystem.Colors.textSecondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, DesignSystem.Space.x3)
+                        .padding(.vertical, DesignSystem.Space.x2 + 2)
+                }
+            }
+        }
+    }
+
+    private func subtaskRow(_ item: Binding<SubtaskDraft>) -> some View {
+        let id = item.wrappedValue.id
+        let isDone = item.wrappedValue.isDone
+        return HStack(spacing: DesignSystem.Space.x2) {
+            Button {
+                item.wrappedValue.isDone.toggle()
+            } label: {
+                Image(systemName: isDone ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 20))
+                    .foregroundStyle(isDone ? DesignSystem.Colors.accent : DesignSystem.Colors.textSecondary)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(isDone ? "Снять отметку" : "Отметить")
+
+            TextField("Подзадача", text: item.title)
+                .font(DesignSystem.Typography.body(16))
+                .foregroundStyle(isDone ? DesignSystem.Colors.textSecondary : DesignSystem.Colors.textPrimary)
+                .focused($focusedField, equals: .subtask(id))
+                .submitLabel(.next)
+                .onSubmit { addSubtask(after: id) }
+                .onChange(of: item.wrappedValue.title) { _, newValue in
+                    if newValue.count > TaskSubtaskRules.titleMaxLength {
+                        item.wrappedValue.title = String(newValue.prefix(TaskSubtaskRules.titleMaxLength))
+                    }
+                }
+
+            Button {
+                removeSubtask(id)
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 18))
+                    .foregroundStyle(DesignSystem.Colors.textSecondary)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Удалить подзадачу")
+        }
+        .padding(.horizontal, DesignSystem.Space.x3)
+        .padding(.vertical, DesignSystem.Space.x2)
+    }
+
+    /// Новая пустая строка после `id` (Return в поле) или в конце; фокус — на неё.
+    /// Return в пустой строке только закрывает клавиатуру.
+    private func addSubtask(after id: UUID?) {
+        if let id, let current = subtasks.first(where: { $0.id == id }),
+           current.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            focusedField = nil
+            return
+        }
+        guard subtasks.count < TaskSubtaskRules.maxCount else {
+            focusedField = nil
+            return
+        }
+        let draft = SubtaskDraft(title: "")
+        let index = id.flatMap { id in subtasks.firstIndex { $0.id == id } }.map { $0 + 1 } ?? subtasks.count
+        subtasks.insert(draft, at: index)
+        focusedField = .subtask(draft.id)
+    }
+
+    private func removeSubtask(_ id: UUID) {
+        if focusedField == .subtask(id) {
+            focusedField = nil
+        }
+        subtasks.removeAll { $0.id == id }
+    }
+
     // MARK: - Длительность (D-40)
 
     /// Меню с фиксированным списком; значение не из списка (например, из бэкапа) показывается как есть.
@@ -529,7 +645,7 @@ struct AddEditTaskView: View {
         switch focusedField {
         case .title: .title
         case .details: .details
-        case .none: nil
+        case .subtask, .none: nil
         }
     }
 
@@ -537,7 +653,7 @@ struct AddEditTaskView: View {
         switch lastFocusedField {
         case .title: .title
         case .details: .details
-        case .none: nil
+        case .subtask, .none: nil
         }
     }
 
@@ -691,7 +807,8 @@ struct AddEditTaskView: View {
             status: isEditing ? status : .new,
             taskDetails: TaskInputValidation.clampedDetails(taskDetails),
             selectedTags: resolvedTags(),
-            durationMinutes: TaskDuration.stored(durationMinutes, hasDeadlineTime: hasDeadline && hasDeadlineTime)
+            durationMinutes: TaskDuration.stored(durationMinutes, hasDeadlineTime: hasDeadline && hasDeadlineTime),
+            subtasks: TaskSubtaskRules.normalized(subtasks)
         )
         onSave(formData)
         dismiss()

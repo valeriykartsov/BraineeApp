@@ -3,6 +3,13 @@
 Notable changes to BraineeApp. Dates are commit dates. Decision references (D-xx) point to [`docs/decisions.md`](docs/decisions.md).
 The October 2026 work was a modernization done in phases; the detailed task plan and audit it followed are available in git history (`e1ccfff`).
 
+## 2026-10-23 — Subtasks
+
+- Task form: a "Subtasks" section under the description — checkbox, text, delete, "Add subtask"; Return moves to a new line (D-41). Up to 10 subtasks, 50 characters each; empty lines are dropped. Saved together with the form ("Cancel" discards them too).
+- Task rows (list, kanban, Calendar tab, matrix): a "☑ 2/5" counter when the task has subtasks; can be turned off in list display settings ("Подзадачи"). Checking all subtasks does not complete the task.
+- Session log: one line with numbers only, e.g. "Подзадачи: +2, −1, изменено 1, отмечено 1".
+- Subtasks stay inside the app and the JSON backup: not exported to Calendar, not sent to the LLM, not in widgets or the share text.
+
 ## 2026-10-23 — Task duration
 
 - Task form: a "Duration" row under "Time" for timed tasks — 30 min, 1 h, 1.5 h, 2 h, 2.5 h or 3 h (D-40). 30 min is the default and is stored as "not chosen", so existing tasks are unchanged. Removing the time or the date resets the duration.

@@ -149,7 +149,8 @@ extension SettingsChangeObserver.Setting {
             D.line("Срок", D.onOff(old.showDeadline), D.onOff(new.showDeadline)),
             D.line("Приоритет", D.onOff(old.showPriority), D.onOff(new.showPriority)),
             D.line("Статус", D.onOff(old.showStatus), D.onOff(new.showStatus)),
-            D.line("Теги", D.onOff(old.showTags), D.onOff(new.showTags))
+            D.line("Теги", D.onOff(old.showTags), D.onOff(new.showTags)),
+            D.line("Подзадачи", D.onOff(old.showSubtasks), D.onOff(new.showSubtasks))
         ].compactMap { $0 }
     }
 }

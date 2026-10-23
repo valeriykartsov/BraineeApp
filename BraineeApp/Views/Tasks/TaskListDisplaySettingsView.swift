@@ -42,6 +42,7 @@ struct TaskListDisplaySettingsView: View {
                     Toggle("Приоритет", isOn: $settings.showPriority)
                     Toggle("Статус", isOn: $settings.showStatus)
                     Toggle("Теги", isOn: $settings.showTags)
+                    Toggle("Подзадачи", isOn: $settings.showSubtasks)
                 } header: {
                     Text("Показывать в списке")
                         .foregroundStyle(DesignSystem.Colors.textSecondary)

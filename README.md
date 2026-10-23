@@ -18,7 +18,7 @@ The app UI is in Russian. Screenshots use demo data.
 
 ## Features
 
-- **Tasks** — deadlines with optional time and duration (30 min to 3 h), priorities, statuses, descriptions, tags, folders, drag-and-drop, list and kanban views, soft delete with a trash.
+- **Tasks** — deadlines with optional time and duration (30 min to 3 h), subtasks with checkboxes (up to 10, progress like "2/5" in the list), priorities, statuses, descriptions, tags, folders, drag-and-drop, list and kanban views, soft delete with a trash.
 - **Calendar** — week strip with the tasks of the selected day; optional one-way export to an app-owned "BraineeApp" calendar in the iPhone Calendar (iCloud), events as long as the task; optional read-only list of the day's meetings from your calendars, sorted by time with start and duration; share the day's open tasks as text (e.g. to Telegram).
 - **Habits** — up to 7 habits, a three-month contribution grid, check-ins for today and up to 14 days back.
 - **AI assistant (optional, OpenRouter)** — turn a phrase into a task draft, split a brain dump into several drafts, get a short day/week reflection, get a suggested plan for today. Drafts are saved only after you confirm them in the regular task form.
