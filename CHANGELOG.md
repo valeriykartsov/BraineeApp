@@ -7,7 +7,8 @@ The October 2026 work was a modernization done in phases; the detailed task plan
 
 - One compact task card in the list, kanban, Calendar tab and matrix: title on one line, description up to 2 lines, labels in the order deadline, status, priority, up to 3 tags, subtasks — a label that does not fit moves to the next line. Same paddings everywhere, height follows the content; an overdue card gets a red background without changing its size.
 - Tap opens the task form; the pencil button is gone. The trash button always asks "Удалить задачу?" before moving the task to the trash.
-- No long-press menu and no swipe-to-delete anywhere. In the list a long press on the card starts dragging it to another folder (the "≡" handle is gone); in the Calendar tab and the matrix a long press does nothing.
+- No long-press menu and no swipe-to-delete anywhere. In the list a long press on the card starts dragging it to another folder; in the Calendar tab and the matrix a long press does nothing.
+- Kanban uses the same card: the "≡" handle is gone, a long press on the card drags it to another column; an overdue card is red as a whole.
 - Display settings of the list are unchanged.
 
 ## 2026-10-23 — LLM "Matrix" mode

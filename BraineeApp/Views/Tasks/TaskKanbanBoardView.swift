@@ -99,37 +99,27 @@ struct TaskKanbanBoardView: View {
         }
     }
 
+    /// Карточка — та же, что в списке (п. 38): фон и отступы задаёт `TaskRowView`,
+    /// перенос в другую колонку — всей карточкой по долгому удержанию, без ручки.
     private func kanbanCard(_ task: TaskItem) -> some View {
-        HStack(alignment: .top, spacing: DesignSystem.Space.x1) {
-            TaskRowView(
-                task: task,
-                displaySettings: displaySettings,
-                onToggle: { onToggle(task) },
-                onOpen: { onEdit(task) },
-                onDelete: { onDelete(task) }
-            )
-
-            Image(systemName: DesignSystem.Icon.drag)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(DesignSystem.Colors.textSecondary.opacity(0.75))
-                .frame(width: 28, height: 36)
-                .contentShape(Rectangle())
-                .draggable(task.uuid.uuidString) {
-                    Text(task.title)
-                        .font(DesignSystem.Typography.body(15))
-                        .padding(DesignSystem.Space.x3)
-                        .frame(width: 220, alignment: .leading)
-                        .background(DesignSystem.Colors.surface)
-                        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Radius.card, style: .continuous))
-                        .shadow(color: .black.opacity(0.15), radius: 8, y: 3)
-                }
-        }
-        .padding(.horizontal, DesignSystem.Space.x2)
-        .padding(.vertical, DesignSystem.Space.x2)
-        .background(
-            RoundedRectangle(cornerRadius: DesignSystem.Radius.card, style: .continuous)
-                .fill(DesignSystem.Colors.background)
+        TaskRowView(
+            task: task,
+            displaySettings: displaySettings,
+            cardFill: DesignSystem.Colors.background,
+            onToggle: { onToggle(task) },
+            onOpen: { onEdit(task) },
+            onDelete: { onDelete(task) }
         )
+        .draggable(task.uuid.uuidString) {
+            Text(task.title)
+                .font(DesignSystem.Typography.body(15))
+                .lineLimit(2)
+                .padding(DesignSystem.Space.x3)
+                .frame(width: 220, alignment: .leading)
+                .background(DesignSystem.Colors.surface)
+                .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Radius.card, style: .continuous))
+                .shadow(color: .black.opacity(0.15), radius: 8, y: 3)
+        }
     }
 
     private func sortedTasks(in status: TaskStatus) -> [TaskItem] {
