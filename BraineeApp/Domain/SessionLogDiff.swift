@@ -48,6 +48,8 @@ struct TaskLogFields: Equatable {
     var title: String
     var deadline: Date?
     var hasDeadlineTime: Bool
+    /// Только у задачи со временем (D-40); nil — длительности нет.
+    var duration: String?
     var reminders: [String]
     var priority: String
     var status: String
@@ -58,6 +60,7 @@ struct TaskLogFields: Equatable {
         title = task.title
         deadline = task.deadline
         hasDeadlineTime = task.hasDeadlineTime
+        duration = task.hasDeadlineTime ? TaskDuration.title(task.effectiveDurationMinutes) : nil
         reminders = task.reminderOffsets.map(\.title)
         priority = task.priority.title
         status = task.status.title
@@ -75,6 +78,8 @@ struct TaskLogFields: Equatable {
                 D.date(old.deadline, hasTime: old.hasDeadlineTime, timeZone: timeZone),
                 D.date(new.deadline, hasTime: new.hasDeadlineTime, timeZone: timeZone)
             ),
+            // Время появилось или убрано — это видно в «Сроке»; длительность — только когда время есть до и после.
+            old.duration.flatMap { before in new.duration.flatMap { D.line("Длительность", before, $0) } },
             D.line("Напоминания", D.list(old.reminders), D.list(new.reminders)),
             D.line("Приоритет", old.priority, new.priority),
             D.line("Статус", old.status, new.status)

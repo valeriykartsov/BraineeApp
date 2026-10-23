@@ -19,8 +19,6 @@ struct CalendarEventDraft: Equatable {
 }
 
 enum CalendarEventRules {
-    /// Задача со временем занимает слот 30 минут (D-06).
-    static let timedDuration: TimeInterval = 30 * 60
     static let calendarTitle = "BraineeApp"
     private static let urlScheme = "braineeapp"
     private static let urlHost = "task"
@@ -44,6 +42,7 @@ enum CalendarEventRules {
         isSoftDeleted: Bool,
         details: String,
         uuid: UUID,
+        durationMinutes: Int? = nil,
         calendar: Calendar = .current
     ) -> CalendarEventDraft? {
         guard let deadline, !isDone, !isSoftDeleted else { return nil }
@@ -53,7 +52,8 @@ enum CalendarEventRules {
         let end: Date
         if hasDeadlineTime {
             start = deadline
-            end = deadline.addingTimeInterval(timedDuration)
+            // Событие длится столько же, сколько задача (D-40); без выбора — 30 минут.
+            end = deadline.addingTimeInterval(TimeInterval(TaskDuration.effective(durationMinutes) * 60))
         } else {
             start = calendar.startOfDay(for: deadline)
             end = start
@@ -78,6 +78,7 @@ enum CalendarEventRules {
             isSoftDeleted: task.isSoftDeleted,
             details: task.taskDetails,
             uuid: task.uuid,
+            durationMinutes: task.durationMinutes,
             calendar: calendar
         )
     }

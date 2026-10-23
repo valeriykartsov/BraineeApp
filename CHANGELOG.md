@@ -3,6 +3,13 @@
 Notable changes to BraineeApp. Dates are commit dates. Decision references (D-xx) point to [`docs/decisions.md`](docs/decisions.md).
 The October 2026 work was a modernization done in phases; the detailed task plan and audit it followed are available in git history (`e1ccfff`).
 
+## 2026-10-23 — Task duration
+
+- Task form: a "Duration" row under "Time" for timed tasks — 30 min, 1 h, 1.5 h, 2 h, 2.5 h or 3 h (D-40). 30 min is the default and is stored as "not chosen", so existing tasks are unchanged. Removing the time or the date resets the duration.
+- iPhone Calendar export: a timed task's event now lasts as long as the task (was always 30 min, refines D-06). Events of tasks without a chosen duration stay the same and are not rewritten.
+- Session log: "Длительность: 30 мин → 1,5 ч" when the duration of a timed task changes.
+- Duration is shown only in the task form and is not sent anywhere (share text, Day plan, LLM and widgets unchanged).
+
 ## 2026-10-23 — Storage schema V2 (task duration and subtasks, data only)
 
 - First SwiftData schema migration (D-39): `SchemaV2` adds an optional duration to tasks (`durationMinutes`, empty = not chosen, i.e. 30 min for timed tasks) and a new `TaskSubtask` model (text, checkbox, order). No UI yet — that comes with the next steps. Existing records are not rewritten.
