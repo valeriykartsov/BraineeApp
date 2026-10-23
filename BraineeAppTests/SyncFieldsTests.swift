@@ -44,7 +44,7 @@ struct SyncFieldsTests {
         var document = try PersistenceFixtures.decoder.decode(MyTasksDocument.self, from: Data(json.utf8))
         document.normalizeRecords()
 
-        #expect(document.version == 9)
+        #expect(document.version == MyTasksDocument.currentVersion)
         #expect(document.tags[0].updatedAt == document.tags[0].createdAt)
         #expect(document.groups[0].updatedAt == document.groups[0].createdAt)
         #expect(document.tasks[0].updatedAt == document.tasks[0].createdAt)

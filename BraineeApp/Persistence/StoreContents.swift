@@ -38,7 +38,9 @@ enum StoreContents {
 
     /// Удаляет из хранилища записи, которых нет в документе.
     private static func removeStaleRecords(keeping document: MyTasksDocument, profileID: UUID?, in context: ModelContext) throws -> Int {
-        try removeRecords(TaskItem.self, notIn: Set(document.tasks.map(\.id)), uuid: \.uuid, in: context)
+        // Подзадачи — первыми: подзадачи удаляемых задач тоже не в документе, каскад их не посчитает дважды.
+        try removeRecords(TaskSubtask.self, notIn: Set(document.tasks.flatMap(\.subtasks).map(\.id)), uuid: \.uuid, in: context)
+            + removeRecords(TaskItem.self, notIn: Set(document.tasks.map(\.id)), uuid: \.uuid, in: context)
             + removeRecords(TaskGroup.self, notIn: Set(document.groups.map(\.id)), uuid: \.uuid, in: context)
             + removeRecords(TaskTag.self, notIn: Set(document.tags.map(\.id)), uuid: \.uuid, in: context)
             + removeRecords(Habit.self, notIn: Set(document.habits.map(\.id)), uuid: \.uuid, in: context)
@@ -95,10 +97,11 @@ enum StoreContents {
         }
     }
 
-    /// Порядок тегов в связях SwiftData не гарантирован — сравниваем отсортированными.
+    /// Порядок тегов и подзадач в связях SwiftData не гарантирован — сравниваем отсортированными.
     private static func canonical(_ record: TaskRecord) -> TaskRecord {
         var copy = record
         copy.tagIDs.sort { $0.uuidString < $1.uuidString }
+        copy.subtasks.sort { $0.id.uuidString < $1.id.uuidString }
         return copy
     }
 

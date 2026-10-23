@@ -238,13 +238,18 @@ final class ModelContainerFactoryTests {
         }
     }
 
-    // Схема V1 содержит ровно пять сущностей с уникальным uuid; имена сущностей — имена классов (важно при заморозке V1).
-    @Test func схемаV1_содержитВсеСущности() {
+    // Текущая схема — V2: шесть сущностей с уникальным uuid; имена сущностей — имена классов
+    // (замороженная V1 называет их так же, иначе SwiftData не узнает старое хранилище).
+    @Test func схемаV2_содержитВсеСущности() {
         let names = Set(ModelContainerFactory.schema.entities.map(\.name))
-        #expect(names == ["TaskItem", "TaskGroup", "TaskTag", "UserProfile", "Habit"])
-        #expect(SchemaV1.versionIdentifier == Schema.Version(1, 0, 0))
+        #expect(names == ["TaskItem", "TaskGroup", "TaskTag", "UserProfile", "Habit", "TaskSubtask"])
+        #expect(SchemaV2.versionIdentifier == Schema.Version(2, 0, 0))
         for entity in ModelContainerFactory.schema.entities {
             #expect(entity.uniquenessConstraints == [["uuid"]], "\(entity.name): uuid должен быть уникальным")
         }
+
+        let frozen = Set(Schema(versionedSchema: SchemaV1.self).entities.map(\.name))
+        #expect(frozen == ["TaskItem", "TaskGroup", "TaskTag", "UserProfile", "Habit"])
+        #expect(SchemaV1.versionIdentifier == Schema.Version(1, 0, 0))
     }
 }

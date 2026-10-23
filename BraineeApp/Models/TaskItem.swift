@@ -2,7 +2,8 @@
 //  TaskItem.swift
 //  BraineeApp
 //
-//  Модель задачи: название, дедлайн, напоминания, приоритет, статус, описание, группа, теги.
+//  Модель задачи: название, дедлайн, напоминания, приоритет, статус, описание, группа, теги,
+//  длительность и подзадачи (SchemaV2, D-39).
 
 import Foundation
 import SwiftData
@@ -34,11 +35,17 @@ final class TaskItem {
     var updatedAt: Date
     /// Когда задача стала «Готово»; nil — не выполнена или дата неизвестна (старые данные, D-03).
     var completedAt: Date?
+    /// Длительность задачи со временем в минутах; nil — не выбрана (считается 30 мин, D-39).
+    var durationMinutes: Int?
 
     var group: TaskGroup?
 
     @Relationship
     var tags: [TaskTag]
+
+    /// Подзадачи; порядок — `sortOrder`. Окончательное удаление задачи удаляет и их.
+    @Relationship(deleteRule: .cascade, inverse: \TaskSubtask.task)
+    var subtasks: [TaskSubtask]
 
     init(
         title: String,
@@ -57,8 +64,10 @@ final class TaskItem {
         deletedAt: Date? = nil,
         updatedAt: Date? = nil,
         completedAt: Date? = nil,
+        durationMinutes: Int? = nil,
         group: TaskGroup? = nil,
-        tags: [TaskTag] = []
+        tags: [TaskTag] = [],
+        subtasks: [TaskSubtask] = []
     ) {
         self.title = title
         self.isCompleted = isCompleted
@@ -80,8 +89,10 @@ final class TaskItem {
         self.deletedAt = deletedAt
         self.updatedAt = updatedAt ?? createdAt
         self.completedAt = resolved == .done ? completedAt : nil
+        self.durationMinutes = durationMinutes
         self.group = group
         self.tags = tags
+        self.subtasks = subtasks
     }
 
     var priority: TaskPriority {
@@ -119,6 +130,11 @@ final class TaskItem {
     }
 
     var hasReminder: Bool { !reminderOffsets.isEmpty }
+
+    /// Подзадачи по порядку (порядок связи в SwiftData не гарантирован).
+    var sortedSubtasks: [TaskSubtask] {
+        subtasks.sorted { ($0.sortOrder, $0.uuid.uuidString) < ($1.sortOrder, $1.uuid.uuidString) }
+    }
 
     /// Чекбокс: вкл → Готово, выкл → Новая.
     func applyCompletionToggle() {

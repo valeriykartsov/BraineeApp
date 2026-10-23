@@ -13,7 +13,9 @@ import UniformTypeIdentifiers
 
 struct BackupDocument: Codable {
     static let formatID = "braineeapp.backup"
-    static let currentVersion = 1
+    /// 2 — задачи с длительностью и подзадачами (D-39): старая сборка откажется восстанавливать
+    /// такой файл, а не потеряет новые поля молча. Файлы версии 1 читаются как раньше.
+    static let currentVersion = 2
 
     var format: String
     var version: Int
