@@ -3,6 +3,10 @@
 Notable changes to BraineeApp. Dates are commit dates. Decision references (D-xx) point to [`docs/decisions.md`](docs/decisions.md).
 The October 2026 work was a modernization done in phases; the detailed task plan and audit it followed are available in git history (`e1ccfff`).
 
+## 2026-10-24 — Dashboard task order
+
+- Dashboard details: tasks in the "By priority" and "By tag" groups are ordered open (new, in progress) → completed → in trash, by title within each part (was by title only). The rule is `DashboardTaskOrder`, covered by tests. The Deleted tasks screen is unchanged.
+
 ## 2026-10-24 — Profile keeps its screen
 
 - Profile no longer jumps back to its root when the app goes to the background or another tab is opened: the open subsection and the settings search stay as they were. Tapping the Profile tab again returns to its root (search closed).

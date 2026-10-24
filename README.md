@@ -22,7 +22,7 @@ The app UI is in Russian. Screenshots use demo data.
 - **Calendar** — week strip with the tasks of the selected day and a "+" to add a task for that day; optional one-way export to an app-owned "BraineeApp" calendar in the iPhone Calendar (iCloud), events as long as the task; optional read-only list of the day's meetings from your calendars, sorted by time with start and duration; share the day's open tasks and meetings as text (e.g. to Telegram).
 - **Habits** — up to 7 habits, a three-month contribution grid, check-ins for today and up to 14 days back.
 - **AI assistant (optional, OpenRouter)** — turn a phrase into a task draft, split a brain dump into several drafts, get a short day/week reflection, get a suggested plan for today, get advice on tasks without a deadline (schedule / delegate / drop). Drafts are saved only after you confirm them in the regular task form.
-- **Dashboard** — progress, overdue and today counters; details with a tag pie chart (percent legend) and an Active / All (including trash) switch.
+- **Dashboard** — progress, overdue and today counters; details with a tag pie chart (percent legend) and an Active / All (including trash) switch; lists show open tasks first, then completed, then trashed.
 - **Eisenhower Matrix** — quadrants by priority and urgency.
 - **Reminders and badge** — local notifications for tasks and habits, deadline alerts, configurable app icon badge.
 - **Widgets** — today's tasks, habits, dashboard (S / M / L); on the Lock Screen — date with tasks left for today, and today's habit and task progress.

@@ -4,6 +4,7 @@
 //
 //  Детализация дашборда: сводка, доли тегов (круговая диаграмма), задачи по приоритетам и тегам.
 //  Переключатель сверху: «Активные» (без корзины) или «Все» (включая удалённые).
+//  В группах — сначала актуальные, затем выполненные, затем в корзине (`DashboardTaskOrder`).
 
 import SwiftUI
 import SwiftData
@@ -45,9 +46,7 @@ struct TaskDashboardDetailView: View {
 
     private var byPriority: [(TaskPriority, [TaskItem])] {
         TaskPriority.allCases.reversed().compactMap { priority in
-            let items = scopedTasks
-                .filter { $0.priority == priority }
-                .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+            let items = DashboardTaskOrder.sorted(scopedTasks.filter { $0.priority == priority })
             guard !items.isEmpty else { return nil }
             return (priority, items)
         }
@@ -67,15 +66,10 @@ struct TaskDashboardDetailView: View {
         }
         var result = buckets.keys.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
             .map { name -> (String, [TaskItem]) in
-                let items = (buckets[name] ?? []).sorted {
-                    $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
-                }
-                return (name, items)
+                (name, DashboardTaskOrder.sorted(buckets[name] ?? []))
             }
         if !untagged.isEmpty {
-            result.append((TagDistribution.untaggedName, untagged.sorted {
-                $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
-            }))
+            result.append((TagDistribution.untaggedName, DashboardTaskOrder.sorted(untagged)))
         }
         return result
     }
