@@ -24,6 +24,8 @@ struct AnimatedMainTabView: View {
 
     @ObservedObject private var deepLinkRouter = NotificationDeepLinkRouter.shared
     @State private var selectedTab: MainTab = .tasks
+    /// Повторное нажатие на вкладку «Профиль» — возврат в её корень (п. 41).
+    @State private var profileRootRequest = 0
     @Namespace private var tabUnderlineNamespace
 
     init() {
@@ -83,7 +85,7 @@ struct AnimatedMainTabView: View {
                     .opacity(selectedTab == .habits ? 1 : 0)
                     .allowsHitTesting(selectedTab == .habits)
 
-                ProfileView(isActive: selectedTab == .profile)
+                ProfileView(isActive: selectedTab == .profile, rootRequest: profileRootRequest)
                     .opacity(selectedTab == .profile ? 1 : 0)
                     .allowsHitTesting(selectedTab == .profile)
             }
@@ -138,7 +140,10 @@ struct AnimatedMainTabView: View {
             ForEach(visibleTabs) { tab in
                 let isActive = selectedTab == tab
                 Button {
-                    guard selectedTab != tab else { return }
+                    guard selectedTab != tab else {
+                        if tab == .profile { profileRootRequest += 1 }
+                        return
+                    }
                     withAnimation(flowAnimation) {
                         selectedTab = tab
                     }

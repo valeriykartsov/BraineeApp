@@ -160,6 +160,7 @@ struct LLMSettingsView: View {
             matrixConsent = MatrixReviewService.hasConsent()
         }
         .task(id: savedKeyMask) { await loadKeyInfo() }
+        .dismissOnTabLeave($showingDeleteConfirm)
         .alert("Удалить ключ?", isPresented: $showingDeleteConfirm) {
             Button("Удалить", role: .destructive, action: deleteKey)
             Button("Отмена", role: .cancel) {}

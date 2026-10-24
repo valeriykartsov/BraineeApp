@@ -118,6 +118,7 @@ struct AppearanceSettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
 #endif
         .tint(DesignSystem.Colors.accent)
+        .dismissOnTabLeave($showingAccentPicker)
         .sheet(isPresented: $showingAccentPicker) {
             AccentPalettePickerView(current: accentPalette) { selected in
                 applyAccent(selected)

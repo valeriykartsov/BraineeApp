@@ -3,6 +3,11 @@
 Notable changes to BraineeApp. Dates are commit dates. Decision references (D-xx) point to [`docs/decisions.md`](docs/decisions.md).
 The October 2026 work was a modernization done in phases; the detailed task plan and audit it followed are available in git history (`e1ccfff`).
 
+## 2026-10-24 — Profile keeps its screen
+
+- Profile no longer jumps back to its root when the app goes to the background or another tab is opened: the open subsection and the settings search stay as they were. Tapping the Profile tab again returns to its root (search closed).
+- Sheets and confirmations of Profile (edit profile, matrix, dashboard details, accent picker, restore / clear / delete-key prompts) still close when a notification or widget switches to another tab, so they never stay on top of it.
+
 ## 2026-10-23 — Profile status
 
 - A short status line under the name in Profile ("в отпуске", "фокус на проекте X"): italic, one line with "…", up to 60 characters; empty status is hidden. Edited in "Изменить профиль" with a counter.

@@ -56,6 +56,7 @@ struct TaskDashboardView: View {
         .sheet(isPresented: $showingDetail) {
             TaskDashboardDetailView()
         }
+        .dismissOnTabLeave($showingDetail)
     }
 }
 
