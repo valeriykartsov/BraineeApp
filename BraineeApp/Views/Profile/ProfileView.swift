@@ -11,11 +11,13 @@ import UniformTypeIdentifiers
 
 struct ProfileView: View {
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.scenePhase) private var scenePhase
     @Query private var profiles: [UserProfile]
 
-    /// Активна вкладка «Профиль» — при уходе возвращаем общий вид (корень + без поиска).
+    /// Активна вкладка «Профиль». Открытый подраздел и поиск при уходе сохраняются (п. 41),
+    /// закрываются только листы и запросы поверх экрана.
     var isActive: Bool = true
+    /// Меняется при повторном нажатии на вкладку «Профиль» — возврат в корень.
+    var rootRequest = 0
 
     @AppStorage(AccentPalette.storageKey) private var accentPaletteRaw = AccentPalette.orange.rawValue
     /// Текстовый статус (D-45); меняется только через «Изменить профиль» → ProfileService.
@@ -121,14 +123,14 @@ struct ProfileView: View {
             }
             .onChange(of: isActive) { _, active in
                 if !active {
-                    resetToOverview()
+                    isSearchFocused = false
                 }
             }
-            .onChange(of: scenePhase) { _, phase in
-                if phase == .background {
-                    resetToOverview()
-                }
+            .onChange(of: rootRequest) { _, _ in
+                resetToOverview()
             }
+            .dismissOnTabLeave($showingEditProfile)
+            .dismissOnTabLeave(restorePromptBinding)
             .sheet(isPresented: $showingEditProfile) {
                 EditProfileView(
                     initialName: profile?.displayName ?? "",
@@ -161,10 +163,7 @@ struct ProfileView: View {
             }
             .alert(
                 "Восстановить из резервной копии?",
-                isPresented: Binding(
-                    get: { pendingRestore != nil },
-                    set: { if !$0 { pendingRestore = nil } }
-                ),
+                isPresented: restorePromptBinding,
                 presenting: pendingRestore
             ) { preview in
                 Button("Заменить данные", role: .destructive) {
@@ -181,10 +180,18 @@ struct ProfileView: View {
             }
         }
         .id(navigationResetID)
+        .environment(\.isTabActive, isActive)
         .tint(accentPalette.color)
     }
 
-    /// Общий вид: корень навигации, поиск закрыт, фильтр сброшен.
+    private var restorePromptBinding: Binding<Bool> {
+        Binding(
+            get: { pendingRestore != nil },
+            set: { if !$0 { pendingRestore = nil } }
+        )
+    }
+
+    /// Общий вид (повторное нажатие на вкладку): корень навигации, поиск закрыт, фильтр сброшен.
     private func resetToOverview() {
         searchText = ""
         isSearchExpanded = false
@@ -329,6 +336,7 @@ struct ProfileView: View {
         .sheet(isPresented: $showingMatrix) {
             EisenhowerMatrixView()
         }
+        .dismissOnTabLeave($showingMatrix)
     }
 
     private var settingsSection: some View {

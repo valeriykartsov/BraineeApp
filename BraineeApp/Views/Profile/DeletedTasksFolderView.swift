@@ -109,6 +109,7 @@ struct DeletedTasksFolderView: View {
                 }
             }
         }
+        .dismissOnTabLeave($showingClearAllConfirm)
         .alert("Очистить все удалённые задачи?", isPresented: $showingClearAllConfirm) {
             Button("Отмена", role: .cancel) {}
             Button("Очистить", role: .destructive) {
