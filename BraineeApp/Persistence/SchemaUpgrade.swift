@@ -221,6 +221,7 @@ struct SchemaUpgrade {
                     genderRaw: $0.genderRaw,
                     appThemeRaw: defaults.string(forKey: "appTheme") ?? AppTheme.system.rawValue,
                     accentPaletteRaw: defaults.string(forKey: AccentPalette.storageKey) ?? AccentPalette.orange.rawValue,
+                    status: ProfileStatus.load(defaults: defaults),
                     createdAt: $0.createdAt
                 )
             }

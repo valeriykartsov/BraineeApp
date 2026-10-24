@@ -77,6 +77,8 @@ struct BackupRestore {
 
         defaults.set(preview.document.profile.appThemeRaw, forKey: "appTheme")
         defaults.set(preview.document.profile.accentPaletteRaw, forKey: AccentPalette.storageKey)
+        // Статус (D-45): в старых бэкапах его нет — после замены всех данных статус пустой.
+        ProfileStatus.save(preview.document.profile.status, defaults: defaults)
         return safetyURL
     }
 

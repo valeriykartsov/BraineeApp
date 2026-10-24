@@ -151,6 +151,22 @@ struct SessionLogTests {
         #expect(log.entries.count == 1)
         #expect(log.entries.first?.changes == ["Имя: «» → «Валера»", "Аватар изменён"])
     }
+
+    // Статус (D-45) — только факт смены, без текста; тот же статус — записи нет.
+    @Test func профиль_статусТолькоФакт() throws {
+        let name = "SessionLogTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let profile = ProfileService(context: container.mainContext, onChange: { _ in }, log: log, defaults: defaults)
+
+        profile.update(name: "", age: nil, gender: .unspecified, avatarData: nil, status: "в отпуске")
+        #expect(log.entries.count == 1)
+        #expect(log.entries.first?.title == "Профиль изменён")
+        #expect(log.entries.first?.changes == ["Статус изменён"])
+
+        profile.update(name: "", age: nil, gender: .unspecified, avatarData: nil, status: " в отпуске ")
+        #expect(log.entries.count == 1)
+    }
 }
 
 /// Наблюдатель за настройками: запись только при реальном изменении, без двойных записей.

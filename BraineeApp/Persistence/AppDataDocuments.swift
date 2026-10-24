@@ -436,7 +436,7 @@ struct HabitRecord: Codable, Identifiable {
     }
 }
 
-/// Файл profile.json — имя, аватар, возраст, пол и тема оформления.
+/// Файл profile.json — имя, аватар, возраст, пол, статус (D-45) и тема оформления.
 struct ProfileDocument: Codable {
     var version: Int
     /// v4: стабильный идентификатор профиля. nil — старый файл; bootstrap создаёт и сразу сохраняет.
@@ -447,6 +447,8 @@ struct ProfileDocument: Codable {
     var genderRaw: String
     var appThemeRaw: String
     var accentPaletteRaw: String
+    /// Текстовый статус (D-45) — из UserDefaults; в старых файлах нет — пустой.
+    var status: String
     var createdAt: Date
 
     static let currentVersion = 4
@@ -460,6 +462,7 @@ struct ProfileDocument: Codable {
         genderRaw: UserGender.unspecified.rawValue,
         appThemeRaw: AppTheme.system.rawValue,
         accentPaletteRaw: AccentPalette.orange.rawValue,
+        status: "",
         createdAt: .now
     )
 
@@ -472,6 +475,7 @@ struct ProfileDocument: Codable {
         genderRaw: String,
         appThemeRaw: String,
         accentPaletteRaw: String,
+        status: String = "",
         createdAt: Date
     ) {
         self.version = version
@@ -482,6 +486,7 @@ struct ProfileDocument: Codable {
         self.genderRaw = genderRaw
         self.appThemeRaw = appThemeRaw
         self.accentPaletteRaw = accentPaletteRaw
+        self.status = status
         self.createdAt = createdAt
     }
 
@@ -498,6 +503,7 @@ struct ProfileDocument: Codable {
             ?? AppTheme.system.rawValue
         accentPaletteRaw = try container.decodeIfPresent(String.self, forKey: .accentPaletteRaw)
             ?? AccentPalette.orange.rawValue
+        status = try container.decodeIfPresent(String.self, forKey: .status) ?? ""
         createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? .now
     }
 
@@ -514,5 +520,6 @@ struct ProfileDocument: Codable {
         if let age, (age < 1 || age > 120) {
             self.age = nil
         }
+        status = ProfileStatus.normalized(status)
     }
 }

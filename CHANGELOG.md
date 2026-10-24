@@ -3,6 +3,12 @@
 Notable changes to BraineeApp. Dates are commit dates. Decision references (D-xx) point to [`docs/decisions.md`](docs/decisions.md).
 The October 2026 work was a modernization done in phases; the detailed task plan and audit it followed are available in git history (`e1ccfff`).
 
+## 2026-10-23 — Profile status
+
+- A short status line under the name in Profile ("в отпуске", "фокус на проекте X"): italic, one line with "…", up to 60 characters; empty status is hidden. Edited in "Изменить профиль" with a counter.
+- Stored in UserDefaults like theme and accent (exception to "UserDefaults — interface settings only", D-45); included in the backup (`status` in the profile, old backups read as empty) and restored with it.
+- Session log: "Профиль изменён: Статус изменён" without the text. Not sent to the LLM, widgets or Share.
+
 ## 2026-10-23 — Meetings in LLM "Day plan" and "Reflection"
 
 - Day plan: with "Meetings from Calendar" on, the request also gets today's busy time — only ranges like "10:00–11:00" and "весь день", no titles, calendars, places or attendees; overlapping meetings merged, finished ones dropped, max 20 (D-44). The model is asked not to put tasks on busy time.

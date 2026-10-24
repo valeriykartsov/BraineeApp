@@ -126,6 +126,22 @@ final class BackupImportTests {
         #expect(defaults.string(forKey: AccentPalette.storageKey) == AccentPalette.blue.rawValue)
     }
 
+    // Статус (D-45) попадает в экспорт и из бэкапа записывается в UserDefaults; пустой (старый бэкап) — очищается.
+    @Test func статус_изБэкапа() throws {
+        // В экспорт (ручной и автобэкап) статус попадает из UserDefaults.
+        defaults.set("фокус на проекте", forKey: ProfileStatus.storageKey)
+        #expect(AppDataPersistence.exportProfile(from: container.mainContext, defaults: defaults).status == "фокус на проекте")
+
+        var document = BackupDocument.make(from: container.mainContext, now: fixedNow)
+        document.profile.status = "в отпуске"
+        try restorer.restore(BackupRestore.preview(document.encoded()), into: container)
+        #expect(defaults.string(forKey: ProfileStatus.storageKey) == "в отпуске")
+
+        document.profile.status = ""
+        try restorer.restore(BackupRestore.preview(document.encoded()), into: container)
+        #expect(defaults.object(forKey: ProfileStatus.storageKey) == nil)
+    }
+
     // MARK: - Форматы
 
     // Бэкап с задачами формата v8 (без updatedAt/completedAt) восстанавливается: updatedAt = createdAt.

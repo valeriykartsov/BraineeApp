@@ -236,6 +236,29 @@ struct HabitAndProfileServiceTests {
         #expect(counter.count == 1)
     }
 
+    // Статус (D-45): сохраняется в UserDefaults одной строкой до 60 символов; пустой — ключ удаляется;
+    // без `status` UserDefaults не трогаются.
+    @Test func статус_сохраняетсяИОчищается() throws {
+        let name = "HabitAndProfileServiceTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let counter = ChangeCounter()
+        var service = profile(counter)
+        service.defaults = defaults
+
+        service.update(name: "", age: nil, gender: .unspecified, avatarData: nil, status: "  в отпуске\nдо понедельника  ")
+        #expect(defaults.string(forKey: ProfileStatus.storageKey) == "в отпуске до понедельника")
+
+        service.update(name: "", age: nil, gender: .unspecified, avatarData: nil, status: String(repeating: "я", count: 80))
+        #expect(ProfileStatus.load(defaults: defaults).count == ProfileStatus.maxLength)
+
+        service.update(name: "", age: nil, gender: .unspecified, avatarData: nil)
+        #expect(ProfileStatus.load(defaults: defaults).count == ProfileStatus.maxLength)
+
+        service.update(name: "", age: nil, gender: .unspecified, avatarData: nil, status: "   ")
+        #expect(defaults.object(forKey: ProfileStatus.storageKey) == nil)
+    }
+
     // Смена темы/акцента сохраняет профиль (копия в profile.json не отстаёт).
     @Test func сменаОформления_сохраняет() {
         let counter = ChangeCounter()
