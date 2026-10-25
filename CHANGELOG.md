@@ -3,6 +3,10 @@
 Notable changes to BraineeApp. Dates are commit dates. Decision references (D-xx) point to [`docs/decisions.md`](docs/decisions.md).
 The October 2026 work was a modernization done in phases; the detailed task plan and audit it followed are available in git history (`e1ccfff`).
 
+## 2026-10-25 — Calendar day order by priority
+
+- Calendar tab, "Задачи дня": ordered by priority (Наивысший → Низкий), then tasks with a time by time, then tasks without a time in list order; completed stay at the bottom, ordered the same way. Was: by deadline only, so tasks without a time came first. The rule is `TaskSortHelper.byCalendarDay`, covered by tests. The Share text (D-38) keeps its order by time.
+
 ## 2026-10-25 — Hide completed tasks, Calendar display settings
 
 - Display settings get "Показывать выполненные" (on by default): turned off, completed tasks disappear from the Tasks list (the Inbox stays; a folder with only completed tasks shows as empty). Kanban is not affected, and the switch is not shown in kanban mode.

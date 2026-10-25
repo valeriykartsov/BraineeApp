@@ -50,10 +50,7 @@ struct CalendarWeekView: View {
                 guard let deadline = task.deadline else { return false }
                 return calendar.isDate(deadline, inSameDayAs: selectedDay)
             }
-            .sorted { lhs, rhs in
-                if lhs.isCompleted != rhs.isCompleted { return !lhs.isCompleted && rhs.isCompleted }
-                return (lhs.deadline ?? .distantFuture) < (rhs.deadline ?? .distantFuture)
-            }
+            .sorted(by: TaskSortHelper.byCalendarDay)
     }
 
     var body: some View {
