@@ -2,7 +2,7 @@
 //  ReflectionService.swift
 //  BraineeApp
 //
-//  «Итоги» (LLM-5, D-31): цифры за сегодня или текущую неделю считает код; модель получает
+//  «Итоги» (LLM-5, D-31): цифры за сегодня или последние 7 дней считает код; модель получает
 //  только числа (без названий задач и привычек) и формулирует короткий текст. Данные не меняются.
 //  Встречи из Календаря (D-44) — тоже только числа: сколько встреч и сколько времени в них.
 
@@ -10,28 +10,44 @@ import Foundation
 
 enum ReflectionPeriod: String, CaseIterable, Identifiable, Codable {
     case today
-    case week
+    /// Последние 7 дней до момента запроса (п. 49, 2026-10-26; раньше — текущая неделя). rawValue прежний.
+    case last7Days = "week"
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
         case .today: "Сегодня"
-        case .week: "Неделя"
+        case .last7Days: "7 дней"
         }
     }
 
-    /// Начало периода: начало дня или начало недели (первый день недели — по `calendar.firstWeekday`,
-    /// как в Календаре приложения). Конец — `now`.
+    /// Заголовок карточки и текста «Копировать».
+    var reportTitle: String {
+        switch self {
+        case .today: "Итоги дня"
+        case .last7Days: "Итоги за 7 дней"
+        }
+    }
+
+    /// Начало периода: начало сегодняшнего дня или ровно 7 суток до `now`. Конец — `now`.
     func start(now: Date, calendar: Calendar) -> Date {
+        switch self {
+        case .today:
+            return calendar.startOfDay(for: now)
+        case .last7Days:
+            return calendar.date(byAdding: .day, value: -7, to: now) ?? now
+        }
+    }
+
+    /// Первый день отметок привычек: привычки отмечаются по дням, поэтому за 7 дней — сегодня и 6 предыдущих.
+    func firstHabitDay(now: Date, calendar: Calendar) -> Date {
         let today = calendar.startOfDay(for: now)
         switch self {
         case .today:
             return today
-        case .week:
-            let weekday = calendar.component(.weekday, from: today)
-            let offset = (weekday - calendar.firstWeekday + 7) % 7
-            return calendar.date(byAdding: .day, value: -offset, to: today) ?? today
+        case .last7Days:
+            return calendar.date(byAdding: .day, value: -6, to: today) ?? today
         }
     }
 }
@@ -39,7 +55,7 @@ enum ReflectionPeriod: String, CaseIterable, Identifiable, Codable {
 /// Цифры для «Итогов». Только числа — это всё, что уходит в модель.
 struct ReflectionStats: Equatable, Codable {
     var period: ReflectionPeriod
-    /// Дней в периоде с начала по сегодня включительно.
+    /// Дней в периоде (для привычек): 1 или 7.
     var days: Int
     /// Выполнено за период (по `completedAt`).
     var completed: Int
@@ -62,6 +78,19 @@ struct ReflectionStats: Equatable, Codable {
     var meetings: Int? = nil
     /// Минут во встречах за период; `nil` — как у `meetings`.
     var meetingMinutes: Int? = nil
+    /// Границы периода — показываются в выдаче «Итогов за 7 дней», в модель не уходят.
+    var periodStart: Date? = nil
+    var periodEnd: Date? = nil
+
+    /// «14 октября 12:00 – 21 октября 12:00»; `nil` — границ нет.
+    func intervalText(timeZone: TimeZone = .current) -> String? {
+        guard let periodStart, let periodEnd else { return nil }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.timeZone = timeZone
+        formatter.dateFormat = "d MMMM HH:mm"
+        return "\(formatter.string(from: periodStart)) – \(formatter.string(from: periodEnd))"
+    }
 
     /// Доля выполнения привычек в процентах (0…100), `nil` — привычек нет.
     var habitRatePercent: Int? {
@@ -75,8 +104,9 @@ enum ReflectionService {
 
     // MARK: - Цифры
 
-    /// Мягко удалённые задачи не учитываются. `meetingEvents` — события Календаря за период;
-    /// `nil` — встречи недоступны, и чисел о них нет.
+    /// Задачи в корзине входят в «выполнено» и «создано», если это было в периоде, но не в «не выполнено
+    /// сейчас» и «просрочено» (решение владельца 2026-10-26, п. 49); окончательно удалённых в базе нет.
+    /// `meetingEvents` — события Календаря за период; `nil` — встречи недоступны, и чисел о них нет.
     static func compute(
         tasks: [TaskItem],
         habits: [Habit],
@@ -87,11 +117,12 @@ enum ReflectionService {
     ) -> ReflectionStats {
         let start = period.start(now: now, calendar: calendar)
         let today = calendar.startOfDay(for: now)
-        let days = (calendar.dateComponents([.day], from: start, to: today).day ?? 0) + 1
+        let firstHabitDay = period.firstHabitDay(now: now, calendar: calendar)
+        let days = (calendar.dateComponents([.day], from: firstHabitDay, to: today).day ?? 0) + 1
         let inPeriod = { (date: Date) in date >= start && date <= now }
 
         let live = tasks.filter { !$0.isSoftDeleted }
-        let completedInPeriod = live.filter { task in
+        let completedInPeriod = tasks.filter { task in
             task.isCompleted && task.completedAt.map(inPeriod) == true
         }
         func completed(_ priority: TaskPriority) -> Int {
@@ -101,7 +132,7 @@ enum ReflectionService {
         var checkins = 0
         var possible = 0
         for habit in habits {
-            let habitStart = max(start, calendar.startOfDay(for: habit.createdAt))
+            let habitStart = max(firstHabitDay, calendar.startOfDay(for: habit.createdAt))
             guard habitStart <= today else { continue }
             let keys = Set(habit.completedDayKeys)
             var day = habitStart
@@ -119,7 +150,7 @@ enum ReflectionService {
             period: period,
             days: days,
             completed: completedInPeriod.count,
-            created: live.filter { inPeriod($0.createdAt) }.count,
+            created: tasks.filter { inPeriod($0.createdAt) }.count,
             active: live.filter { !$0.isCompleted }.count,
             overdue: live.filter { $0.isOverdue(at: now, calendar: calendar) }.count,
             completedLow: completed(.low),
@@ -130,7 +161,9 @@ enum ReflectionService {
             habitCheckins: checkins,
             habitPossible: possible,
             meetings: meetingTotals?.count,
-            meetingMinutes: meetingTotals?.minutes
+            meetingMinutes: meetingTotals?.minutes,
+            periodStart: start,
+            periodEnd: now
         )
     }
 
@@ -189,7 +222,7 @@ enum ReflectionService {
 
     /// Сообщение с числами — единственное, что модель знает о данных пользователя.
     static func numbersMessage(_ stats: ReflectionStats) -> String {
-        let periodText = stats.period == .today ? "сегодня" : "текущая неделя, дней: \(stats.days)"
+        let periodText = stats.period == .today ? "сегодня" : "последние 7 дней до момента запроса"
         var lines = [
             "Период: \(periodText).",
             "Выполнено задач: \(stats.completed) (наивысший приоритет: \(stats.completedHighest), высокий: \(stats.completedHigh), средний: \(stats.completedMedium), низкий: \(stats.completedLow)).",

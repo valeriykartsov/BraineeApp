@@ -10,8 +10,11 @@ import Foundation
 enum LLMAnswerText {
     /// «Итоги»: заголовок, цифры, которые посчитало приложение, и текст модели.
     static func reflection(text: String, stats: ReflectionStats) -> String {
-        var lines = [
-            stats.period == .today ? "Итоги дня" : "Итоги недели",
+        var lines = [stats.period.reportTitle]
+        if stats.period == .last7Days, let interval = stats.intervalText() {
+            lines.append(interval)
+        }
+        lines += [
             "Выполнено: \(stats.completed)",
             "Создано: \(stats.created)",
             "Просрочено: \(stats.overdue) из \(stats.active) открытых"
