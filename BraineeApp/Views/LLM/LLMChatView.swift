@@ -3,7 +3,7 @@
 //  BraineeApp
 //
 //  Чат вкладки «LLM». Режимы: «Задача» (LLM-3) — фраза → черновик; «Разбор» (LLM-6) — длинный
-//  текст → до 10 черновиков; «Итоги» (LLM-5) — цифры за день/неделю считает код, модель их описывает;
+//  текст → до 10 черновиков; «Итоги» (LLM-5) — цифры за день / 7 дней считает код, модель их описывает;
 //  «План дня» (LLM-4) — порядок задач на сегодня, только просмотр, с согласием на отправку названий.
 //  Каждый черновик → обычная форма задачи → сохранение через TaskService. Каждый запрос отправляется отдельно, без предыдущих сообщений (D-26).
 //  История живёт только в памяти до закрытия приложения и нигде не сохраняется.
@@ -214,7 +214,7 @@ struct LLMChatView: View {
         switch mode {
         case .task: "Опишите задачу словами"
         case .inbox: "Вставьте всё, что в голове"
-        case .reflection: "Итоги дня или недели"
+        case .reflection: "Итоги дня или за 7 дней"
         case .dayPlan: "План на сегодня"
         case .matrix: "Задачи без срока"
         }
@@ -536,9 +536,14 @@ struct LLMChatView: View {
 
     private func reflectionCard(text: String, stats: ReflectionStats) -> some View {
         VStack(alignment: .leading, spacing: DesignSystem.Space.x2) {
-            Text(stats.period == .today ? "Итоги дня" : "Итоги недели")
+            Text(stats.period.reportTitle)
                 .font(DesignSystem.Typography.sectionHeader())
                 .foregroundStyle(DesignSystem.Colors.textSecondary)
+            if stats.period == .last7Days, let interval = stats.intervalText() {
+                Text(interval)
+                    .font(DesignSystem.Typography.caption())
+                    .foregroundStyle(DesignSystem.Colors.textSecondary)
+            }
             VStack(alignment: .leading, spacing: DesignSystem.Space.x1) {
                 draftRow("Выполнено", "\(stats.completed)")
                 draftRow("Создано", "\(stats.created)")
@@ -615,7 +620,7 @@ struct LLMChatView: View {
                         Button {
                             send(period.rawValue, mode: .reflection)
                         } label: {
-                            Text(period == .today ? "Итоги за сегодня" : "Итоги за неделю")
+                            Text(period == .today ? "Итоги за сегодня" : "Итоги за 7 дней")
                                 .font(DesignSystem.Typography.bodyBold(15))
                                 .foregroundStyle(.white)
                                 .frame(maxWidth: .infinity)

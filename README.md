@@ -12,7 +12,7 @@
 
 | Tasks | Calendar | AI assistant | Habits | Profile |
 |:---:|:---:|:---:|:---:|:---:|
-| <img src="docs/images/tasks.png" width="180" alt="Tasks"> | <img src="docs/images/calendar.png" width="180" alt="Calendar"> | <img src="docs/images/llm.png" width="180" alt="AI weekly reflection"> | <img src="docs/images/habits.png" width="180" alt="Habits"> | <img src="docs/images/profile.png" width="180" alt="Profile"> |
+| <img src="docs/images/tasks.png" width="180" alt="Tasks"> | <img src="docs/images/calendar.png" width="180" alt="Calendar"> | <img src="docs/images/llm.png" width="180" alt="AI 7-day reflection"> | <img src="docs/images/habits.png" width="180" alt="Habits"> | <img src="docs/images/profile.png" width="180" alt="Profile"> |
 
 The app UI is in Russian. Screenshots use demo data.
 
@@ -21,7 +21,7 @@ The app UI is in Russian. Screenshots use demo data.
 - **Tasks** — deadlines with optional time and duration (30 min to 3 h), subtasks with checkboxes (up to 10, progress like "2/5" in the list), priorities, statuses, descriptions, tags, folders, list and kanban views with the same compact task card (display settings choose the card fields and can hide completed tasks in the list; kanban can be split into one collapsible board per folder) (tap to open, long press to drag, delete with confirmation), soft delete with a trash.
 - **Calendar** — week strip with the tasks of the selected day (by priority, then time), its own display settings (card fields, hide completed) and a "+" to add a task for that day; optional one-way export to an app-owned "BraineeApp" calendar in the iPhone Calendar (iCloud), events as long as the task; optional read-only list of the day's meetings from your calendars, sorted by time with start and duration; share the day's open tasks and meetings as text (e.g. to Telegram).
 - **Habits** — up to 7 habits, a three-month contribution grid, check-ins for today and up to 14 days back.
-- **AI assistant (optional, OpenRouter)** — turn a phrase into a task draft, split a brain dump into several drafts, get a short day/week reflection, get a suggested plan for today, get advice on tasks without a deadline (schedule / delegate / drop). Drafts are saved only after you confirm them in the regular task form.
+- **AI assistant (optional, OpenRouter)** — turn a phrase into a task draft, split a brain dump into several drafts, get a short reflection for today or the last 7 days, get a suggested plan for today, get advice on tasks without a deadline (schedule / delegate / drop). Drafts are saved only after you confirm them in the regular task form.
 - **Dashboard** — progress, overdue and today counters; details with a tag pie chart (percent legend) and an Active / All (including trash) switch; lists show open tasks first, then completed, then trashed.
 - **Eisenhower Matrix** — quadrants by priority and urgency.
 - **Reminders and badge** — local notifications for tasks and habits, deadline alerts with "Done", "Remind in an hour" and "Tomorrow" buttons (handled in the background, no app launch), configurable app icon badge.

@@ -2,8 +2,8 @@
 //  ReflectionServiceTests.swift
 //  BraineeAppTests
 //
-//  LLM-5 «Итоги» (D-31): цифры за сегодня и неделю на граничных датах, в модель уходят только числа.
-//  «Сейчас» — среда 21.10.2026 12:00 (Москва), неделя с понедельника.
+//  LLM-5 «Итоги» (D-31): цифры за сегодня и последние 7 дней на граничных датах, в модель уходят только числа.
+//  «Сейчас» — среда 21.10.2026 12:00 (Москва); 7 дней — с 14.10 12:00 (п. 49).
 
 import Foundation
 import Testing
@@ -42,42 +42,73 @@ struct ReflectionServiceTests {
 
     // MARK: - Период
 
-    // Сегодня — с начала дня; неделя — с понедельника (в среду, понедельник и воскресенье).
-    @Test func период_началоДняИНедели() {
+    // Сегодня — с начала дня; 7 дней — ровно 7 суток до момента запроса, не с начала недели;
+    // привычки за 7 дней — сегодня и 6 предыдущих дней.
+    @Test func период_началоДняИ7Суток() {
         let calendar = Self.calendar
         #expect(ReflectionPeriod.today.start(now: Self.now, calendar: calendar) == date(10, 21, 0))
-        #expect(ReflectionPeriod.week.start(now: Self.now, calendar: calendar) == date(10, 19, 0))
-        #expect(ReflectionPeriod.week.start(now: date(10, 19, 8), calendar: calendar) == date(10, 19, 0))
-        #expect(ReflectionPeriod.week.start(now: date(10, 25, 23), calendar: calendar) == date(10, 19, 0))
-        #expect(ReflectionPeriod.week.start(now: date(10, 26, 0), calendar: calendar) == date(10, 26, 0))
+        #expect(ReflectionPeriod.last7Days.start(now: Self.now, calendar: calendar) == date(10, 14, 12))
+        #expect(ReflectionPeriod.last7Days.start(now: date(10, 19, 8), calendar: calendar) == date(10, 12, 8))
+        #expect(ReflectionPeriod.last7Days.firstHabitDay(now: Self.now, calendar: calendar) == date(10, 15, 0))
+        #expect(ReflectionPeriod.last7Days.rawValue == "week")
+    }
+
+    // Границы периода — в цифрах и в выдаче: «14 октября 12:00 – 21 октября 12:00».
+    @Test func период_интервалВВыдаче() {
+        let stats = compute(.last7Days)
+        #expect(stats.periodStart == date(10, 14, 12))
+        #expect(stats.periodEnd == Self.now)
+        #expect(stats.days == 7)
+        #expect(stats.intervalText(timeZone: Self.calendar.timeZone) == "14 октября 12:00 – 21 октября 12:00")
     }
 
     // MARK: - Задачи
 
-    // Выполненные считаются по дате выполнения: вчерашняя — в неделе, но не в «сегодня»; прошлая неделя — нигде.
+    // Выполненные считаются по дате выполнения: вчерашняя — в 7 днях, но не в «сегодня»;
+    // 14.10 в 13:00 — внутри 7 суток, 14.10 в 11:00 — уже нет.
     @Test func задачи_выполненныеПоДатеВыполнения() {
         let tasks = [
             insert(TaskItem(title: "Сегодня", status: .done, createdAt: date(10, 1), completedAt: date(10, 21, 9))),
             insert(TaskItem(title: "Полночь сегодня", status: .done, createdAt: date(10, 1), completedAt: date(10, 21, 0))),
             insert(TaskItem(title: "Вчера", status: .done, createdAt: date(10, 1), completedAt: date(10, 20, 23))),
-            insert(TaskItem(title: "Прошлое воскресенье", status: .done, createdAt: date(10, 1), completedAt: date(10, 18, 23))),
+            insert(TaskItem(title: "7 суток назад, позже", status: .done, createdAt: date(10, 1), completedAt: date(10, 14, 13))),
+            insert(TaskItem(title: "7 суток назад, раньше", status: .done, createdAt: date(10, 1), completedAt: date(10, 14, 11))),
         ]
         #expect(compute(.today, tasks: tasks).completed == 2)
-        #expect(compute(.week, tasks: tasks).completed == 3)
+        #expect(compute(.last7Days, tasks: tasks).completed == 4)
     }
 
-    // Созданные — по дате создания; удалённые в корзину не учитываются нигде.
+    // Созданные — по дате создания, в том числе ушедшие в корзину; в «не выполнено сейчас» корзины нет (п. 49).
     @Test func задачи_созданныеИУдалённые() {
         let tasks = [
             insert(TaskItem(title: "Новая", createdAt: date(10, 21, 8))),
             insert(TaskItem(title: "Понедельник", createdAt: date(10, 19, 0))),
-            insert(TaskItem(title: "Прошлая неделя", createdAt: date(10, 18, 23))),
+            insert(TaskItem(title: "Старше 7 суток", createdAt: date(10, 14, 11))),
             insert(TaskItem(title: "В корзине", createdAt: date(10, 21, 9), isSoftDeleted: true, deletedAt: date(10, 21, 10))),
         ]
         let today = compute(.today, tasks: tasks)
-        #expect(today.created == 1)
+        #expect(today.created == 2)
         #expect(today.active == 3)
-        #expect(compute(.week, tasks: tasks).created == 2)
+        #expect(compute(.last7Days, tasks: tasks).created == 3)
+    }
+
+    // Выполненная в периоде и затем удалённая в корзину задача считается выполненной (и по приоритету);
+    // в «просрочено» корзина не входит; выполненная раньше 7 суток — не в периоде (п. 49).
+    @Test func задачи_вКорзинеУчитываютсяЗаПериод() {
+        let tasks = [
+            insert(TaskItem(title: "Готова и удалена", priority: .high, status: .done, createdAt: date(10, 1),
+                            isSoftDeleted: true, deletedAt: date(10, 21, 10), completedAt: date(10, 21, 9))),
+            insert(TaskItem(title: "Готова давно", status: .done, createdAt: date(10, 1),
+                            isSoftDeleted: true, deletedAt: date(10, 21, 10), completedAt: date(10, 12))),
+            insert(TaskItem(title: "Просрочена и удалена", deadline: date(10, 20, 0), createdAt: date(10, 1),
+                            isSoftDeleted: true, deletedAt: date(10, 21, 10))),
+        ]
+        let today = compute(.today, tasks: tasks)
+        #expect(today.completed == 1)
+        #expect(today.completedHigh == 1)
+        #expect(today.active == 0)
+        #expect(today.overdue == 0)
+        #expect(compute(.last7Days, tasks: tasks).completed == 1)
     }
 
     // Просрочка — на текущий момент: вчерашний срок без времени и сегодняшний час, который уже прошёл.
@@ -121,16 +152,17 @@ struct ReflectionServiceTests {
         #expect(today.habitPossible == 2)
         #expect(today.habitRatePercent == 50)
 
-        let week = compute(.week, habits: [old, fresh])
-        #expect(week.days == 3)
-        #expect(week.habitCheckins == 2)
-        #expect(week.habitPossible == 4)
-        #expect(week.habitRatePercent == 50)
+        // 7 дней — 15…21.10: у старой 7 дней и 3 отметки (15, 20, 21), у новой — 1 день.
+        let week = compute(.last7Days, habits: [old, fresh])
+        #expect(week.days == 7)
+        #expect(week.habitCheckins == 3)
+        #expect(week.habitPossible == 8)
+        #expect(week.habitRatePercent == 38)
     }
 
     // Без привычек процента нет.
     @Test func привычки_нет_процентаНет() {
-        #expect(compute(.week).habitRatePercent == nil)
+        #expect(compute(.last7Days).habitRatePercent == nil)
     }
 
     // MARK: - Запрос и ответ
@@ -142,7 +174,7 @@ struct ReflectionServiceTests {
         let habit = Habit(title: "Тайная привычка", createdAt: date(9, 1), completedDayKeys: ["2026-10-21"])
         container.mainContext.insert(habit)
 
-        let stats = compute(.week, tasks: [task], habits: [habit])
+        let stats = compute(.last7Days, tasks: [task], habits: [habit])
         let request = ReflectionService.makeRequest(stats: stats)
         let everything = request.messages.map(\.content).joined(separator: "\n")
         #expect(request.messages.count == 2)
@@ -151,8 +183,9 @@ struct ReflectionServiceTests {
         #expect(!everything.contains("Личное описание"))
         #expect(!everything.contains("Тайная привычка"))
         #expect(request.messages[1].content.contains("Выполнено задач: 1"))
-        #expect(request.messages[1].content.contains("текущая неделя, дней: 3"))
-        #expect(request.messages[1].content.contains("отметок: 1 из 3 возможных (33%)"))
+        #expect(request.messages[1].content.contains("последние 7 дней до момента запроса"))
+        #expect(request.messages[1].content.contains("отметок: 1 из 7 возможных (14%)"))
+        #expect(!everything.contains("октября"))
     }
 
     // Ответ модели очищается от markdown; пустой ответ — ошибка.
@@ -185,10 +218,10 @@ struct ReflectionServiceTests {
         CalendarMeeting(id: title, title: title, start: start, end: end, isAllDay: allDay, calendarTitle: calendarTitle)
     }
 
-    /// Неделя с понедельника 19.10 до «сейчас» — среды 21.10, 12:00.
+    /// 7 дней — с 14.10 12:00 до «сейчас» — среды 21.10, 12:00; встреча 14.10 утром — уже за границей.
     private var weekEvents: [CalendarMeeting] {
         [
-            meeting("Воскресная", LLMTestSupport.date(2026, 10, 18, 10), LLMTestSupport.date(2026, 10, 18, 11)),
+            meeting("Старше 7 суток", LLMTestSupport.date(2026, 10, 14, 10), LLMTestSupport.date(2026, 10, 14, 11)),
             meeting("Планёрка", LLMTestSupport.date(2026, 10, 19, 10), LLMTestSupport.date(2026, 10, 19, 11)),
             meeting("Разбор", LLMTestSupport.date(2026, 10, 20, 14), LLMTestSupport.date(2026, 10, 20, 15, 30)),
             meeting("Праздник", LLMTestSupport.date(2026, 10, 20), LLMTestSupport.date(2026, 10, 21), allDay: true),
@@ -203,7 +236,7 @@ struct ReflectionServiceTests {
     // время — только часть, попавшая в период (идущая встреча — до «сейчас»).
     @Test func встречи_числоИВремяЗаПериод() {
         let stats = ReflectionService.compute(
-            tasks: [], habits: [], period: .week, meetingEvents: weekEvents, now: Self.now, calendar: Self.calendar
+            tasks: [], habits: [], period: .last7Days, meetingEvents: weekEvents, now: Self.now, calendar: Self.calendar
         )
 
         #expect(stats.meetings == 3)
@@ -214,7 +247,7 @@ struct ReflectionServiceTests {
     // В запрос — только два числа о встречах, без названий и календарей; без доступа строки нет.
     @Test func встречи_вЗапросеТолькоЧисла() {
         let stats = ReflectionService.compute(
-            tasks: [], habits: [], period: .week, meetingEvents: weekEvents, now: Self.now, calendar: Self.calendar
+            tasks: [], habits: [], period: .last7Days, meetingEvents: weekEvents, now: Self.now, calendar: Self.calendar
         )
         let everything = ReflectionService.makeRequest(stats: stats).messages.map(\.content).joined(separator: "\n")
 
@@ -223,7 +256,7 @@ struct ReflectionServiceTests {
             #expect(!everything.contains(secret), "\(secret)")
         }
 
-        let unavailable = compute(.week)
+        let unavailable = compute(.last7Days)
         #expect(unavailable.meetings == nil)
         #expect(unavailable.meetingsText == nil)
         #expect(!ReflectionService.numbersMessage(unavailable).contains("Встреч"))

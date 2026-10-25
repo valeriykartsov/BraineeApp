@@ -45,9 +45,9 @@ struct LLMAnswerTextTests {
 
     // Без привычек строки «Привычки» нет; пустой текст модели не добавляет пустых строк.
     @Test func итогиБезПривычек_безЛишнихСтрок() {
-        let text = LLMAnswerText.reflection(text: "", stats: stats(period: .week, habitPossible: 0))
+        let text = LLMAnswerText.reflection(text: "", stats: stats(period: .last7Days, habitPossible: 0))
 
-        #expect(text.hasPrefix("Итоги недели\n"))
+        #expect(text.hasPrefix("Итоги за 7 дней\n"))
         #expect(!text.contains("Привычки"))
         #expect(!text.hasSuffix("\n"))
     }
