@@ -157,7 +157,8 @@ extension SettingsChangeObserver.Setting {
             D.line("Статус", D.onOff(old.showStatus), D.onOff(new.showStatus)),
             D.line("Теги", D.onOff(old.showTags), D.onOff(new.showTags)),
             D.line("Подзадачи", D.onOff(old.showSubtasks), D.onOff(new.showSubtasks)),
-            D.line("Выполненные", D.onOff(old.showCompleted), D.onOff(new.showCompleted))
+            D.line("Выполненные", D.onOff(old.showCompleted), D.onOff(new.showCompleted)),
+            D.line("Канбан по папкам", D.onOff(old.kanbanByFolder), D.onOff(new.kanbanByFolder))
         ].compactMap { $0 }
     }
 }

@@ -13,6 +13,8 @@ struct TaskListDisplaySettingsView: View {
     var storageKey = TaskListDisplaySettings.storageKey
     /// В режиме канбана выполненные не скрываются — переключатель не показываем.
     var showsCompletedToggle = true
+    /// «Разбить по папкам» — только в режиме канбана вкладки «Задачи» (п. 44).
+    var showsKanbanFoldersToggle = false
 
     var body: some View {
         NavigationStack {
@@ -54,6 +56,22 @@ struct TaskListDisplaySettingsView: View {
                 }
                 .tint(DesignSystem.Colors.accent)
                 .listRowBackground(DesignSystem.Colors.surface)
+
+                if showsKanbanFoldersToggle {
+                    Section {
+                        Toggle("Разбить по папкам", isOn: $settings.kanbanByFolder)
+                    } header: {
+                        Text("Канбан")
+                            .foregroundStyle(DesignSystem.Colors.textSecondary)
+                            .textCase(nil)
+                    } footer: {
+                        Text("Отдельная доска для каждой папки с задачами, «Входящие» — последней. Карточку можно перенести в другую колонку своей доски; папку задачи меняют в списке.")
+                            .font(DesignSystem.Typography.caption())
+                            .foregroundStyle(DesignSystem.Colors.textSecondary)
+                    }
+                    .tint(DesignSystem.Colors.accent)
+                    .listRowBackground(DesignSystem.Colors.surface)
+                }
 
                 if showsCompletedToggle {
                     Section {

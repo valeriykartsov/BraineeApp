@@ -21,6 +21,8 @@ struct TaskListDisplaySettings: Codable, Equatable {
     var showSubtasks: Bool
     /// Выполненные задачи в списке (п. 43); канбан, дашборд, наклейка и виджеты от него не зависят.
     var showCompleted: Bool
+    /// Канбан «Разбить по папкам» — доска на каждую папку (п. 44); по умолчанию одна доска.
+    var kanbanByFolder: Bool
 
     static let `default` = TaskListDisplaySettings(
         showDetails: true,
@@ -35,7 +37,7 @@ struct TaskListDisplaySettings: Codable, Equatable {
     static let calendarStorageKey = "calendarDisplaySettings"
 
     enum CodingKeys: String, CodingKey {
-        case showDetails, showDeadline, showPriority, showStatus, showTags, showSubtasks, showCompleted
+        case showDetails, showDeadline, showPriority, showStatus, showTags, showSubtasks, showCompleted, kanbanByFolder
     }
 
     init(
@@ -45,7 +47,8 @@ struct TaskListDisplaySettings: Codable, Equatable {
         showStatus: Bool,
         showTags: Bool,
         showSubtasks: Bool = true,
-        showCompleted: Bool = true
+        showCompleted: Bool = true,
+        kanbanByFolder: Bool = false
     ) {
         self.showDetails = showDetails
         self.showDeadline = showDeadline
@@ -54,6 +57,7 @@ struct TaskListDisplaySettings: Codable, Equatable {
         self.showTags = showTags
         self.showSubtasks = showSubtasks
         self.showCompleted = showCompleted
+        self.kanbanByFolder = kanbanByFolder
     }
 
     init(from decoder: Decoder) throws {
@@ -65,6 +69,7 @@ struct TaskListDisplaySettings: Codable, Equatable {
         showTags = try container.decodeIfPresent(Bool.self, forKey: .showTags) ?? true
         showSubtasks = try container.decodeIfPresent(Bool.self, forKey: .showSubtasks) ?? true
         showCompleted = try container.decodeIfPresent(Bool.self, forKey: .showCompleted) ?? true
+        kanbanByFolder = try container.decodeIfPresent(Bool.self, forKey: .kanbanByFolder) ?? false
     }
 
     static func load(
