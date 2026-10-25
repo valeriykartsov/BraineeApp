@@ -3,6 +3,7 @@
 //  BraineeApp
 //
 //  Форма создания и редактирования задачи: название, статус, дедлайн, напоминания, приоритет, теги.
+//  У новой задачи в названии распознаются дата, время, #тег и !приоритет (п. 46, `QuickTaskParser`).
 
 import SwiftUI
 import SwiftData
@@ -43,6 +44,9 @@ struct AddEditTaskView: View {
     @State private var showingFieldResetConfirm = false
     @State private var pendingFieldReset: TaskFormTextField?
     @FocusState private var focusedField: FormField?
+    @Query(sort: \TaskTag.name) private var allTags: [TaskTag]
+    /// Последний разбор названия: поля меняются, только когда в тексте появилась новая метка (п. 46).
+    @State private var lastQuickParse: QuickTaskParse?
 
     private enum FormField: Hashable {
         case title
@@ -51,6 +55,20 @@ struct AddEditTaskView: View {
     }
 
     private var isEditing: Bool { editingTaskUUID != nil }
+    /// Распознавание — только у новой задачи: у существующей «25.10» в названии может быть просто текстом.
+    private var parsesTitle: Bool { !isEditing }
+
+    private var tagNames: [String] { allTags.map(\.name) }
+
+    /// Что сохранится как название: у новой задачи — без распознанных меток.
+    private var titleToSave: String {
+        parsesTitle ? QuickTaskParser.parse(title, tagNames: tagNames).title : title
+    }
+
+    private var titleSuggestions: [QuickTaskSuggestion] {
+        guard parsesTitle, focusedField == .title else { return [] }
+        return QuickTaskParser.suggestions(for: title, tagNames: tagNames)
+    }
     private var detailsLimit: Int { TaskInputValidation.detailsMaxLength }
 
     private var currentSnapshot: TaskFormSnapshot {
@@ -144,6 +162,17 @@ struct AddEditTaskView: View {
                             .focused($focusedField, equals: .title)
                             .padding(.horizontal, DesignSystem.Space.x3)
                             .padding(.vertical, DesignSystem.Space.x2 + 2)
+                            .onChange(of: title) { _, newValue in
+                                applyQuickParse(newValue)
+                            }
+                    }
+                    if parsesTitle {
+                        Text("Можно написать «завтра в 10:30 #тег !высокий» — срок, тег и приоритет заполнятся сами.")
+                            .font(DesignSystem.Typography.caption())
+                            .foregroundStyle(DesignSystem.Colors.textSecondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, DesignSystem.Space.x1)
+                            .padding(.top, -DesignSystem.Space.x2)
                     }
 
                     GroupedSection(title: "Описание") {
@@ -285,14 +314,18 @@ struct AddEditTaskView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Сохранить") { save() }
-                        .disabled(!TaskInputValidation.canSaveTitle(title))
+                        .disabled(!TaskInputValidation.canSaveTitle(titleToSave))
                 }
                 ToolbarItemGroup(placement: .keyboard) {
                     Button("Отмена") {
                         requestFieldReset()
                     }
                     .disabled(!canResetCurrentField)
-                    Spacer()
+                    if titleSuggestions.isEmpty {
+                        Spacer()
+                    } else {
+                        suggestionsBar
+                    }
                     Button("ОК") {
                         acceptFocusedField()
                     }
@@ -374,6 +407,48 @@ struct AddEditTaskView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Распознавание в названии (п. 46)
+
+    /// Подсказки над клавиатурой: после `#` — теги, после `!` — приоритеты; нажатие дописывает вариант.
+    private var suggestionsBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: DesignSystem.Space.x2) {
+                ForEach(titleSuggestions) { suggestion in
+                    Button(suggestion.title) {
+                        title = QuickTaskParser.applying(suggestion, to: title)
+                    }
+                    .font(DesignSystem.Typography.body(15))
+                    .accessibilityLabel("Подставить \(suggestion.title)")
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func applyQuickParse(_ text: String) {
+        guard parsesTitle else { return }
+        let parsed = QuickTaskParser.parse(text, tagNames: tagNames)
+        guard parsed != lastQuickParse else { return }
+        let selectedNames = Set(allTags.filter { selectedTagUUIDs.contains($0.uuid) }.map(\.name))
+        let fields = QuickTaskParser.apply(
+            parsed,
+            previous: lastQuickParse,
+            to: QuickTaskFields(
+                hasDeadline: hasDeadline,
+                hasDeadlineTime: hasDeadlineTime,
+                deadline: deadline,
+                priority: priority,
+                tagNames: selectedNames
+            )
+        )
+        lastQuickParse = parsed
+        hasDeadline = fields.hasDeadline
+        hasDeadlineTime = fields.hasDeadlineTime
+        deadline = fields.deadline
+        priority = fields.priority
+        selectedTagUUIDs.formUnion(allTags.filter { fields.tagNames.contains($0.name) }.map(\.uuid))
     }
 
     // MARK: - Подзадачи (D-41)
@@ -783,6 +858,7 @@ struct AddEditTaskView: View {
     }
 
     private func save() {
+        let title = titleToSave
         guard TaskInputValidation.canSaveTitle(title) else { return }
 
         let resolvedDeadline: Date?

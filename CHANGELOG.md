@@ -3,6 +3,12 @@
 Notable changes to BraineeApp. Dates are commit dates. Decision references (D-xx) point to [`docs/decisions.md`](docs/decisions.md).
 The October 2026 work was a modernization done in phases; the detailed task plan and audit it followed are available in git history (`e1ccfff`).
 
+## 2026-10-26 — Quick entry in the task title
+
+- New task form: the title understands "сегодня" / "завтра" / "послезавтра", "25.10", "25.10.26", "25.10.2026", "25 октября" (a past date without a year means next year), time "10:30" / "в 10:30", existing `#tags` and `!низкий` … `!наивысший`. Recognised values appear in the form fields right away; the marks are removed from the title on save. Unknown tags and impossible dates stay as text. Works offline, also for "+" in the Calendar tab.
+- Suggestions above the keyboard: after `#` — tags matching the typed letters, after `!` — the four priorities.
+- Editing an existing task does not parse its title. A field changed by hand is not overwritten while you keep typing. The rules are `QuickTaskParser`, covered by tests.
+
 ## 2026-10-26 — Reflection: trashed tasks, last 7 days
 
 - LLM "Итоги за неделю" becomes "Итоги за 7 дней": the period is exactly 7 days back from the moment of the request (was: since Monday). The interval ("14 октября 12:00 – 21 октября 12:00") is shown under the title on the card and in Copy/Share; it is not sent to the model. Habit check-ins count today and the 6 previous days.
