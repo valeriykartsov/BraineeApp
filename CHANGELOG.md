@@ -3,6 +3,12 @@
 Notable changes to BraineeApp. Dates are commit dates. Decision references (D-xx) point to [`docs/decisions.md`](docs/decisions.md).
 The October 2026 work was a modernization done in phases; the detailed task plan and audit it followed are available in git history (`e1ccfff`).
 
+## 2026-10-26 — Pomodoro with Live Activity
+
+- "Профиль → Дополнительно → Помодоро": 25/5 or 45/15, an animated ring with the countdown, Start / Stop. Focus and break switch by themselves; every change has a local notification with sound; the session stops by itself after 8 hours (D-47). No history; the session log gets "Помодоро: фокус 25 мин завершён" for every finished focus, including ones that passed while the app was asleep.
+- Live Activity in the Dynamic Island and on the Lock Screen: app logo, phase and countdown, no buttons; a tap opens the Pomodoro screen. When a phase ends while the app is asleep, the card switches to "Фокус окончен · перерыв до 14:37" by itself and catches up when the app wakes.
+- Everything is computed from the start time, so the app shows the right phase after any relaunch. The session is a service file `pomodoro-session.json` (not in the backup). `NSSupportsLiveActivities` added to the app Info.plist.
+
 ## 2026-10-26 — Quick entry in the task title
 
 - New task form: the title understands "сегодня" / "завтра" / "послезавтра", "25.10", "25.10.26", "25.10.2026", "25 октября" (a past date without a year means next year), time "10:30" / "в 10:30", existing `#tags` and `!низкий` … `!наивысший`. Recognised values appear in the form fields right away; the marks are removed from the title on save. Unknown tags and impossible dates stay as text. Works offline, also for "+" in the Calendar tab.

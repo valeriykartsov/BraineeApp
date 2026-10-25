@@ -3,7 +3,8 @@
 //  BraineeApp
 //
 //  Маршрутизация тапа по локальному пушу → открытие карточки задачи;
-//  виджет экрана блокировки → вкладка «Календарь» на сегодняшнем дне.
+//  виджет экрана блокировки → вкладка «Календарь» на сегодняшнем дне;
+//  Live Activity и уведомление Помодоро → «Профиль → Помодоро» (D-47).
 
 import Foundation
 import Combine
@@ -18,6 +19,9 @@ final class NotificationDeepLinkRouter: ObservableObject {
 
     /// Ожидает открытия вкладка «Календарь» на сегодняшнем дне (тап по виджету экрана блокировки).
     @Published var pendingCalendarToday = false
+
+    /// Ожидает открытия экран Помодоро (нажатие на Live Activity или уведомление о смене фазы, D-47).
+    @Published var pendingPomodoro = false
 
     private init() {}
 
@@ -35,5 +39,13 @@ final class NotificationDeepLinkRouter: ObservableObject {
 
     func clearPendingCalendar() {
         pendingCalendarToday = false
+    }
+
+    func openPomodoro() {
+        pendingPomodoro = true
+    }
+
+    func clearPendingPomodoro() {
+        pendingPomodoro = false
     }
 }

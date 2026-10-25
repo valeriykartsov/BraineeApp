@@ -41,6 +41,13 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
         let request = response.notification.request
+        if AppNotifications.isPomodoro(identifier: request.identifier) {
+            Task { @MainActor in
+                NotificationDeepLinkRouter.shared.openPomodoro()
+            }
+            completionHandler()
+            return
+        }
         guard let uuid = AppNotifications.taskUUID(
             fromUserInfo: request.content.userInfo,
             identifier: request.identifier
