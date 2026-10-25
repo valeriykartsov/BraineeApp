@@ -11,9 +11,10 @@ import SwiftUI
 
 @MainActor
 enum AppSideEffects {
-    /// `refreshNotifications: false` — только для тестов: пересчёт уведомлений идёт асинхронно
+    /// `refreshNotifications: false` — для тестов: пересчёт уведомлений идёт асинхронно
     /// с моделями контекста и пережил бы тестовый контейнер; экспорт в Календарь (CAL-2) тоже
-    /// пропускается, чтобы тесты не писали в настоящий календарь симулятора.
+    /// пропускается, чтобы тесты не писали в настоящий календарь симулятора. И для кнопок
+    /// уведомлений (D-46): там экспорт и пересборку уведомлений `AppDelegate` выполняет сам и дожидается.
     static func didChange(in context: ModelContext, refreshNotifications: Bool = true) {
         do {
             try context.save()

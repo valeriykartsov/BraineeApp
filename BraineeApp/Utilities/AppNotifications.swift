@@ -18,6 +18,8 @@ enum AppNotifications {
     private static let tasksDailyIdentifier = "brainee.tasks.daily"
     static let deadlineApproachingPrefix = "brainee.deadline.approach."
     static let deadlineOverduePrefix = "brainee.deadline.overdue."
+    /// Повтор «Напомнить через час» (D-46): `brainee.snooze.<uuid>`.
+    static let snoozePrefix = "brainee.snooze."
 
     /// Достаёт UUID задачи из userInfo пуша или из identifier (approach./overdue.).
     static func taskUUID(
@@ -28,7 +30,7 @@ enum AppNotifications {
            let uuid = UUID(uuidString: raw) {
             return uuid
         }
-        for prefix in [deadlineApproachingPrefix, deadlineOverduePrefix] where identifier.hasPrefix(prefix) {
+        for prefix in [deadlineApproachingPrefix, deadlineOverduePrefix, snoozePrefix] where identifier.hasPrefix(prefix) {
             let idPart = String(identifier.dropFirst(prefix.count))
             // approach.<uuid> или approach.<uuid>.<offset>
             let uuidPart = idPart.split(separator: ".", maxSplits: 1, omittingEmptySubsequences: true)
@@ -127,11 +129,18 @@ enum AppNotifications {
         habits: [Habit],
         defaults: UserDefaults = .standard,
         center: UNUserNotificationCenter = .current(),
+        snoozes: NotificationSnoozesFile = .standard(),
         now: Date = .now,
         calendar: Calendar = .current
     ) async {
         let settings = NotificationSettings.load(defaults: defaults)
         center.removeAllPendingNotificationRequests()
+        // Прошедшие повторы и повторы выполненных / удалённых задач из файла убираем сразу.
+        let stored = snoozes.load()
+        let activeSnoozes = NotificationSnoozes.active(stored, tasks: tasks, now: now)
+        if activeSnoozes != stored {
+            snoozes.save(activeSnoozes)
+        }
 
         if settings.isEnabled {
             let status = await authorizationStatus(center: center)
@@ -151,6 +160,7 @@ enum AppNotifications {
                         calendar: calendar
                     )
                 }
+                scheduleSnoozes(activeSnoozes, tasks: tasks, center: center, calendar: calendar)
             }
         }
 
@@ -281,17 +291,46 @@ enum AppNotifications {
         }
     }
 
+    /// Повторы «через час» переживают пересборку: ставятся снова из файла (D-46 п. 5).
+    private static func scheduleSnoozes(
+        _ snoozes: [NotificationSnooze],
+        tasks: [TaskItem],
+        center: UNUserNotificationCenter,
+        calendar: Calendar
+    ) {
+        let byID = Dictionary(tasks.map { ($0.uuid, $0) }, uniquingKeysWith: { first, _ in first })
+        for snooze in snoozes {
+            guard let task = byID[snooze.taskUUID] else { continue }
+            let content = taskContent(title: snooze.title, task: task)
+            let fire = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second], from: snooze.fireDate)
+            center.add(
+                UNNotificationRequest(
+                    identifier: snoozePrefix + task.uuid.uuidString,
+                    content: content,
+                    trigger: UNCalendarNotificationTrigger(dateMatching: fire, repeats: false)
+                )
+            )
+        }
+    }
+
+    /// Уведомление конкретной задачи — с кнопками (D-46).
+    private static func taskContent(title: String, task: TaskItem) -> UNMutableNotificationContent {
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = task.title
+        content.sound = .default
+        content.userInfo = [taskUUIDUserInfoKey: task.uuid.uuidString]
+        content.categoryIdentifier = TaskNotificationActions.categoryIdentifier
+        return content
+    }
+
     private static func addApproaching(
         task: TaskItem,
         fire: DateComponents,
         suffix: String?,
         center: UNUserNotificationCenter
     ) {
-        let content = UNMutableNotificationContent()
-        content.title = "Напоминание о задаче"
-        content.body = task.title
-        content.sound = .default
-        content.userInfo = [taskUUIDUserInfoKey: task.uuid.uuidString]
+        let content = taskContent(title: "Напоминание о задаче", task: task)
         let trigger = UNCalendarNotificationTrigger(dateMatching: fire, repeats: false)
         let identifier: String
         if let suffix, !suffix.isEmpty {
@@ -313,11 +352,7 @@ enum AppNotifications {
         fire: DateComponents,
         center: UNUserNotificationCenter
     ) {
-        let content = UNMutableNotificationContent()
-        content.title = "Просроченный дедлайн"
-        content.body = task.title
-        content.sound = .default
-        content.userInfo = [taskUUIDUserInfoKey: task.uuid.uuidString]
+        let content = taskContent(title: "Просроченный дедлайн", task: task)
         let trigger = UNCalendarNotificationTrigger(dateMatching: fire, repeats: false)
         center.add(
             UNNotificationRequest(
