@@ -72,8 +72,10 @@ struct TaskSectionView: View {
                     case .kanban:
                         TaskKanbanBoardView(
                             tasks: tasks,
+                            groups: groups,
                             displaySettings: displaySettings,
                             sortMode: kanbanSort,
+                            collapsedGroupIDs: $collapsedGroupIDs,
                             onToggle: toggleTask,
                             onEdit: { editingTask = $0 },
                             onDelete: deleteTask,
@@ -107,7 +109,8 @@ struct TaskSectionView: View {
             .sheet(isPresented: $showingDisplaySettings) {
                 TaskListDisplaySettingsView(
                     settings: $displaySettings,
-                    showsCompletedToggle: viewMode == .list
+                    showsCompletedToggle: viewMode == .list,
+                    showsKanbanFoldersToggle: viewMode == .kanban
                 )
             }
             .alert("Новая группа", isPresented: $showingCreateGroup) {
@@ -175,7 +178,8 @@ struct TaskSectionView: View {
                     .accessibilityLabel("Сортировка канбана")
                 }
 
-                if viewMode == .list {
+                // В канбане — только при досках по папкам: сворачивание общее со списком (п. 44).
+                if viewMode == .list || displaySettings.kanbanByFolder {
                     collapseAllGroupsButton
                 }
 
@@ -222,8 +226,10 @@ struct TaskSectionView: View {
     }
 
     private var collapsibleGroupIDs: Set<UUID> {
-        // Группа только со скрытыми выполненными в списке пуста — сворачивать нечего (п. 43).
-        GroupCollapseLogic.collapsibleIDs(groups: Array(groups), tasks: displaySettings.listed(Array(tasks)))
+        // Группа только со скрытыми выполненными в списке пуста — сворачивать нечего (п. 43);
+        // канбан выполненные не скрывает.
+        let visible = viewMode == .list ? displaySettings.listed(Array(tasks)) : Array(tasks)
+        return GroupCollapseLogic.collapsibleIDs(groups: Array(groups), tasks: visible)
     }
 
     private var nextCollapseActionIsExpand: Bool {

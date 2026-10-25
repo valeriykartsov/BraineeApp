@@ -3,6 +3,12 @@
 Notable changes to BraineeApp. Dates are commit dates. Decision references (D-xx) point to [`docs/decisions.md`](docs/decisions.md).
 The October 2026 work was a modernization done in phases; the detailed task plan and audit it followed are available in git history (`e1ccfff`).
 
+## 2026-10-25 — Kanban boards by folder
+
+- Kanban display settings get "Разбить по папкам" (off by default): one board per folder with tasks, in folder order, Inbox last. Each board has a header with a count and a collapse chevron and its own horizontal row of three columns sized to their content.
+- Dragging a card works only inside its board and changes the status; dropping on another board is refused (the folder is changed in the list). Collapsed folders are shared with the list; "Collapse / expand all" works in kanban when the setting is on.
+- Board rules are `KanbanBoards`, card order in a column is `KanbanSortMode.sorted` (unchanged), covered by tests. Session log: "Канбан по папкам".
+
 ## 2026-10-25 — Calendar day order by priority
 
 - Calendar tab, "Задачи дня": ordered by priority (Наивысший → Низкий), then tasks with a time by time, then tasks without a time in list order; completed stay at the bottom, ordered the same way. Was: by deadline only, so tasks without a time came first. The rule is `TaskSortHelper.byCalendarDay`, covered by tests. The Share text (D-38) keeps its order by time.
