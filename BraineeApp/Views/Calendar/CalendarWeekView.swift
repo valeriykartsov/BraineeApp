@@ -27,7 +27,9 @@ struct CalendarWeekView: View {
     /// День, на который создаётся задача по «+»; запоминается при нажатии,
     /// чтобы сброс вкладки на «сегодня» (уход в фон) не менял дату в открытой форме.
     @State private var newTaskDay: NewTaskDay?
-    @State private var displaySettings = TaskListDisplaySettings.load()
+    /// Свой набор настроек отображения «Календаря», независимый от вкладки «Задачи» (п. 43).
+    @State private var displaySettings = TaskListDisplaySettings.loadCalendar()
+    @State private var showingDisplaySettings = false
     /// Встречи дня читаются из Календаря при показе и нигде не сохраняются (D-37).
     @State private var meetings: [DayMeeting] = []
     @State private var meetingsAvailable = false
@@ -36,7 +38,12 @@ struct CalendarWeekView: View {
         CalendarWeekHelper.daysInWeek(starting: weekStart)
     }
 
+    /// Задачи дня в списке — без выполненных, если они скрыты настройкой (п. 43).
     private var tasksForSelectedDay: [TaskItem] {
+        displaySettings.listed(allTasksForSelectedDay)
+    }
+
+    private var allTasksForSelectedDay: [TaskItem] {
         let calendar = Calendar.current
         return tasks
             .filter { task in
@@ -58,6 +65,7 @@ struct CalendarWeekView: View {
                         .foregroundStyle(DesignSystem.Colors.textPrimary)
                     Spacer()
                     shareDayButton
+                    displaySettingsButton
                     addTaskButton
                 }
                 .padding(.horizontal, DesignSystem.Space.screenInset)
@@ -100,8 +108,14 @@ struct CalendarWeekView: View {
                     taskService.create(from: formData)
                 }
             }
+            .sheet(isPresented: $showingDisplaySettings) {
+                TaskListDisplaySettingsView(
+                    settings: $displaySettings,
+                    storageKey: TaskListDisplaySettings.calendarStorageKey
+                )
+            }
             .onAppear {
-                displaySettings = TaskListDisplaySettings.load()
+                displaySettings = TaskListDisplaySettings.loadCalendar()
                 resetToToday()
                 reloadMeetings()
             }
@@ -115,6 +129,7 @@ struct CalendarWeekView: View {
                     openTodayIfRequested()
                     reloadMeetings()
                 } else {
+                    showingDisplaySettings = false
                     resetToToday()
                 }
             }
@@ -167,6 +182,21 @@ struct CalendarWeekView: View {
                 .contentShape(Rectangle())
         }
         .accessibilityLabel("Поделиться задачами дня")
+    }
+
+    /// Настройки отображения карточек «Календаря» (п. 43): между «Поделиться» и «+».
+    private var displaySettingsButton: some View {
+        Button {
+            showingDisplaySettings = true
+        } label: {
+            Image(systemName: "slider.horizontal.3")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(DesignSystem.Colors.accent)
+                .frame(width: DesignSystem.Space.x10, height: DesignSystem.Space.x10)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Настройка отображения")
     }
 
     /// Новая задача с датой выбранного дня (п. 40).
@@ -281,11 +311,15 @@ struct CalendarWeekView: View {
     }
 
     private var emptyTasksNote: some View {
-        VStack(alignment: .leading, spacing: DesignSystem.Space.x2) {
-            Text("На этот день задач нет")
+        // Задачи дня есть, но все выполнены и скрыты настройкой.
+        let onlyHiddenCompleted = !allTasksForSelectedDay.isEmpty
+        return VStack(alignment: .leading, spacing: DesignSystem.Space.x2) {
+            Text(onlyHiddenCompleted ? "Все задачи дня выполнены" : "На этот день задач нет")
                 .font(DesignSystem.Typography.headline())
                 .foregroundStyle(DesignSystem.Colors.textPrimary)
-            Text("Нажмите «+», чтобы добавить задачу на этот день.")
+            Text(onlyHiddenCompleted
+                ? "Выполненные скрыты в настройках отображения."
+                : "Нажмите «+», чтобы добавить задачу на этот день.")
                 .font(DesignSystem.Typography.caption())
                 .foregroundStyle(DesignSystem.Colors.textSecondary)
         }

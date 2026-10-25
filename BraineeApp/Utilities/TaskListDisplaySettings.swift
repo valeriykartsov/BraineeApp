@@ -4,6 +4,7 @@
 //
 //  Настройки отображения полей задачи в списке.
 //  Название всегда видно; остальные поля — по чекбоксам.
+//  Два независимых набора: вкладка «Задачи» (`storageKey`) и вкладка «Календарь» (`calendarStorageKey`, п. 43).
 
 import Foundation
 
@@ -18,6 +19,8 @@ struct TaskListDisplaySettings: Codable, Equatable {
     var showTags: Bool
     /// Счётчик подзадач «☑ 2/5» (D-41); в старых настройках ключа нет — включён.
     var showSubtasks: Bool
+    /// Выполненные задачи в списке (п. 43); канбан, дашборд, наклейка и виджеты от него не зависят.
+    var showCompleted: Bool
 
     static let `default` = TaskListDisplaySettings(
         showDetails: true,
@@ -29,9 +32,10 @@ struct TaskListDisplaySettings: Codable, Equatable {
     )
 
     static let storageKey = "taskListDisplaySettings"
+    static let calendarStorageKey = "calendarDisplaySettings"
 
     enum CodingKeys: String, CodingKey {
-        case showDetails, showDeadline, showPriority, showStatus, showTags, showSubtasks
+        case showDetails, showDeadline, showPriority, showStatus, showTags, showSubtasks, showCompleted
     }
 
     init(
@@ -40,7 +44,8 @@ struct TaskListDisplaySettings: Codable, Equatable {
         showPriority: Bool,
         showStatus: Bool,
         showTags: Bool,
-        showSubtasks: Bool = true
+        showSubtasks: Bool = true,
+        showCompleted: Bool = true
     ) {
         self.showDetails = showDetails
         self.showDeadline = showDeadline
@@ -48,6 +53,7 @@ struct TaskListDisplaySettings: Codable, Equatable {
         self.showStatus = showStatus
         self.showTags = showTags
         self.showSubtasks = showSubtasks
+        self.showCompleted = showCompleted
     }
 
     init(from decoder: Decoder) throws {
@@ -58,18 +64,37 @@ struct TaskListDisplaySettings: Codable, Equatable {
         showStatus = try container.decodeIfPresent(Bool.self, forKey: .showStatus) ?? true
         showTags = try container.decodeIfPresent(Bool.self, forKey: .showTags) ?? true
         showSubtasks = try container.decodeIfPresent(Bool.self, forKey: .showSubtasks) ?? true
+        showCompleted = try container.decodeIfPresent(Bool.self, forKey: .showCompleted) ?? true
     }
 
-    static func load(defaults: UserDefaults = .standard) -> TaskListDisplaySettings {
-        guard let data = defaults.data(forKey: storageKey),
-              let decoded = try? JSONDecoder().decode(TaskListDisplaySettings.self, from: data) else {
-            return .default
-        }
-        return decoded
+    static func load(
+        key: String = storageKey,
+        defaults: UserDefaults = .standard
+    ) -> TaskListDisplaySettings {
+        decoded(key: key, defaults: defaults) ?? .default
     }
 
-    func save(defaults: UserDefaults = .standard) {
+    /// Настройки «Календаря». Пока их не меняли — поля как во вкладке «Задачи»
+    /// (до п. 43 «Календарь» показывал карточки с её настройками), выполненные видны.
+    static func loadCalendar(defaults: UserDefaults = .standard) -> TaskListDisplaySettings {
+        if let own = decoded(key: calendarStorageKey, defaults: defaults) { return own }
+        var inherited = load(defaults: defaults)
+        inherited.showCompleted = true
+        return inherited
+    }
+
+    private static func decoded(key: String, defaults: UserDefaults) -> TaskListDisplaySettings? {
+        guard let data = defaults.data(forKey: key) else { return nil }
+        return try? JSONDecoder().decode(TaskListDisplaySettings.self, from: data)
+    }
+
+    func save(key: String = storageKey, defaults: UserDefaults = .standard) {
         guard let data = try? JSONEncoder().encode(self) else { return }
-        defaults.set(data, forKey: Self.storageKey)
+        defaults.set(data, forKey: key)
+    }
+
+    /// Задачи, которые видны в списке: без выполненных, если они скрыты.
+    func listed(_ tasks: [TaskItem]) -> [TaskItem] {
+        showCompleted ? tasks : tasks.filter { !$0.isCompleted }
     }
 }

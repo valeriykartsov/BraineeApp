@@ -3,6 +3,12 @@
 Notable changes to BraineeApp. Dates are commit dates. Decision references (D-xx) point to [`docs/decisions.md`](docs/decisions.md).
 The October 2026 work was a modernization done in phases; the detailed task plan and audit it followed are available in git history (`e1ccfff`).
 
+## 2026-10-25 — Hide completed tasks, Calendar display settings
+
+- Display settings get "Показывать выполненные" (on by default): turned off, completed tasks disappear from the Tasks list (the Inbox stays; a folder with only completed tasks shows as empty). Kanban is not affected, and the switch is not shown in kanban mode.
+- The Calendar tab has its own display settings (same fields + "Показывать выполненные"), a button between Share and "+". Until changed, they copy the Tasks tab fields, so cards look the same after the update. A day where every task is completed and hidden says so.
+- The dashboard, icon badge, widgets, Share text and Calendar export do not depend on the setting. Session log: "Выполненные" line; Calendar changes are logged as "Вид «Календаря»".
+
 ## 2026-10-24 — Dashboard task order
 
 - Dashboard details: tasks in the "By priority" and "By tag" groups are ordered open (new, in progress) → completed → in trash, by title within each part (was by title only). The rule is `DashboardTaskOrder`, covered by tests. The Deleted tasks screen is unchanged.
