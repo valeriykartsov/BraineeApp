@@ -33,8 +33,8 @@ struct TaskOrganizedListView: View {
     /// Ширина превью при переносе (вместо устаревшего UIScreen.main).
     private static let dragPreviewWidth: CGFloat = 300
 
-    /// Задачи уже приходят из @Query без soft-deleted.
-    private var visibleTasks: [TaskItem] { tasks }
+    /// Задачи уже приходят из @Query без soft-deleted; выполненные — по настройке (п. 43).
+    private var visibleTasks: [TaskItem] { displaySettings.listed(tasks) }
 
     private var sortedGroups: [TaskGroup] {
         groups.sorted { $0.sortOrder < $1.sortOrder }
@@ -78,7 +78,8 @@ struct TaskOrganizedListView: View {
 
     @ViewBuilder
     private var byDateContent: some View {
-        if visibleTasks.isEmpty && sortedGroups.isEmpty {
+        // По всем задачам: если выполненные скрыты, «Входящие» остаются, а не экран «нет задач».
+        if tasks.isEmpty && sortedGroups.isEmpty {
             emptyState
         } else {
             ScrollView {

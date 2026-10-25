@@ -35,6 +35,23 @@ enum TaskSortHelper {
         return lhs.sortOrder < rhs.sortOrder
     }
 
+    /// «Задачи дня» вкладки «Календарь» (п. 48): выполненные внизу; внутри каждой части —
+    /// по приоритету (наивысший первым), затем задачи со временем по времени,
+    /// затем без времени — по порядку в списке. «Поделиться» (D-38) сортирует по-своему, по времени.
+    static func byCalendarDay(_ lhs: TaskItem, _ rhs: TaskItem) -> Bool {
+        if lhs.isCompleted != rhs.isCompleted {
+            return !lhs.isCompleted && rhs.isCompleted
+        }
+        if lhs.priority != rhs.priority { return lhs.priority > rhs.priority }
+        let lhsTimed = lhs.hasDeadlineTime && lhs.deadline != nil
+        let rhsTimed = rhs.hasDeadlineTime && rhs.deadline != nil
+        if lhsTimed != rhsTimed { return lhsTimed }
+        if lhsTimed, let left = lhs.deadline, let right = rhs.deadline, left != right {
+            return left < right
+        }
+        return lhs.sortOrder < rhs.sortOrder
+    }
+
     /// Переносит задачу в конец своей группы (или во «Входящих»).
     static func moveToEnd(of peers: [TaskItem], task: TaskItem) {
         let others = peers.filter { $0.uuid != task.uuid }

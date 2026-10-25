@@ -102,6 +102,12 @@ extension SettingsChangeObserver.Setting {
         },
         Self(key: TaskListDisplaySettings.storageKey, title: "Вид списка задач") { old, new in
             displayChanges(decode(old) ?? .default, decode(new) ?? .default)
+        },
+        // Без своего ключа «Календарь» берёт поля «Задач» (`loadCalendar`) — с ними и сравниваем первое изменение.
+        Self(key: TaskListDisplaySettings.calendarStorageKey, title: "Вид «Календаря»") { old, new in
+            var inherited = TaskListDisplaySettings.load()
+            inherited.showCompleted = true
+            return displayChanges(decode(old) ?? inherited, decode(new) ?? inherited)
         }
     ]
 
@@ -150,7 +156,8 @@ extension SettingsChangeObserver.Setting {
             D.line("Приоритет", D.onOff(old.showPriority), D.onOff(new.showPriority)),
             D.line("Статус", D.onOff(old.showStatus), D.onOff(new.showStatus)),
             D.line("Теги", D.onOff(old.showTags), D.onOff(new.showTags)),
-            D.line("Подзадачи", D.onOff(old.showSubtasks), D.onOff(new.showSubtasks))
+            D.line("Подзадачи", D.onOff(old.showSubtasks), D.onOff(new.showSubtasks)),
+            D.line("Выполненные", D.onOff(old.showCompleted), D.onOff(new.showCompleted))
         ].compactMap { $0 }
     }
 }

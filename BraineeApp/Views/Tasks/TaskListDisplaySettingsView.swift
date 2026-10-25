@@ -2,13 +2,17 @@
 //  TaskListDisplaySettingsView.swift
 //  BraineeApp
 //
-//  Окно настройки: какие поля задачи показывать в списке.
+//  Окно настройки: какие поля задачи показывать в списке и показывать ли выполненные.
+//  Один экран для вкладок «Задачи» и «Календарь»; у каждой свой ключ хранения (п. 43).
 
 import SwiftUI
 
 struct TaskListDisplaySettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Binding var settings: TaskListDisplaySettings
+    var storageKey = TaskListDisplaySettings.storageKey
+    /// В режиме канбана выполненные не скрываются — переключатель не показываем.
+    var showsCompletedToggle = true
 
     var body: some View {
         NavigationStack {
@@ -50,6 +54,22 @@ struct TaskListDisplaySettingsView: View {
                 }
                 .tint(DesignSystem.Colors.accent)
                 .listRowBackground(DesignSystem.Colors.surface)
+
+                if showsCompletedToggle {
+                    Section {
+                        Toggle("Показывать выполненные", isOn: $settings.showCompleted)
+                    } header: {
+                        Text("Выполненные")
+                            .foregroundStyle(DesignSystem.Colors.textSecondary)
+                            .textCase(nil)
+                    } footer: {
+                        Text("Скрывает выполненные только в этом списке. Дашборд, наклейка на иконке и виджеты считают все задачи.")
+                            .font(DesignSystem.Typography.caption())
+                            .foregroundStyle(DesignSystem.Colors.textSecondary)
+                    }
+                    .tint(DesignSystem.Colors.accent)
+                    .listRowBackground(DesignSystem.Colors.surface)
+                }
             }
 #if os(iOS)
             .listStyle(.insetGrouped)
@@ -63,13 +83,13 @@ struct TaskListDisplaySettingsView: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Готово") {
-                        settings.save()
+                        settings.save(key: storageKey)
                         dismiss()
                     }
                 }
             }
             .onChange(of: settings) { _, newValue in
-                newValue.save()
+                newValue.save(key: storageKey)
             }
         }
     }

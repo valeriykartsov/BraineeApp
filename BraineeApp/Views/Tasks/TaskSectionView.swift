@@ -105,7 +105,10 @@ struct TaskSectionView: View {
                 .id(task.uuid)
             }
             .sheet(isPresented: $showingDisplaySettings) {
-                TaskListDisplaySettingsView(settings: $displaySettings)
+                TaskListDisplaySettingsView(
+                    settings: $displaySettings,
+                    showsCompletedToggle: viewMode == .list
+                )
             }
             .alert("Новая группа", isPresented: $showingCreateGroup) {
                 TextField("Название группы", text: $newGroupName)
@@ -219,7 +222,8 @@ struct TaskSectionView: View {
     }
 
     private var collapsibleGroupIDs: Set<UUID> {
-        GroupCollapseLogic.collapsibleIDs(groups: Array(groups), tasks: Array(tasks))
+        // Группа только со скрытыми выполненными в списке пуста — сворачивать нечего (п. 43).
+        GroupCollapseLogic.collapsibleIDs(groups: Array(groups), tasks: displaySettings.listed(Array(tasks)))
     }
 
     private var nextCollapseActionIsExpand: Bool {
