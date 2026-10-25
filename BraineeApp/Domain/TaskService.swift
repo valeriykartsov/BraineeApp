@@ -75,9 +75,12 @@ struct TaskService {
         onChange(context)
     }
 
+    /// Пометка в журнале сессии у действий кнопками уведомления (D-46 п. 7).
+    static let fromNotificationNote = " (из уведомления)"
+
     /// Чекбокс: выполненная уходит в конец своей группы (или во «Входящих»),
     /// снятие отметки — в конец незакрытых той же группы.
-    func toggleCompletion(_ task: TaskItem) {
+    func toggleCompletion(_ task: TaskItem, fromNotification: Bool = false) {
         task.applyCompletionToggle()
 
         let peers = context.fetchActiveTasks().filter { peer in
@@ -93,7 +96,39 @@ struct TaskService {
             TaskSortHelper.moveToEnd(of: incompletePeers, task: task)
         }
         task.updatedAt = now()
-        log.add(.task, task.isCompleted ? "Задача выполнена" : "Отметка выполнения снята", subject: task.title)
+        let title = task.isCompleted ? "Задача выполнена" : "Отметка выполнения снята"
+        log.add(.task, title + (fromNotification ? Self.fromNotificationNote : ""), subject: task.title)
+        onChange(context)
+    }
+
+    /// «На завтра» из уведомления (D-46 п. 4): срок — завтра от сегодняшней даты, время сохраняется,
+    /// задача без времени остаётся без времени; длительность и пресеты напоминаний не меняются.
+    func postponeToTomorrow(_ task: TaskItem, calendar: Calendar = .current, fromNotification: Bool = false) {
+        let current = now()
+        guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: current)) else { return }
+        var newDeadline = tomorrow
+        if task.hasDeadlineTime, let deadline = task.deadline {
+            let time = calendar.dateComponents([.hour, .minute], from: deadline)
+            newDeadline = calendar.date(
+                bySettingHour: time.hour ?? 0,
+                minute: time.minute ?? 0,
+                second: 0,
+                of: tomorrow
+            ) ?? tomorrow
+        }
+        let before = TaskLogFields(task)
+        task.deadline = newDeadline
+        task.hasDeadlineTime = task.hasDeadlineTime && before.deadline != nil
+        task.updatedAt = current
+        let changes = TaskLogFields.changes(from: before, to: TaskLogFields(task), timeZone: calendar.timeZone)
+        if !changes.isEmpty {
+            log.add(
+                .task,
+                "Задача изменена" + (fromNotification ? Self.fromNotificationNote : ""),
+                subject: task.title,
+                changes: changes
+            )
+        }
         onChange(context)
     }
 

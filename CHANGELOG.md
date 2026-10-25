@@ -3,6 +3,12 @@
 Notable changes to BraineeApp. Dates are commit dates. Decision references (D-xx) point to [`docs/decisions.md`](docs/decisions.md).
 The October 2026 work was a modernization done in phases; the detailed task plan and audit it followed are available in git history (`e1ccfff`).
 
+## 2026-10-25 — Buttons in task notifications
+
+- Task notifications ("Напоминание о задаче", "Просроченный дедлайн") get three buttons: "Выполнено", "Напомнить через час", "На завтра" (D-46). None opens the app: the change runs in the background through `TaskService` like on screen (save, widget, Calendar export, badge); notifications are rebuilt before iOS is told the action is done. "Выполнено" and "На завтра" ask to unlock a locked phone first.
+- "На завтра" moves the deadline to tomorrow (from today, also for overdue tasks), keeping the time; "Напомнить через час" changes nothing in the task and repeats the same notification in an hour. Repeats are kept in `notification-snoozes.json` next to the store (not in the backup) so they survive notification rebuilds.
+- Daily "tasks" and "habits" reminders have no buttons. Session log entries get "(из уведомления)". The app store is now opened once per process (`SharedModelContainer`) and shared with the notification handler.
+
 ## 2026-10-25 — Kanban boards by folder
 
 - Kanban display settings get "Разбить по папкам" (off by default): one board per folder with tasks, in folder order, Inbox last. Each board has a header with a count and a collapse chevron and its own horizontal row of three columns sized to their content.

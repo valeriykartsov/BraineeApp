@@ -24,7 +24,7 @@ The app UI is in Russian. Screenshots use demo data.
 - **AI assistant (optional, OpenRouter)** — turn a phrase into a task draft, split a brain dump into several drafts, get a short day/week reflection, get a suggested plan for today, get advice on tasks without a deadline (schedule / delegate / drop). Drafts are saved only after you confirm them in the regular task form.
 - **Dashboard** — progress, overdue and today counters; details with a tag pie chart (percent legend) and an Active / All (including trash) switch; lists show open tasks first, then completed, then trashed.
 - **Eisenhower Matrix** — quadrants by priority and urgency.
-- **Reminders and badge** — local notifications for tasks and habits, deadline alerts, configurable app icon badge.
+- **Reminders and badge** — local notifications for tasks and habits, deadline alerts with "Done", "Remind in an hour" and "Tomorrow" buttons (handled in the background, no app launch), configurable app icon badge.
 - **Widgets** — today's tasks, habits, dashboard (S / M / L); on the Lock Screen — date with tasks left for today, and today's habit and task progress.
 - **Backup** — one-file JSON export through Files, daily auto-backup (last 7 copies), "replace all" restore with a safety snapshot.
 - **Session log** — what you did since the app was launched (field-level "old → new"); kept in memory only.

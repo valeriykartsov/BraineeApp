@@ -13,11 +13,9 @@ struct BraineeAppApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 #endif
 
-    /// Данные живут в SwiftData-файле. Хранилище V1 при первом запуске переводится на V2 с бэкапом
-    /// и сверкой (`SchemaUpgrade`, D-39). Если хранилище не открылось — экран ошибки вместо падения приложения.
-    private let sharedModelContainer = Result {
-        try SchemaUpgrade.standard.openStore()
-    }
+    /// Данные живут в SwiftData-файле (`SharedModelContainer`, общий с кнопками уведомлений, D-46).
+    /// Если хранилище не открылось — экран ошибки вместо падения приложения.
+    private let sharedModelContainer = SharedModelContainer.result
 
     var body: some Scene {
         WindowGroup {
