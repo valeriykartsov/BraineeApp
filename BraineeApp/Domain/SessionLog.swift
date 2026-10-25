@@ -10,7 +10,7 @@ import Combine
 
 struct SessionLogEntry: Identifiable, Equatable {
     enum Kind: Equatable {
-        case task, group, tag, habit, profile, settings, backup
+        case task, group, tag, habit, profile, settings, backup, pomodoro
     }
 
     let id = UUID()

@@ -102,6 +102,9 @@ struct AnimatedMainTabView: View {
             ensureSelectedTabVisible()
             // Холодный запуск с виджета: ссылка пришла раньше, чем появился этот экран.
             openPendingCalendar()
+            if deepLinkRouter.pendingPomodoro {
+                selectedTab = .profile
+            }
         }
         .onChange(of: appThemeRaw) { _, _ in
             AppNavigationChrome.apply(accentRaw: accentPaletteRaw)
@@ -117,6 +120,13 @@ struct AnimatedMainTabView: View {
         .onChange(of: deepLinkRouter.pendingCalendarToday) { _, _ in
             openPendingCalendar()
         }
+        // Помодоро — в «Профиле»; экран открывает ProfileView и сбрасывает флаг (D-47).
+        .onChange(of: deepLinkRouter.pendingPomodoro) { _, pending in
+            guard pending else { return }
+            withAnimation(flowAnimation) {
+                selectedTab = .profile
+            }
+        }
         .onChange(of: deepLinkRouter.pendingTaskUUID) { _, uuid in
             guard uuid != nil else { return }
             withAnimation(flowAnimation) {
@@ -125,6 +135,7 @@ struct AnimatedMainTabView: View {
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
+                PomodoroController.shared.sync()
                 Task { await AppNotifications.refresh(from: modelContext) }
                 // Календарь «BraineeApp» могли удалить или поправить в приложении Календарь (CAL-2).
                 CalendarExport.syncIfEnabled(context: modelContext)

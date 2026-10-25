@@ -94,6 +94,7 @@ struct SessionLogView: View {
         case .profile: "person"
         case .settings: "gearshape"
         case .backup: "externaldrive"
+        case .pomodoro: "timer"
         }
     }
 }

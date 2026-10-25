@@ -20,6 +20,8 @@ enum AppNotifications {
     static let deadlineOverduePrefix = "brainee.deadline.overdue."
     /// Повтор «Напомнить через час» (D-46): `brainee.snooze.<uuid>`.
     static let snoozePrefix = "brainee.snooze."
+    /// Смены фаз Помодоро (D-47): `brainee.pomodoro.<номер смены>`.
+    static let pomodoroPrefix = "brainee.pomodoro."
 
     /// Достаёт UUID задачи из userInfo пуша или из identifier (approach./overdue.).
     static func taskUUID(
@@ -130,6 +132,7 @@ enum AppNotifications {
         defaults: UserDefaults = .standard,
         center: UNUserNotificationCenter = .current(),
         snoozes: NotificationSnoozesFile = .standard(),
+        pomodoro: PomodoroSessionFile = .standard(),
         now: Date = .now,
         calendar: Calendar = .current
     ) async {
@@ -161,6 +164,10 @@ enum AppNotifications {
                     )
                 }
                 scheduleSnoozes(activeSnoozes, tasks: tasks, center: center, calendar: calendar)
+                // Пересборка снимает и смены Помодоро — ставим оставшиеся снова, пока сеанс идёт (D-47 п. 2).
+                if let session = pomodoro.load(), !PomodoroSchedule.isExpired(session, at: now) {
+                    schedulePomodoro(session, now: now, center: center, calendar: calendar)
+                }
             }
         }
 
@@ -311,6 +318,51 @@ enum AppNotifications {
                 )
             )
         }
+    }
+
+    // MARK: Помодоро (D-47)
+
+    /// Разовое уведомление на каждую смену фазы до автоостановки (8 ч): 32 для 25/5, 16 для 45/15.
+    /// Не повторяющиеся — иначе забытый таймер звучал бы и после 8 часов, пока приложение не откроют.
+    static func schedulePomodoro(
+        _ session: PomodoroSession,
+        now: Date,
+        center: UNUserNotificationCenter,
+        calendar: Calendar = .current
+    ) {
+        let changes = PomodoroSchedule.upcomingChanges(session, after: now)
+        let total = PomodoroSchedule.upcomingChanges(session, after: session.startedAt.addingTimeInterval(-1)).count
+        let end = PomodoroSchedule.endDate(of: session)
+        for (offset, change) in changes.enumerated() {
+            let content = UNMutableNotificationContent()
+            content.title = "Помодоро"
+            content.body = pomodoroBody(change, mode: session.mode, isLast: change.date >= end)
+            content.sound = .default
+            let fire = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second], from: change.date)
+            center.add(
+                UNNotificationRequest(
+                    identifier: pomodoroPrefix + String(total - changes.count + offset),
+                    content: content,
+                    trigger: UNCalendarNotificationTrigger(dateMatching: fire, repeats: false)
+                )
+            )
+        }
+    }
+
+    static func pomodoroBody(_ change: PomodoroChange, mode: PomodoroMode, isLast: Bool) -> String {
+        if isLast { return "Помодоро завершено: прошло 8 часов" }
+        return change.focusEnded
+            ? "Фокус \(mode.focusMinutes) мин завершён — перерыв \(mode.breakMinutes) мин"
+            : "Перерыв окончен — снова фокус \(mode.focusMinutes) мин"
+    }
+
+    static func removePomodoro(center: UNUserNotificationCenter = .current()) {
+        // Смен не больше 8 ч / 30 мин × 2 = 32; номера с запасом.
+        center.removePendingNotificationRequests(withIdentifiers: (0..<64).map { pomodoroPrefix + String($0) })
+    }
+
+    static func isPomodoro(identifier: String) -> Bool {
+        identifier.hasPrefix(pomodoroPrefix)
     }
 
     /// Уведомление конкретной задачи — с кнопками (D-46).

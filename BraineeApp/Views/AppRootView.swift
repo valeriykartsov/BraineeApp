@@ -38,6 +38,8 @@ struct AppRootView: View {
                 NotificationDeepLinkRouter.shared.openTask(uuid: uuid)
             } else if WidgetSnapshotStore.isCalendarURL(url) {
                 NotificationDeepLinkRouter.shared.openCalendarToday()
+            } else if PomodoroLink.isPomodoroURL(url) {
+                NotificationDeepLinkRouter.shared.openPomodoro()
             }
         }
         .task {
@@ -58,6 +60,8 @@ struct AppRootView: View {
 #endif
             AppNotifications.requestPermissionOnFirstLaunchIfNeeded()
             await AppNotifications.refresh(from: modelContext)
+            // Помодоро: пропущенные фокусы в журнал, автоостановка, карточка — на текущую фазу (D-47).
+            PomodoroController.shared.sync()
 
             // Даём доиграть анимации полос логотипа.
             try? await Task.sleep(for: .seconds(2.0))

@@ -2,7 +2,7 @@
 //  BraineeAppWidgetBundle.swift
 //  BraineeAppWidget
 //
-//  Точка входа расширения: четыре виджета экрана «Домой» и два — экрана блокировки.
+//  Точка входа расширения: четыре виджета экрана «Домой», два — экрана блокировки и Live Activity Помодоро.
 
 import WidgetKit
 import SwiftUI
@@ -16,5 +16,6 @@ struct BraineeAppWidgetBundle: WidgetBundle {
         TasksHabitsWidget()
         LockScreenCalendarWidget()
         LockScreenTodayWidget()
+        PomodoroLiveActivity()
     }
 }

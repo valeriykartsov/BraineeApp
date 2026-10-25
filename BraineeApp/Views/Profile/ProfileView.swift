@@ -2,7 +2,7 @@
 //  ProfileView.swift
 //  BraineeApp
 //
-//  Профиль: пользователь, дашборд, дополнительно (матрица, FAQ, удалённые),
+//  Профиль: пользователь, дашборд, дополнительно (матрица, Помодоро, FAQ, удалённые),
 //  настройки (оформление, уведомления, календарь, LLM, вкладки), теги, хранение, автор и проект на GitHub.
 
 import SwiftUI
@@ -27,6 +27,9 @@ struct ProfileView: View {
     @State private var isSearchExpanded = false
     @State private var showingEditProfile = false
     @State private var showingMatrix = false
+    /// Экран Помодоро — переходом; открывается и из Live Activity / уведомления (D-47).
+    @State private var showingPomodoro = false
+    @ObservedObject private var deepLinkRouter = NotificationDeepLinkRouter.shared
     @State private var navigationResetID = UUID()
     @State private var backupFile: BackupFile?
     @State private var backupFileName = ""
@@ -69,7 +72,7 @@ struct ProfileView: View {
                     }
 
                     if matches(
-                        "дополнительно", "матрица", "эйзенхауэр",
+                        "дополнительно", "матрица", "эйзенхауэр", "помодоро", "таймер", "фокус",
                         "faq", "вопрос", "вопросы", "помощь", "справка",
                         "удалённые", "удалить", "корзина"
                     ) {
@@ -120,6 +123,13 @@ struct ProfileView: View {
             .toolbarBackground(.visible, for: .navigationBar)
             .onAppear {
                 ensureProfile()
+                openPendingPomodoro()
+            }
+            .onChange(of: deepLinkRouter.pendingPomodoro) { _, _ in
+                openPendingPomodoro()
+            }
+            .navigationDestination(isPresented: $showingPomodoro) {
+                PomodoroView()
             }
             .onChange(of: isActive) { _, active in
                 if !active {
@@ -191,6 +201,15 @@ struct ProfileView: View {
         )
     }
 
+    /// Live Activity или уведомление Помодоро: поверх текущего подраздела — экран Помодоро.
+    private func openPendingPomodoro() {
+        guard deepLinkRouter.pendingPomodoro else { return }
+        deepLinkRouter.clearPendingPomodoro()
+        showingEditProfile = false
+        showingMatrix = false
+        showingPomodoro = true
+    }
+
     /// Общий вид (повторное нажатие на вкладку): корень навигации, поиск закрыт, фильтр сброшен.
     private func resetToOverview() {
         searchText = ""
@@ -198,6 +217,7 @@ struct ProfileView: View {
         isSearchFocused = false
         showingEditProfile = false
         showingMatrix = false
+        showingPomodoro = false
         navigationResetID = UUID()
     }
 
@@ -303,6 +323,15 @@ struct ProfileView: View {
                 showingMatrix = true
             } label: {
                 GroupedNavRow(title: "Матрица Эйзенхауэра", systemImage: "square.grid.2x2")
+            }
+            .buttonStyle(.plain)
+
+            InsetDivider(leading: DesignSystem.Space.rowIconInset)
+
+            Button {
+                showingPomodoro = true
+            } label: {
+                GroupedNavRow(title: "Помодоро", systemImage: "timer")
             }
             .buttonStyle(.plain)
 
