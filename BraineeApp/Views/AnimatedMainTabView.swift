@@ -26,6 +26,9 @@ struct AnimatedMainTabView: View {
     @State private var selectedTab: MainTab = .tasks
     /// Повторное нажатие на вкладку «Профиль» — возврат в её корень (п. 41).
     @State private var profileRootRequest = 0
+    /// Клавиатура и верх панели вкладок: панель остаётся внизу, отступ получает только содержимое (п. 57).
+    @StateObject private var keyboard = KeyboardObserver()
+    @State private var tabBarTop: CGFloat = 0
     @Namespace private var tabUnderlineNamespace
 
     init() {
@@ -90,10 +93,17 @@ struct AnimatedMainTabView: View {
                     .allowsHitTesting(selectedTab == .profile)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(
+                .bottom,
+                KeyboardLayout.contentBottomPadding(tabBarTop: tabBarTop, keyboardTop: keyboard.keyboardTop)
+            )
 
             AppDivider()
             tabBar
         }
+        // Панель вкладок не поднимается над клавиатурой: даже от «призрачной» клавиатуры
+        // (закрытое поле, свёрнутое приложение) не остаётся пустой полосы под панелью (п. 57).
+        .ignoresSafeArea(.keyboard, edges: .bottom)
         .appScreenBackground()
         .tint(accentColor)
         .preferredColorScheme(colorScheme)
@@ -133,7 +143,14 @@ struct AnimatedMainTabView: View {
                 selectedTab = .tasks
             }
         }
+        // Поле скрытой вкладки не должно держать клавиатуру над другой вкладкой (п. 57).
+        .onChange(of: selectedTab) { _, _ in
+            KeyboardLayout.endEditing()
+        }
         .onChange(of: scenePhase) { _, phase in
+            if phase == .background {
+                KeyboardLayout.endEditing()
+            }
             if phase == .active {
                 PomodoroController.shared.sync()
                 Task { await AppNotifications.refresh(from: modelContext) }
@@ -210,6 +227,11 @@ struct AnimatedMainTabView: View {
         .animation(flowAnimation, value: tabVisibilityToken)
         .padding(.horizontal, 4)
         .background(DesignSystem.Colors.surface.ignoresSafeArea(edges: .bottom))
+        .onGeometryChange(for: CGFloat.self) { proxy in
+            proxy.frame(in: .global).minY
+        } action: { top in
+            tabBarTop = top
+        }
     }
 
     /// Виджет экрана блокировки открывает «Календарь»; если вкладка скрыта — «Задачи».
