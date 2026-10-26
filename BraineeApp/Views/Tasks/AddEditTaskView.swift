@@ -353,7 +353,7 @@ struct AddEditTaskView: View {
             .alert("Несохранённые изменения", isPresented: $showingDiscardConfirm) {
                 Button("Вернуться к редактированию", role: .cancel) {}
                 Button("Закрыть без сохранения", role: .destructive) {
-                    dismiss()
+                    closeForm()
                 }
             } message: {
                 Text("В карточке есть несохранённые изменения. Закрыть и потерять их?")
@@ -811,15 +811,23 @@ struct AddEditTaskView: View {
         if isDirty {
             showingDiscardConfirm = true
         } else {
-            dismiss()
+            closeForm()
         }
+    }
+
+    /// Закрывает лист, сначала сняв фокус: иначе после возврата в приложение iOS восстанавливает
+    /// клавиатуру для уже закрытого поля, и от неё остаётся полоса над клавиатурой (п. 57).
+    private func closeForm() {
+        focusedField = nil
+        KeyboardLayout.endEditing()
+        dismiss()
     }
 
     private func deleteEditingTask() {
         guard let editingTaskUUID,
               let task = TaskItem.fetch(byUUID: editingTaskUUID, in: modelContext) else { return }
         onDelete?(task)
-        dismiss()
+        closeForm()
     }
 
     private func selectionRow(
@@ -887,7 +895,7 @@ struct AddEditTaskView: View {
             subtasks: TaskSubtaskRules.normalized(subtasks)
         )
         onSave(formData)
-        dismiss()
+        closeForm()
     }
 }
 

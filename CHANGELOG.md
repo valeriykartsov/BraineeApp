@@ -3,6 +3,12 @@
 Notable changes to BraineeApp. Dates are commit dates. Decision references (D-xx) point to [`docs/decisions.md`](docs/decisions.md).
 The October 2026 work was a modernization done in phases; the detailed task plan and audit it followed are available in git history (`e1ccfff`).
 
+## 2026-10-26 — Tab bar stays at the bottom with the keyboard
+
+- Fixed: the bottom tab bar could stay raised with an empty strip under it — after saving a task with the keyboard open and returning to the app, or after switching tabs while typing in the LLM chat (the keyboard stayed over the other tab).
+- The task form drops focus before it closes ("Сохранить", "Отмена", "Удалить задачу"); switching tabs and moving the app to the background close the keyboard.
+- The tab bar no longer rides above the keyboard: it stays at the bottom under it, and only the tab content (e.g. the LLM chat input) moves up to the top of the keyboard.
+
 ## 2026-10-26 — Pomodoro with Live Activity
 
 - "Профиль → Дополнительно → Помодоро": 25/5 or 45/15, an animated ring with the countdown, Start / Stop. Focus and break switch by themselves; every change has a local notification with sound; the session stops by itself after 8 hours (D-47). No history; the session log gets "Помодоро: фокус 25 мин завершён" for every finished focus, including ones that passed while the app was asleep.
