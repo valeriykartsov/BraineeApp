@@ -78,7 +78,7 @@ struct DeletedTasksFolderView: View {
                 .scrollContentBackground(.hidden)
             }
         }
-        .background(DesignSystem.Colors.background)
+        .appScreenBackground()
         .tint(DesignSystem.Colors.accent)
         .navigationTitle("Удалённые")
 #if os(iOS)

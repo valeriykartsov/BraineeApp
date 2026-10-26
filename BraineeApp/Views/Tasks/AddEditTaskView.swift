@@ -301,7 +301,7 @@ struct AddEditTaskView: View {
                 .padding(.top, DesignSystem.Space.x2)
                 .padding(.bottom, DesignSystem.Space.x4)
             }
-            .appScreenBackground()
+            .appScreenBackground(allowsImage: false)
             .tint(DesignSystem.Colors.accent)
             .navigationTitle(isEditing ? "Редактировать" : "Новая задача")
 #if os(iOS)

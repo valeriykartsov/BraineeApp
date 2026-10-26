@@ -39,6 +39,12 @@ struct ProfileView: View {
     @State private var isImportingBackup = false
     @State private var pendingRestore: BackupRestore.Preview?
     @FocusState private var isSearchFocused: Bool
+    @AppStorage(AppBackgroundSettings.modeKey) private var backgroundModeRaw = AppBackgroundMode.none.rawValue
+    @ObservedObject private var backgroundStore = AppBackgroundStore.shared
+
+    private var showsBackgroundImage: Bool {
+        AppBackgroundMode.resolved(from: backgroundModeRaw) == .image && backgroundStore.hasImage
+    }
 
     private var profile: UserProfile? { profiles.first }
 
@@ -110,7 +116,7 @@ struct ProfileView: View {
             .toolbar {
                 ProfileLogoToolbarItem()
 #if os(iOS)
-                ToolbarItem(placement: .topBarTrailing) {
+                ProfileSearchToolbarItem(hidesBackground: showsBackgroundImage) {
                     searchToggleButton
                 }
 #else
@@ -119,8 +125,7 @@ struct ProfileView: View {
                 }
 #endif
             }
-            .toolbarBackground(DesignSystem.Colors.background, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+            .appNavigationBarBackground()
             .onAppear {
                 ensureProfile()
                 openPendingPomodoro()
@@ -585,6 +590,25 @@ private struct ProfileLogoTitle: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel("BraineeApp")
         .accessibilityAddTraits(.isHeader)
+    }
+}
+
+/// Кнопка поиска: над картинкой фона (D-48) — без стеклянного кружка iOS 26+, как шапки других вкладок.
+private struct ProfileSearchToolbarItem<Label: View>: ToolbarContent {
+    let hidesBackground: Bool
+    @ViewBuilder let label: () -> Label
+
+    var body: some ToolbarContent {
+        if #available(iOS 26.0, *), hidesBackground {
+            ToolbarItem(placement: .topBarTrailing) {
+                label()
+            }
+            .sharedBackgroundVisibility(.hidden)
+        } else {
+            ToolbarItem(placement: .topBarTrailing) {
+                label()
+            }
+        }
     }
 }
 

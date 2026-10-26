@@ -3,6 +3,12 @@
 Notable changes to BraineeApp. Dates are commit dates. Decision references (D-xx) point to [`docs/decisions.md`](docs/decisions.md).
 The October 2026 work was a modernization done in phases; the detailed task plan and audit it followed are available in git history (`e1ccfff`).
 
+## 2026-10-27 — Custom background picture
+
+- "Профиль → Настройки → Тема оформления → Фон": "Без фона" / "Картинка", pick a photo (the picker gives the app only the chosen photo), dim 0–80 % (40 % by default) and blur. One picture for both themes; light and dark change the interface on top of it. "Без фона" keeps the picture for later; "Удалить картинку" removes it after a confirmation (D-48).
+- The picture is shown under the main screens and the screens opened from them; task, habit and profile forms stay plain. It is anchored to the screen, so nested screens show the same part without seams. Cards and the tab bar stay opaque; over the picture the Profile header (logo, app name, search) has no bar of its own, like the other tabs' headers.
+- Stored as a downscaled JPEG `Application Support/BraineeApp/background.jpg`; not in SwiftData and not in backups (like the avatar). It never leaves the device: not in LLM requests, widgets, Live Activity, sharing or Calendar. The session log records mode, dim and blur changes and "Картинка фона: Выбрана / Заменена / Удалена".
+
 ## 2026-10-26 — Tab bar stays at the bottom with the keyboard
 
 - Fixed: the bottom tab bar could stay raised with an empty strip under it — after saving a task with the keyboard open and returning to the app, or after switching tabs while typing in the LLM chat (the keyboard stayed over the other tab).

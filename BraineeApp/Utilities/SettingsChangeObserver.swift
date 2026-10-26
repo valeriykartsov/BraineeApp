@@ -88,6 +88,11 @@ extension SettingsChangeObserver.Setting {
     static let all: [Self] = [
         option("appTheme", "Тема") { AppTheme.resolved(from: $0 as? String ?? "").title },
         option(AccentPalette.storageKey, "Акцент") { AccentPalette.resolved(from: $0 as? String).title },
+        option(AppBackgroundSettings.modeKey, "Фон") { AppBackgroundMode.resolved(from: $0 as? String).title },
+        option(AppBackgroundSettings.dimKey, "Затемнение фона") {
+            AppBackgroundSettings.percentText(($0 as? Double) ?? AppBackgroundSettings.defaultDim)
+        },
+        flag(AppBackgroundSettings.blurKey, "Размытие фона", default: false),
         flag(TabBarSettings.showCalendarKey, "Вкладка «Календарь»", default: true),
         flag(TabBarSettings.showLLMKey, "Вкладка «LLM»", default: false),
         flag(TabBarSettings.showHabitsKey, "Вкладка «Привычки»", default: false),

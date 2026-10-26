@@ -23,8 +23,16 @@ enum AppNavigationChrome {
         let largeFont = UIFont.systemFont(ofSize: largeTitleSize, weight: .bold)
 
         let appearance = UINavigationBarAppearance()
-        appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = background
+        // Над картинкой фона (D-48) — системный полупрозрачный материал, иначе — цвет фона.
+        let showsBackgroundImage = AppBackgroundMode.resolved(
+            from: UserDefaults.standard.string(forKey: AppBackgroundSettings.modeKey)
+        ) == .image && AppBackgroundStore.shared.hasImage
+        if showsBackgroundImage {
+            appearance.configureWithDefaultBackground()
+        } else {
+            appearance.configureWithOpaqueBackground()
+            appearance.backgroundColor = background
+        }
         appearance.shadowColor = .clear
         appearance.titleTextAttributes = [
             .font: titleFont,
@@ -54,8 +62,7 @@ struct AppSectionChrome: ViewModifier {
     func body(content: Content) -> some View {
         content
             .navigationBarTitleDisplayMode(.large)
-            .toolbarBackground(DesignSystem.Colors.background, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+            .appNavigationBarBackground()
             .toolbarColorScheme(nil, for: .navigationBar)
     }
 }
