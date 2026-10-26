@@ -190,6 +190,9 @@ struct AppScreenBackground: ViewModifier {
                 ScreenAnchoredImage(image: picture)
                     .overlay(DesignSystem.Colors.background.opacity(AppBackgroundSettings.clampedDim(dim)))
                     .ignoresSafeArea()
+                    // Картинка сдвинута за пределы блока; `clipped()` обрезает только рисование, а не нажатия —
+                    // без этого невидимая часть фона списка забирала нажатия кнопок шапки «Задач» (п. 59).
+                    .allowsHitTesting(false)
             } else {
                 DesignSystem.Colors.background.ignoresSafeArea()
             }

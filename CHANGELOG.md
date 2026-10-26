@@ -3,6 +3,10 @@
 Notable changes to BraineeApp. Dates are commit dates. Decision references (D-xx) point to [`docs/decisions.md`](docs/decisions.md).
 The October 2026 work was a modernization done in phases; the detailed task plan and audit it followed are available in git history (`e1ccfff`).
 
+## 2026-10-27 — Tasks header buttons work with a background picture
+
+- Fixed: with a background picture, the Tasks header did not respond — "Список / Канбан", collapse / expand folders, add folder, add task, display settings. The invisible part of the list's screen-anchored picture lay over the header and took the taps; the background layer no longer accepts taps.
+
 ## 2026-10-27 — Custom background picture
 
 - "Профиль → Настройки → Тема оформления → Фон": "Без фона" / "Картинка", pick a photo (the picker gives the app only the chosen photo), dim 0–80 % (40 % by default) and blur. One picture for both themes; light and dark change the interface on top of it. "Без фона" keeps the picture for later; "Удалить картинку" removes it after a confirmation (D-48).
