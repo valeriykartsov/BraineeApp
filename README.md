@@ -30,7 +30,7 @@ The app UI is in Russian. Screenshots use demo data.
 - **Backup** — one-file JSON export through Files, daily auto-backup (last 7 copies), "replace all" restore with a safety snapshot.
 - **Session log** — what you did since the app was launched (field-level "old → new"); kept in memory only.
 - **Profile** — name, photo, age and a short status line under the name (up to 60 characters, in the backup, never sent anywhere).
-- **Personalization** — light/dark theme, accent colors with matching app icons, configurable tab bar.
+- **Personalization** — light/dark theme, accent colors with matching app icons, your own picture as the background (dim, blur), configurable tab bar.
 
 ## Privacy
 

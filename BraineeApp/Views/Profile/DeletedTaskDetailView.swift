@@ -80,7 +80,7 @@ struct DeletedTaskDetailView: View {
         .listStyle(.insetGrouped)
 #endif
         .scrollContentBackground(.hidden)
-        .background(DesignSystem.Colors.background)
+        .appScreenBackground()
         .tint(DesignSystem.Colors.accent)
         .navigationTitle("Просмотр")
 #if os(iOS)

@@ -2,10 +2,11 @@
 //  AppearanceSettingsView.swift
 //  BraineeApp
 //
-//  Оформление: тема, акцентный цвет и фиксация вертикальной ориентации.
+//  Оформление: тема, акцентный цвет, фон (картинка, D-48) и фиксация вертикальной ориентации.
 
 import SwiftUI
 import SwiftData
+import PhotosUI
 
 struct AppearanceSettingsView: View {
     @Environment(\.modelContext) private var modelContext
@@ -17,12 +18,26 @@ struct AppearanceSettingsView: View {
 
     @State private var showingAccentPicker = false
 
+    @AppStorage(AppBackgroundSettings.modeKey) private var backgroundModeRaw = AppBackgroundMode.none.rawValue
+    @AppStorage(AppBackgroundSettings.blurKey) private var backgroundBlur = false
+    @ObservedObject private var backgroundStore = AppBackgroundStore.shared
+    /// Ползунок меняет значение на экране, а в UserDefaults (и журнал) пишет только по отпусканию.
+    @State private var backgroundDim = AppBackgroundSettings.dim()
+    @State private var selectedBackgroundPhoto: PhotosPickerItem?
+    @State private var isLoadingBackground = false
+    @State private var backgroundError: String?
+    @State private var showingDeleteBackground = false
+
     private var appTheme: AppTheme {
         AppTheme.resolved(from: appThemeRaw)
     }
 
     private var accentPalette: AccentPalette {
         AccentPalette.resolved(from: accentPaletteRaw)
+    }
+
+    private var backgroundMode: AppBackgroundMode {
+        AppBackgroundMode.resolved(from: backgroundModeRaw)
     }
 
     var body: some View {
@@ -82,6 +97,8 @@ struct AppearanceSettingsView: View {
                     .accessibilityLabel("Выбрать акцентный цвет")
                 }
 
+                backgroundSection
+
                 GroupedSection(title: "Ориентация") {
                     VStack(alignment: .leading, spacing: DesignSystem.Space.x3) {
                         Toggle(isOn: $lockPortrait) {
@@ -119,6 +136,16 @@ struct AppearanceSettingsView: View {
 #endif
         .tint(DesignSystem.Colors.accent)
         .dismissOnTabLeave($showingAccentPicker)
+        .onChange(of: selectedBackgroundPhoto) { _, item in
+            guard let item else { return }
+            loadBackground(from: item)
+        }
+        .alert("Удалить картинку фона?", isPresented: $showingDeleteBackground) {
+            Button("Отмена", role: .cancel) {}
+            Button("Удалить", role: .destructive) { deleteBackground() }
+        } message: {
+            Text("Фон станет однотонным. Картинка в галерее останется.")
+        }
         .sheet(isPresented: $showingAccentPicker) {
             AccentPalettePickerView(current: accentPalette) { selected in
                 applyAccent(selected)
@@ -128,6 +155,148 @@ struct AppearanceSettingsView: View {
 #if canImport(UIKit)
             OrientationLockSettings.apply(lockPortrait: lockPortrait)
 #endif
+        }
+    }
+
+    // MARK: - Фон
+
+    private var backgroundSection: some View {
+        GroupedSection(title: "Фон") {
+            VStack(alignment: .leading, spacing: DesignSystem.Space.x3) {
+                Picker("Фон", selection: Binding(
+                    get: { backgroundMode },
+                    set: { setBackgroundMode($0) }
+                )) {
+                    ForEach(AppBackgroundMode.allCases) { mode in
+                        Text(mode.title).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                HStack(spacing: DesignSystem.Space.x3) {
+                    backgroundPreview
+
+                    VStack(alignment: .leading, spacing: DesignSystem.Space.x2) {
+                        PhotosPicker(selection: $selectedBackgroundPhoto, matching: .images) {
+                            Text(backgroundStore.hasImage ? "Заменить картинку" : "Выбрать картинку")
+                                .font(DesignSystem.Typography.body(16))
+                        }
+                        .disabled(isLoadingBackground)
+
+                        if backgroundStore.hasImage {
+                            Button("Удалить картинку", role: .destructive) {
+                                showingDeleteBackground = true
+                            }
+                            .font(DesignSystem.Typography.body(16))
+                        }
+                    }
+                    Spacer(minLength: 0)
+                }
+
+                if let backgroundError {
+                    Text(backgroundError)
+                        .font(DesignSystem.Typography.caption())
+                        .foregroundStyle(DesignSystem.Colors.danger)
+                }
+
+                if backgroundMode == .image && backgroundStore.hasImage {
+                    VStack(alignment: .leading, spacing: DesignSystem.Space.x1) {
+                        HStack {
+                            Text("Затемнение")
+                                .font(DesignSystem.Typography.body(16))
+                                .foregroundStyle(DesignSystem.Colors.textPrimary)
+                            Spacer()
+                            Text(AppBackgroundSettings.percentText(backgroundDim))
+                                .font(DesignSystem.Typography.body(16))
+                                .foregroundStyle(DesignSystem.Colors.textSecondary)
+                                .monospacedDigit()
+                        }
+                        Slider(value: $backgroundDim, in: 0...AppBackgroundSettings.maxDim, step: 0.05) { editing in
+                            if !editing { saveBackgroundDim() }
+                        }
+                        .accessibilityLabel("Затемнение фона")
+                    }
+
+                    Toggle(isOn: $backgroundBlur) {
+                        Text("Размытие")
+                            .font(DesignSystem.Typography.body(16))
+                            .foregroundStyle(DesignSystem.Colors.textPrimary)
+                    }
+                    .tint(DesignSystem.Colors.accent)
+                }
+
+                Text("Картинка лежит под всеми экранами, кроме форм. Светлая и тёмная тема меняют элементы поверх неё. Картинка хранится только на этом iPhone и не входит в резервную копию.")
+                    .font(DesignSystem.Typography.caption())
+                    .foregroundStyle(DesignSystem.Colors.textSecondary)
+            }
+            .padding(DesignSystem.Space.x3)
+        }
+    }
+
+    private var backgroundPreview: some View {
+        RoundedRectangle(cornerRadius: DesignSystem.Radius.group, style: .continuous)
+            .fill(DesignSystem.Colors.chip)
+            .overlay {
+                if isLoadingBackground {
+                    ProgressView()
+                } else if let image = backgroundStore.image {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    Image(systemName: "photo")
+                        .font(.system(size: 22))
+                        .foregroundStyle(DesignSystem.Colors.textSecondary)
+                }
+            }
+            .frame(width: 56, height: 96)
+            .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Radius.group, style: .continuous))
+            .accessibilityHidden(true)
+    }
+
+    private func setBackgroundMode(_ mode: AppBackgroundMode) {
+        backgroundModeRaw = mode.rawValue
+        AppNavigationChrome.apply(accentRaw: accentPaletteRaw)
+    }
+
+    private func saveBackgroundDim() {
+        backgroundDim = AppBackgroundSettings.clampedDim(backgroundDim)
+        UserDefaults.standard.set(backgroundDim, forKey: AppBackgroundSettings.dimKey)
+    }
+
+    private func loadBackground(from item: PhotosPickerItem) {
+        isLoadingBackground = true
+        backgroundError = nil
+        Task { @MainActor in
+            defer {
+                isLoadingBackground = false
+                selectedBackgroundPhoto = nil
+            }
+            do {
+                guard let data = try await item.loadTransferable(type: Data.self) else {
+                    throw BackgroundImageError.unreadable
+                }
+                let hadImage = backgroundStore.hasImage
+                try backgroundStore.setImage(data: data)
+                SessionLog.shared.add(
+                    .settings, "Настройка изменена",
+                    subject: "Картинка фона",
+                    changes: [hadImage ? "Заменена" : "Выбрана"]
+                )
+                setBackgroundMode(.image)
+            } catch {
+                backgroundError = BackgroundImageError.unreadable.errorDescription
+            }
+        }
+    }
+
+    private func deleteBackground() {
+        do {
+            try backgroundStore.removeImage()
+            SessionLog.shared.add(.settings, "Настройка изменена", subject: "Картинка фона", changes: ["Удалена"])
+            setBackgroundMode(.none)
+        } catch {
+            backgroundError = "Не удалось удалить картинку."
         }
     }
 

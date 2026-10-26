@@ -214,8 +214,9 @@ extension View {
         modifier(FlatHighlightBackground(isHighlighted: highlighted))
     }
 
-    func appScreenBackground() -> some View {
-        background(DesignSystem.Colors.background.ignoresSafeArea())
+    /// Фон экрана: цвет темы или картинка фона (D-48). `allowsImage: false` — листы-формы, всегда однотонные.
+    func appScreenBackground(allowsImage: Bool = true) -> some View {
+        modifier(AppScreenBackground(allowsImage: allowsImage))
     }
 
     func groupedCardBackground() -> some View {

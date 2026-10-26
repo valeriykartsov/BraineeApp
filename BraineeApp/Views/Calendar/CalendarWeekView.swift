@@ -80,6 +80,8 @@ struct CalendarWeekView: View {
                 dayTasksList
                     .taskRowClock()
             }
+            // Корень вкладки внутри NavigationStack: без своего фона стек непрозрачный и закрывает картинку (D-48).
+            .appScreenBackground()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .navigationBar)
             .tint(DesignSystem.Colors.accent)

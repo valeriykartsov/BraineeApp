@@ -55,7 +55,7 @@ struct TabBarSettingsView: View {
         .listStyle(.insetGrouped)
 #endif
         .scrollContentBackground(.hidden)
-        .background(DesignSystem.Colors.background)
+        .appScreenBackground()
         .navigationTitle("Панель вкладок")
 #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
