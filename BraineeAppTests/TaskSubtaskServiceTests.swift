@@ -132,4 +132,20 @@ struct TaskSubtaskServiceTests {
         #expect(settings.showSubtasks)
         #expect(!settings.showDetails)
     }
+
+    // Замена по id: найденная строка меняется, удалённая — список не трогает (крестик у пустой подзадачи
+    // в фокусе: поле дописывает текст после удаления строки — раньше падение «Index out of range»).
+    @Test func заменаПоId_удалённаяСтрокаНеМеняетСписок() {
+        let first = SubtaskDraft(title: "Коробки")
+        let second = SubtaskDraft(title: "")
+        var edited = first
+        edited.title = "Коробки и скотч"
+
+        let updated = TaskSubtaskRules.replacing(edited, in: [first, second])
+        #expect(updated.map(\.title) == ["Коробки и скотч", ""])
+
+        let afterRemoval = [first]
+        #expect(TaskSubtaskRules.replacing(second, in: afterRemoval) == afterRemoval)
+        #expect(TaskSubtaskRules.replacing(second, in: []) == [])
+    }
 }

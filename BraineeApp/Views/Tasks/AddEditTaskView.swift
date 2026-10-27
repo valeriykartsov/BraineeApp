@@ -456,8 +456,8 @@ struct AddEditTaskView: View {
     private var subtasksSection: some View {
         GroupedSection(title: "Подзадачи") {
             VStack(spacing: 0) {
-                ForEach($subtasks) { $item in
-                    subtaskRow($item)
+                ForEach(subtasks) { item in
+                    subtaskRow(subtaskBinding(item.id))
                     InsetDivider(leading: DesignSystem.Space.x3)
                 }
 
@@ -493,6 +493,15 @@ struct AddEditTaskView: View {
                 }
             }
         }
+    }
+
+    /// Строка подзадачи находит свою запись по `id`, а не по номеру в массиве: поле в фокусе
+    /// дописывает текст уже после удаления строки, и запись по старому номеру роняла приложение.
+    private func subtaskBinding(_ id: UUID) -> Binding<SubtaskDraft> {
+        Binding(
+            get: { subtasks.first { $0.id == id } ?? SubtaskDraft(id: id, title: "") },
+            set: { subtasks = TaskSubtaskRules.replacing($0, in: subtasks) }
+        )
     }
 
     private func subtaskRow(_ item: Binding<SubtaskDraft>) -> some View {
