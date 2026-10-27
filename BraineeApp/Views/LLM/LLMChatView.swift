@@ -363,10 +363,7 @@ struct LLMChatView: View {
             }
         }
         .padding(DesignSystem.Space.x3)
-        .background(
-            RoundedRectangle(cornerRadius: DesignSystem.Radius.group, style: .continuous)
-                .fill(DesignSystem.Colors.surface)
-        )
+        .appCardSurface(RoundedRectangle(cornerRadius: DesignSystem.Radius.group, style: .continuous))
     }
 
     /// Ответ ассистента с кнопками «Копировать» (п. 8) и «Поделиться» (п. 23a, D-38) под карточкой
@@ -481,10 +478,7 @@ struct LLMChatView: View {
                 .foregroundStyle(DesignSystem.Colors.textSecondary)
         }
         .padding(DesignSystem.Space.x3)
-        .background(
-            RoundedRectangle(cornerRadius: DesignSystem.Radius.group, style: .continuous)
-                .fill(DesignSystem.Colors.surface)
-        )
+        .appCardSurface(RoundedRectangle(cornerRadius: DesignSystem.Radius.group, style: .continuous))
     }
 
     private func dayPlanCard(_ plan: DayPlan) -> some View {
@@ -528,10 +522,7 @@ struct LLMChatView: View {
                 .foregroundStyle(DesignSystem.Colors.textSecondary)
         }
         .padding(DesignSystem.Space.x3)
-        .background(
-            RoundedRectangle(cornerRadius: DesignSystem.Radius.group, style: .continuous)
-                .fill(DesignSystem.Colors.surface)
-        )
+        .appCardSurface(RoundedRectangle(cornerRadius: DesignSystem.Radius.group, style: .continuous))
     }
 
     private func reflectionCard(text: String, stats: ReflectionStats) -> some View {
@@ -561,10 +552,7 @@ struct LLMChatView: View {
                 .padding(.top, DesignSystem.Space.x1)
         }
         .padding(DesignSystem.Space.x3)
-        .background(
-            RoundedRectangle(cornerRadius: DesignSystem.Radius.group, style: .continuous)
-                .fill(DesignSystem.Colors.surface)
-        )
+        .appCardSurface(RoundedRectangle(cornerRadius: DesignSystem.Radius.group, style: .continuous))
     }
 
     private func draftRow(_ title: String, _ value: String) -> some View {
@@ -660,7 +648,8 @@ struct LLMChatView: View {
         }
         .padding(.horizontal, DesignSystem.Space.screenInset)
         .padding(.vertical, DesignSystem.Space.x2)
-        .background(DesignSystem.Colors.surface)
+        // Панель ввода — слой управления: стекло над картинкой (п. 60), иначе цвет карточки.
+        .appGlassControl(in: Rectangle(), solid: DesignSystem.Colors.surface)
     }
 
     /// Режим — раскрывающееся меню (п. 9): на кнопке иконка и название текущего режима

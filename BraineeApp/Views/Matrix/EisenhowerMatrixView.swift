@@ -137,7 +137,7 @@ struct EisenhowerMatrixView: View {
         }
         .padding(DesignSystem.Space.x3)
         .frame(maxWidth: .infinity, minHeight: EisenhowerMatrixLayout.cardHeight, maxHeight: EisenhowerMatrixLayout.cardHeight, alignment: .topLeading)
-        .background(shape.fill(DesignSystem.Colors.surface))
+        .appCardSurface(shape)
         .overlay(
             shape.strokeBorder(
                 showsBorder ? DesignSystem.Colors.divider : .clear,

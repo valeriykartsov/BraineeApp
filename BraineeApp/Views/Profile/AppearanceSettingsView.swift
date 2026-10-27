@@ -2,7 +2,7 @@
 //  AppearanceSettingsView.swift
 //  BraineeApp
 //
-//  Оформление: тема, акцентный цвет, фон (картинка, D-48) и фиксация вертикальной ориентации.
+//  Оформление: тема, акцентный цвет, фон (картинка, D-48), стекло (п. 60) и фиксация вертикальной ориентации.
 
 import SwiftUI
 import SwiftData
@@ -27,6 +27,11 @@ struct AppearanceSettingsView: View {
     @State private var isLoadingBackground = false
     @State private var backgroundError: String?
     @State private var showingDeleteBackground = false
+
+    @AppStorage(AppGlassSettings.enabledKey) private var glassEnabled = false
+    /// Как и затемнение: на экране меняется сразу, в UserDefaults (и журнал) — по отпусканию.
+    @State private var glassLevel = AppGlassSettings.level()
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     private var appTheme: AppTheme {
         AppTheme.resolved(from: appThemeRaw)
@@ -98,6 +103,8 @@ struct AppearanceSettingsView: View {
                 }
 
                 backgroundSection
+
+                glassSection
 
                 GroupedSection(title: "Ориентация") {
                     VStack(alignment: .leading, spacing: DesignSystem.Space.x3) {
@@ -231,6 +238,66 @@ struct AppearanceSettingsView: View {
             }
             .padding(DesignSystem.Space.x3)
         }
+    }
+
+    // MARK: - Стекло
+
+    /// Стекло доступно только над активным фоном (п. 60, П3).
+    private var backgroundIsActive: Bool {
+        backgroundMode == .image && backgroundStore.hasImage
+    }
+
+    private var glassSection: some View {
+        GroupedSection(title: "Стекло") {
+            VStack(alignment: .leading, spacing: DesignSystem.Space.x3) {
+                Toggle(isOn: $glassEnabled) {
+                    Text("Стекло")
+                        .font(DesignSystem.Typography.body(16))
+                        .foregroundStyle(DesignSystem.Colors.textPrimary)
+                }
+                .tint(DesignSystem.Colors.accent)
+                .disabled(!backgroundIsActive)
+
+                if backgroundIsActive && glassEnabled {
+                    VStack(alignment: .leading, spacing: DesignSystem.Space.x1) {
+                        HStack {
+                            Text("Прозрачность элементов")
+                                .font(DesignSystem.Typography.body(16))
+                                .foregroundStyle(DesignSystem.Colors.textPrimary)
+                            Spacer()
+                            Text(AppGlassSettings.percentText(glassLevel))
+                                .font(DesignSystem.Typography.body(16))
+                                .foregroundStyle(DesignSystem.Colors.textSecondary)
+                                .monospacedDigit()
+                        }
+                        Slider(value: $glassLevel, in: 0...1, step: 0.05) { editing in
+                            if !editing { saveGlassLevel() }
+                        }
+                        .accessibilityLabel("Прозрачность элементов")
+                    }
+                }
+
+                Text(glassFootnote)
+                    .font(DesignSystem.Typography.caption())
+                    .foregroundStyle(DesignSystem.Colors.textSecondary)
+            }
+            .padding(DesignSystem.Space.x3)
+        }
+    }
+
+    private var glassFootnote: String {
+        if !backgroundIsActive {
+            return "Доступно, когда выбран фон «Картинка»."
+        }
+        if reduceTransparency {
+            return "В настройках iPhone включено «Понижение прозрачности» — стекло не показывается."
+        }
+        return "Кнопки и панель вкладок становятся стеклянными. Ползунок делает прозрачнее карточки: 0 % — как без стекла. Формы остаются однотонными."
+    }
+
+    private func saveGlassLevel() {
+        glassLevel = AppGlassSettings.clampedLevel(glassLevel)
+        UserDefaults.standard.set(glassLevel, forKey: AppGlassSettings.levelKey)
     }
 
     private var backgroundPreview: some View {

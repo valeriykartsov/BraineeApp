@@ -3,16 +3,16 @@
 //  BraineeAppTests
 //
 //  Панель вкладок не поднимается над клавиатурой (п. 57): верх клавиатуры по её кадру
-//  и нижний отступ содержимого вкладок.
+//  и нижний отступ содержимого вкладок под капсулой панели (п. 60).
 
 import CoreGraphics
 import Testing
 @testable import BraineeApp
 
 struct KeyboardLayoutTests {
-    // iPhone 17: экран 874 pt, верх панели вкладок — 790 pt (панель 50 pt + 34 pt под индикатором).
+    // iPhone 17: экран 874 pt, низ корня — 840 pt (34 pt под индикатором «домой»).
     private let screenHeight: CGFloat = 874
-    private let tabBarTop: CGFloat = 790
+    private let contentBottom: CGFloat = 840
 
     // Клавиатура на экране: верх — её minY.
     @Test func клавиатураНаЭкране_верхРавенMinY() {
@@ -27,19 +27,19 @@ struct KeyboardLayoutTests {
         #expect(KeyboardLayout.keyboardTop(frameEnd: .zero, screenHeight: screenHeight) == nil)
     }
 
-    // Без клавиатуры у содержимого нет отступа.
-    @Test func безКлавиатуры_отступаНет() {
-        #expect(KeyboardLayout.contentBottomPadding(tabBarTop: tabBarTop, keyboardTop: nil) == 0)
+    // Без клавиатуры содержимое резервирует место под капсулу панели вкладок.
+    @Test func безКлавиатуры_местоПодКапсулу() {
+        #expect(KeyboardLayout.contentBottomInset(tabBarReserve: 68, contentBottom: contentBottom, keyboardTop: nil) == 68)
     }
 
     // Обычная клавиатура: содержимое (поле чата LLM) поднимается ровно до её верха.
-    @Test func клавиатураВышеПанели_отступДоВерхаКлавиатуры() {
-        #expect(KeyboardLayout.contentBottomPadding(tabBarTop: tabBarTop, keyboardTop: 538) == 252)
+    @Test func клавиатураВышеКапсулы_отступДоВерхаКлавиатуры() {
+        #expect(KeyboardLayout.contentBottomInset(tabBarReserve: 68, contentBottom: contentBottom, keyboardTop: 538) == 302)
     }
 
-    // «Призрачная» полоса над клавиатурой (~45 pt) ниже верха панели — ничего не сдвигается.
-    @Test func полосаНижеВерхаПанели_отступаНет() {
+    // «Призрачная» полоса над клавиатурой (~45 pt) ниже капсулы — ничего не сдвигается.
+    @Test func полосаНижеКапсулы_отступПрежний() {
         let phantomTop = screenHeight - 45
-        #expect(KeyboardLayout.contentBottomPadding(tabBarTop: tabBarTop, keyboardTop: phantomTop) == 0)
+        #expect(KeyboardLayout.contentBottomInset(tabBarReserve: 68, contentBottom: contentBottom, keyboardTop: phantomTop) == 68)
     }
 }

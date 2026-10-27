@@ -3,6 +3,12 @@
 Notable changes to BraineeApp. Dates are commit dates. Decision references (D-xx) point to [`docs/decisions.md`](docs/decisions.md).
 The October 2026 work was a modernization done in phases; the detailed task plan and audit it followed are available in git history (`e1ccfff`).
 
+## 2026-10-27 — Liquid Glass and a floating tab bar
+
+- The tab bar is now a floating capsule above the content; lists scroll under it. Without glass it is a solid capsule in the card color.
+- "Профиль → Настройки → Тема оформления → Стекло": available only while the background picture is on ("Без фона" — the switch is disabled). When on, header buttons, the "Список / Канбан" switch, the tab bar and the LLM chat input become glass; "Прозрачность элементов" (0–100 %, 0 % by default) makes cards see-through — folders and tasks, kanban columns, grouped cards, matrix quadrants, chat bubbles. At 100 % a card keeps 18 % of its color. Forms stay plain.
+- iOS 26+ uses Liquid Glass (`glassEffect`), iOS 18 a material; the iPhone setting "Reduce Transparency" turns the glass off. Settings changes go to the session log.
+
 ## 2026-10-27 — Tasks header buttons work with a background picture
 
 - Fixed: with a background picture, the Tasks header did not respond — "Список / Канбан", collapse / expand folders, add folder, add task, display settings. The invisible part of the list's screen-anchored picture lay over the header and took the taps; the background layer no longer accepts taps.

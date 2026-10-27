@@ -51,10 +51,8 @@ struct AppSegmentedControl<Option: Hashable>: View {
             }
         }
         .padding(DesignSystem.Space.x1)
-        .background(
-            Capsule(style: .continuous)
-                .fill(DesignSystem.Colors.chip)
-        )
+        // Над картинкой с «Стеклом» — стеклянная подложка (п. 60), иначе прежняя серая.
+        .appGlassControl(in: Capsule(style: .continuous), solid: DesignSystem.Colors.chip)
         // Ширина по содержимому — не растягивается на всю строку.
         .fixedSize(horizontal: true, vertical: false)
     }
