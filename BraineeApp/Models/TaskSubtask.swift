@@ -42,6 +42,15 @@ enum TaskSubtaskRules {
     static let maxCount = 10
     static let titleMaxLength = 50
 
+    /// Заменяет черновик с тем же `id`. Если его уже нет — строку удалили, пока её поле было в фокусе,
+    /// и поле дописывает текст при снятии фокуса — список не меняется (раньше это роняло приложение).
+    static func replacing(_ draft: SubtaskDraft, in drafts: [SubtaskDraft]) -> [SubtaskDraft] {
+        guard let index = drafts.firstIndex(where: { $0.id == draft.id }) else { return drafts }
+        var result = drafts
+        result[index] = draft
+        return result
+    }
+
     /// Что сохранится: текст обрезан по краям и по длине, пустые убраны, повторы id убраны, не больше 10.
     static func normalized(_ drafts: [SubtaskDraft]) -> [SubtaskDraft] {
         var seen = Set<UUID>()

@@ -3,6 +3,10 @@
 Notable changes to BraineeApp. Dates are commit dates. Decision references (D-xx) point to [`docs/decisions.md`](docs/decisions.md).
 The October 2026 work was a modernization done in phases; the detailed task plan and audit it followed are available in git history (`e1ccfff`).
 
+## 2026-10-27 — No crash when removing an empty subtask
+
+- Fixed: tapping the cross of a subtask whose field was focused (e.g. a just-added empty one) crashed the app ("Index out of range"). Subtask rows now find their draft by id, so the text the field writes back after the row is removed is ignored.
+
 ## 2026-10-27 — Content scrolls under the header and the tab bar
 
 - Fixed: the floating tab bar covered the last rows of every tab — the bottom inset was set outside the tabs' navigation stacks and never reached their scroll views. Each screen now reserves the space itself: lists scroll under the capsule and their end comes to rest above it, as in Telegram.
