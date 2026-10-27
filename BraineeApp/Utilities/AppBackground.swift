@@ -190,6 +190,8 @@ struct AppScreenBackground: ViewModifier {
             .transformEnvironment(\.appGlass) { glass in
                 if !allowsImage { glass = .off }
             }
+            // Под капсулой панели вкладок — как в Телеграме (п. 61); формы-листы капсулу не видят.
+            .modifier(TabBarBottomInset(enabled: allowsImage))
             .background {
                 if let picture {
                     ScreenAnchoredImage(image: picture)

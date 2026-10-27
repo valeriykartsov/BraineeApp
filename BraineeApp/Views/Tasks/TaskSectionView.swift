@@ -44,7 +44,7 @@ struct TaskSectionView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
+            TabScreenLayout {
                 Text("Задачи")
                     .font(DesignSystem.Typography.title(24))
                     .foregroundStyle(DesignSystem.Colors.textPrimary)
@@ -56,6 +56,7 @@ struct TaskSectionView: View {
                 sectionControlsBar
                     .padding(.bottom, DesignSystem.Space.x2)
 
+            } content: {
                 Group {
                     switch viewMode {
                     case .list:

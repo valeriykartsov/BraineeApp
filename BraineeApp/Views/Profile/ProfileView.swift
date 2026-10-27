@@ -369,6 +369,8 @@ struct ProfileView: View {
         }
         .sheet(isPresented: $showingMatrix) {
             EisenhowerMatrixView()
+                // Лист закрывает капсулу панели вкладок — место под неё не нужно (п. 61).
+                .environment(\.tabBarReserve, 0)
         }
         .dismissOnTabLeave($showingMatrix)
     }

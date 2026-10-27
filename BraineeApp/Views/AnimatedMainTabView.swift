@@ -123,12 +123,9 @@ struct AnimatedMainTabView: View {
                     .allowsHitTesting(selectedTab == .profile)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            // Место под капсулу: списки прокручиваются под неё, последняя строка не прячется.
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                Color.clear
-                    .frame(height: contentBottomInset)
-                    .allowsHitTesting(false)
-            }
+            // Место под капсулу резервирует каждый экран внутри себя (`appScreenBackground` → `TabBarBottomInset`):
+            // прокрутка идёт под капсулой, а конец списка встаёт над ней (п. 61).
+            .environment(\.tabBarReserve, contentBottomInset)
 
             tabBar
                 .padding(.horizontal, DesignSystem.Space.x4)

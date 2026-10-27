@@ -55,7 +55,7 @@ struct CalendarWeekView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
+            TabScreenLayout {
                 HStack {
                     Text("Календарь")
                         .font(DesignSystem.Typography.title(24))
@@ -77,6 +77,7 @@ struct CalendarWeekView: View {
                     .padding(.horizontal, DesignSystem.Space.screenInset)
                     .padding(.bottom, DesignSystem.Space.x3)
 
+            } content: {
                 dayTasksList
                     .taskRowClock()
             }
