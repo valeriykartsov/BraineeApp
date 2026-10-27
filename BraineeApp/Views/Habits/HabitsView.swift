@@ -46,7 +46,7 @@ struct HabitsView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
+            TabScreenLayout {
                 HStack(alignment: .center) {
                     Text("Привычки")
                         .font(DesignSystem.Typography.title(24))
@@ -69,6 +69,7 @@ struct HabitsView: View {
                 .padding(.top, DesignSystem.Space.x1)
                 .padding(.bottom, DesignSystem.Space.x2)
 
+            } content: {
                 ScrollView {
                     VStack(alignment: .leading, spacing: DesignSystem.Space.sectionGap) {
                         progressSection

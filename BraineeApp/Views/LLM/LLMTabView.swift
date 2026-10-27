@@ -18,7 +18,7 @@ struct LLMTabView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
+            TabScreenLayout {
                 HStack(alignment: .center) {
                     Text("LLM")
                         .font(DesignSystem.Typography.title(24))
@@ -53,6 +53,7 @@ struct LLMTabView: View {
                 .padding(.top, DesignSystem.Space.x1)
                 .padding(.bottom, DesignSystem.Space.x2)
 
+            } content: {
                 if hasKey {
                     LLMChatView(messages: $messages)
                 } else {
