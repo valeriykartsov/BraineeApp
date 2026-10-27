@@ -2,7 +2,8 @@
 //  AnimatedMainTabView.swift
 //  BraineeApp
 //
-//  Компактная нижняя панель: подчёркивание «перетекает» между разделами.
+//  Нижняя панель — плавающая капсула (п. 60): выделение «перетекает» между разделами;
+//  над картинкой фона с включённым «Стеклом» капсула стеклянная.
 //  Контент табов не уничтожается при переключении — без лагов от пересоздания @Query.
 
 import SwiftUI
@@ -26,9 +27,20 @@ struct AnimatedMainTabView: View {
     @State private var selectedTab: MainTab = .tasks
     /// Повторное нажатие на вкладку «Профиль» — возврат в её корень (п. 41).
     @State private var profileRootRequest = 0
-    /// Клавиатура и верх панели вкладок: панель остаётся внизу, отступ получает только содержимое (п. 57).
+    /// Клавиатура и низ корня: панель остаётся внизу, отступ получает только содержимое (п. 57).
     @StateObject private var keyboard = KeyboardObserver()
-    @State private var tabBarTop: CGFloat = 0
+    @State private var contentBottom: CGFloat = 0
+
+    // Стекло (п. 60): считается здесь один раз и передаётся всем экранам через окружение.
+    @AppStorage(AppBackgroundSettings.modeKey) private var backgroundModeRaw = AppBackgroundMode.none.rawValue
+    @AppStorage(AppGlassSettings.enabledKey) private var glassEnabled = false
+    @AppStorage(AppGlassSettings.levelKey) private var glassLevel = AppGlassSettings.defaultLevel
+    @ObservedObject private var backgroundStore = AppBackgroundStore.shared
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    /// Высота капсулы и зазор над ней — столько места резервирует содержимое вкладок.
+    private static let tabBarHeight: CGFloat = 60
+    private static let tabBarGap: CGFloat = 8
     @Namespace private var tabUnderlineNamespace
 
     init() {
@@ -69,8 +81,26 @@ struct AnimatedMainTabView: View {
         return AppBadgeCounter.displayText(for: count)
     }
 
+    private var glass: GlassAppearance {
+        GlassAppearance.resolve(
+            mode: AppBackgroundMode.resolved(from: backgroundModeRaw),
+            hasImage: backgroundStore.hasImage,
+            enabled: glassEnabled,
+            level: glassLevel,
+            reduceTransparency: reduceTransparency
+        )
+    }
+
+    private var contentBottomInset: CGFloat {
+        KeyboardLayout.contentBottomInset(
+            tabBarReserve: Self.tabBarHeight + Self.tabBarGap,
+            contentBottom: contentBottom,
+            keyboardTop: keyboard.keyboardTop
+        )
+    }
+
     var body: some View {
-        VStack(spacing: 0) {
+        ZStack(alignment: .bottom) {
             ZStack {
                 TaskSectionView(isActive: selectedTab == .tasks)
                     .opacity(selectedTab == .tasks ? 1 : 0)
@@ -93,17 +123,25 @@ struct AnimatedMainTabView: View {
                     .allowsHitTesting(selectedTab == .profile)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(
-                .bottom,
-                KeyboardLayout.contentBottomPadding(tabBarTop: tabBarTop, keyboardTop: keyboard.keyboardTop)
-            )
+            // Место под капсулу: списки прокручиваются под неё, последняя строка не прячется.
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                Color.clear
+                    .frame(height: contentBottomInset)
+                    .allowsHitTesting(false)
+            }
 
-            AppDivider()
             tabBar
+                .padding(.horizontal, DesignSystem.Space.x4)
         }
         // Панель вкладок не поднимается над клавиатурой: даже от «призрачной» клавиатуры
         // (закрытое поле, свёрнутое приложение) не остаётся пустой полосы под панелью (п. 57).
         .ignoresSafeArea(.keyboard, edges: .bottom)
+        .onGeometryChange(for: CGFloat.self) { proxy in
+            proxy.frame(in: .global).maxY
+        } action: { bottom in
+            contentBottom = bottom
+        }
+        .environment(\.appGlass, glass)
         .appScreenBackground()
         .tint(accentColor)
         .preferredColorScheme(colorScheme)
@@ -179,7 +217,7 @@ struct AnimatedMainTabView: View {
                     VStack(spacing: 3) {
                         ZStack(alignment: .topTrailing) {
                             Image(systemName: isActive ? tab.selectedSystemImage : tab.systemImage)
-                                .font(.system(size: 20, weight: isActive ? .semibold : .regular))
+                                .font(.system(size: 19, weight: isActive ? .semibold : .regular))
                                 .frame(width: 28, height: 22)
 
                             if tab == .tasks, let badge = tasksTabBadgeText {
@@ -202,36 +240,29 @@ struct AnimatedMainTabView: View {
                             .font(.system(size: 9, weight: .medium))
                             .lineLimit(1)
                             .minimumScaleFactor(0.75)
-
-                        ZStack {
-                            Color.clear.frame(width: 22, height: 2)
-                            if isActive {
-                                Capsule(style: .continuous)
-                                    .fill(accentColor)
-                                    .frame(width: 22, height: 2)
-                                    .matchedGeometryEffect(id: "tabUnderline", in: tabUnderlineNamespace)
-                            }
-                        }
-                        .padding(.top, 1)
                     }
                     .foregroundStyle(isActive ? accentColor : DesignSystem.Colors.textSecondary)
                     .frame(maxWidth: .infinity)
-                    .padding(.top, 6)
-                    .padding(.bottom, 2)
-                    .contentShape(Rectangle())
+                    .frame(height: Self.tabBarHeight - 10)
+                    .background {
+                        if isActive {
+                            Capsule(style: .continuous)
+                                .fill(Color.primary.opacity(0.10))
+                                .matchedGeometryEffect(id: "tabSelection", in: tabUnderlineNamespace)
+                        }
+                    }
+                    .contentShape(Capsule(style: .continuous))
                 }
                 .buttonStyle(.plain)
                 .accessibilityAddTraits(isActive ? .isSelected : [])
             }
         }
         .animation(flowAnimation, value: tabVisibilityToken)
-        .padding(.horizontal, 4)
-        .background(DesignSystem.Colors.surface.ignoresSafeArea(edges: .bottom))
-        .onGeometryChange(for: CGFloat.self) { proxy in
-            proxy.frame(in: .global).minY
-        } action: { top in
-            tabBarTop = top
-        }
+        .padding(.horizontal, 5)
+        .frame(height: Self.tabBarHeight)
+        // Без стекла — сплошная капсула цвета карточки, как прежняя панель.
+        .appGlassControl(in: Capsule(style: .continuous), solid: DesignSystem.Colors.surface)
+        .shadow(color: .black.opacity(glass.controls ? 0.25 : 0.12), radius: 12, y: 4)
     }
 
     /// Виджет экрана блокировки открывает «Календарь»; если вкладка скрыта — «Задачи».

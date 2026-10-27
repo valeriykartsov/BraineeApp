@@ -219,12 +219,10 @@ extension View {
         modifier(AppScreenBackground(allowsImage: allowsImage))
     }
 
+    /// Карточка-группа: цвет карточки, над картинкой со «Стеклом» — по ползунку прозрачности (п. 60).
     func groupedCardBackground() -> some View {
-        background(
-            RoundedRectangle(cornerRadius: DesignSystem.Radius.group, style: .continuous)
-                .fill(DesignSystem.Colors.surface)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Radius.group, style: .continuous))
+        appCardSurface(RoundedRectangle(cornerRadius: DesignSystem.Radius.group, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Radius.group, style: .continuous))
     }
 }
 

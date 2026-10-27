@@ -2,9 +2,10 @@
 //  KeyboardLayout.swift
 //  BraineeApp
 //
-//  Панель вкладок не поднимается над клавиатурой (п. 57): корневой экран игнорирует клавиатуру,
-//  а содержимое вкладок получает нижний отступ только на ту часть клавиатуры, что выше панели.
-//  Так «призрачная» клавиатура (полоса над клавиатурой без самой клавиатуры) панель не сдвигает.
+//  Панель вкладок не поднимается над клавиатурой (п. 57): корневой экран игнорирует клавиатуру.
+//  Панель — плавающая капсула поверх содержимого (п. 60); содержимое вкладок резервирует снизу место
+//  под капсулу, а при клавиатуре — до её верха. «Призрачная» клавиатура (полоса над клавиатурой
+//  без самой клавиатуры) ниже капсулы ничего не сдвигает.
 
 import SwiftUI
 import UIKit
@@ -16,10 +17,11 @@ enum KeyboardLayout {
         return frameEnd.minY
     }
 
-    /// Отступ снизу у содержимого вкладок: насколько клавиатура заходит выше верхнего края панели.
-    static func contentBottomPadding(tabBarTop: CGFloat, keyboardTop: CGFloat?) -> CGFloat {
-        guard let keyboardTop else { return 0 }
-        return max(0, tabBarTop - keyboardTop)
+    /// Нижний отступ содержимого вкладок над безопасной зоной: место под капсулу панели
+    /// или, если клавиатура выше, — до верха клавиатуры. `contentBottom` — низ корня (над индикатором «домой»).
+    static func contentBottomInset(tabBarReserve: CGFloat, contentBottom: CGFloat, keyboardTop: CGFloat?) -> CGFloat {
+        guard let keyboardTop else { return tabBarReserve }
+        return max(tabBarReserve, contentBottom - keyboardTop)
     }
 
     /// Снимает фокус ввода во всём приложении — клавиатура закрывается, даже если поле уже не видно.

@@ -175,6 +175,7 @@ struct TaskSectionView: View {
                         Image(systemName: "arrow.up.arrow.down")
                             .font(.system(size: 17, weight: .medium))
                             .frame(width: DesignSystem.Space.x10, height: DesignSystem.Space.x10)
+                            .appGlassControl(in: Circle())
                             .contentShape(Rectangle())
                     }
                     .accessibilityLabel("Сортировка канбана")
@@ -222,6 +223,7 @@ struct TaskSectionView: View {
             Image(systemName: systemName)
                 .font(.system(size: 17, weight: .medium))
                 .frame(width: DesignSystem.Space.x10, height: DesignSystem.Space.x10)
+                .appGlassControl(in: Circle())
                 .contentShape(Rectangle())
         }
         .accessibilityLabel(label)
@@ -262,6 +264,7 @@ struct TaskSectionView: View {
                 .rotationEffect(.degrees(nextCollapseActionIsExpand ? -90 : 0))
                 .animation(.spring(response: 0.34, dampingFraction: 0.84), value: nextCollapseActionIsExpand)
                 .frame(width: DesignSystem.Space.x10, height: DesignSystem.Space.x10)
+                .appGlassControl(in: Circle())
                 .contentShape(Rectangle())
         }
         .disabled(collapsibleGroupIDs.isEmpty)

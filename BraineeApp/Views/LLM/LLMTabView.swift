@@ -32,6 +32,7 @@ struct LLMTabView: View {
                                 .font(.system(size: 17, weight: .medium))
                                 .foregroundStyle(DesignSystem.Colors.accent)
                                 .frame(width: DesignSystem.Space.x10, height: DesignSystem.Space.x10)
+                                .appGlassControl(in: Circle())
                                 .contentShape(Rectangle())
                         }
                         .accessibilityLabel("Новый чат")
@@ -43,6 +44,7 @@ struct LLMTabView: View {
                             .font(.system(size: 17, weight: .medium))
                             .foregroundStyle(DesignSystem.Colors.accent)
                             .frame(width: DesignSystem.Space.x10, height: DesignSystem.Space.x10)
+                            .appGlassControl(in: Circle())
                             .contentShape(Rectangle())
                     }
                     .accessibilityLabel("Настройки LLM")

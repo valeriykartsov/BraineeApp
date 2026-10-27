@@ -21,6 +21,9 @@ struct TaskRowView: View {
     /// Удаление в корзину; вызывается только после подтверждения.
     var onDelete: (() -> Void)? = nil
 
+    /// Над картинкой со «Стеклом» подложки карточки прозрачнее — по тому же ползунку (п. 60).
+    @Environment(\.appGlass) private var glass
+
     /// Время от `.taskRowClock()` экрана; без него — момент отрисовки.
     @Environment(\.taskRowNow) private var clockNow
     @State private var showingDeleteConfirm = false
@@ -109,10 +112,10 @@ struct TaskRowView: View {
     private func background(overdue: Bool) -> some View {
         let shape = RoundedRectangle(cornerRadius: DesignSystem.Radius.card, style: .continuous)
         if let cardFill {
-            shape.fill(overdue ? DesignSystem.Colors.dangerSoft : cardFill)
+            shape.fill((overdue ? DesignSystem.Colors.dangerSoft : cardFill).opacity(glass.cardFillOpacity))
         } else if overdue {
             shape
-                .fill(DesignSystem.Colors.dangerSoft)
+                .fill(DesignSystem.Colors.dangerSoft.opacity(glass.cardFillOpacity))
                 .padding(.horizontal, DesignSystem.Space.x1)
                 .padding(.vertical, 2)
         }

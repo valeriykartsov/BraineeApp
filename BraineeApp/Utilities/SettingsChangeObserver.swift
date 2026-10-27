@@ -93,6 +93,10 @@ extension SettingsChangeObserver.Setting {
             AppBackgroundSettings.percentText(($0 as? Double) ?? AppBackgroundSettings.defaultDim)
         },
         flag(AppBackgroundSettings.blurKey, "Размытие фона", default: false),
+        flag(AppGlassSettings.enabledKey, "Стекло", default: false),
+        option(AppGlassSettings.levelKey, "Прозрачность элементов") {
+            AppGlassSettings.percentText(($0 as? Double) ?? AppGlassSettings.defaultLevel)
+        },
         flag(TabBarSettings.showCalendarKey, "Вкладка «Календарь»", default: true),
         flag(TabBarSettings.showLLMKey, "Вкладка «LLM»", default: false),
         flag(TabBarSettings.showHabitsKey, "Вкладка «Привычки»", default: false),

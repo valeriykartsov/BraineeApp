@@ -178,6 +178,7 @@ struct CalendarWeekView: View {
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(DesignSystem.Colors.accent)
                 .frame(width: DesignSystem.Space.x10, height: DesignSystem.Space.x10)
+                .appGlassControl(in: Circle())
                 .contentShape(Rectangle())
         }
         .accessibilityLabel("Поделиться задачами дня")
@@ -192,6 +193,7 @@ struct CalendarWeekView: View {
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(DesignSystem.Colors.accent)
                 .frame(width: DesignSystem.Space.x10, height: DesignSystem.Space.x10)
+                .appGlassControl(in: Circle())
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -207,6 +209,7 @@ struct CalendarWeekView: View {
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(DesignSystem.Colors.accent)
                 .frame(width: DesignSystem.Space.x10, height: DesignSystem.Space.x10)
+                .appGlassControl(in: Circle())
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -222,6 +225,7 @@ struct CalendarWeekView: View {
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(DesignSystem.Colors.accent)
                     .frame(width: DesignSystem.Space.x10, height: DesignSystem.Space.x10)
+                    .appGlassControl(in: Circle())
                     .contentShape(Rectangle())
             }
             .accessibilityLabel("Предыдущая неделя")
@@ -241,6 +245,7 @@ struct CalendarWeekView: View {
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(DesignSystem.Colors.accent)
                     .frame(width: DesignSystem.Space.x10, height: DesignSystem.Space.x10)
+                    .appGlassControl(in: Circle())
                     .contentShape(Rectangle())
             }
             .accessibilityLabel("Следующая неделя")

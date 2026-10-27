@@ -130,7 +130,7 @@ struct TaskOrganizedListView: View {
                 }
             }
         }
-        .background(shape.fill(DesignSystem.Colors.surface))
+        .appCardSurface(shape)
         .overlay(
             shape.strokeBorder(
                 isTargeted ? DesignSystem.Colors.accent : .clear,
@@ -183,7 +183,7 @@ struct TaskOrganizedListView: View {
                 taskStack(ungrouped)
             }
         }
-        .background(shape.fill(DesignSystem.Colors.surface))
+        .appCardSurface(shape)
         .overlay(
             shape.strokeBorder(
                 isTargeted ? DesignSystem.Colors.accent : .clear,

@@ -207,7 +207,7 @@ struct TaskKanbanBoardView: View {
         }
         .frame(width: Self.columnWidth, alignment: .top)
         .frame(height: height, alignment: .top)
-        .background(shape.fill(DesignSystem.Colors.surface))
+        .appCardSurface(shape)
         .overlay(
             shape.strokeBorder(
                 isTargeted ? DesignSystem.Colors.accent : .clear,
